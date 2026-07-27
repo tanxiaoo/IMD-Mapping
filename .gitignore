@@ -1,0 +1,84 @@
+# ── Data & outputs (code-only repository) ─────────────────────────────────────
+# Everything here is either too large for GitHub or fully regenerable by
+# re-running the notebooks against Google Earth Engine.
+
+# Rasters -- CLMS IMD ~229 MB each, predicted maps 157-203 MB, GHSL 42-51 MB.
+# All exceed GitHub's 100 MB hard limit.
+*.tif
+*.tiff
+*.tif.aux.xml
+*.ovr
+
+# Trained models (RF ~21 MB) -- regenerable, and joblib is version-fragile
+*.joblib
+*.pkl
+*.h5
+
+# Sample points, metrics tables, figures
+*.gpkg
+*.gpkg-shm
+*.gpkg-wal
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.qmd
+*.csv
+*.png
+*.jpg
+*.pdf
+
+# Output directories
+outputs_v2/
+outputs_S2/
+outputs_sampling/
+outputs_transfer_v2/
+samples_IMD/
+samples_S2/
+data/
+aoi_milan/
+docs/
+
+# ── Secrets & credentials ─────────────────────────────────────────────────────
+# Earth Engine / Google Cloud service-account keys must never be committed.
+*.json
+!requirements*.json
+.env
+.env.*
+credentials/
+*-service-account*
+.config/earthengine/
+
+# ── Python ────────────────────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Jupyter ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+profile_default/
+ipython_config.py
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+install_log.txt
+*.log
+
+# ── OS / editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*~

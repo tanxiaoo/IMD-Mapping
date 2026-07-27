@@ -1,0 +1,28 @@
+# Google Earth Engine
+earthengine-api
+geemap
+geedim
+
+# Geospatial
+rasterio
+rioxarray
+geopandas
+fiona
+shapely
+pyproj
+
+# ML / data
+scikit-learn
+scipy
+pandas
+numpy
+joblib
+
+# Plotting
+matplotlib
+seaborn
+
+# Notebook / utils
+jupyter
+ipykernel
+tqdm
