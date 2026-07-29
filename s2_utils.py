@@ -6,6 +6,11 @@ the prediction raster). The mask and composite definitions MUST NOT diverge
 between the two: the holdout evaluation compares points sampled from the
 exported raster against a model trained on the extracted table, so a
 divergence here would silently invalidate the metrics.
+
+Notebook 00 writes ``method`` and ``band_names`` into
+``s2_extraction_metadata.json``; notebook 01b reads both back and asserts the
+band names match. That handshake is what keeps the two notebooks building the
+same image now that the composite method is switchable.
 """
 
 import ee
@@ -26,6 +31,15 @@ INVALID_CLASSES = [0, 1, 3, 8, 9, 10, 11]       # + no-data, defective, snow
 # Optional stricter cloud edge via the cloud-probability band.
 USE_CLDPRB    = True
 CLDPRB_THRESH = 40
+
+# Composite methods available to ``build_composite`` (see its docstring).
+COMPOSITE_METHODS = ('median', 'percentile', 'stack')
+
+# Percentiles emitted by method='percentile', and the minimum stack depth that
+# makes them meaningful. Below this, p25/p75 are each pinned by 2-3
+# observations and a single surviving cloud edge moves them.
+PERCENTILES          = (25, 50, 75)
+MIN_DATES_PERCENTILE = 10
 
 
 # Bands every image is reduced to before any mosaic/median.
@@ -105,18 +119,14 @@ def water_mask(aoi_geom):
             .mosaic().clip(aoi_geom)).neq(80)
 
 
-def build_composite(collection_id, selected_dates, aoi_geom, non_water=None):
-    """Per-pixel median over ``selected_dates`` of cloud-masked S2 imagery.
+def _masked_collection(collection_id, selected_dates, aoi_geom):
+    """Cloud-masked S2 collection over ``selected_dates``, plus B2's projection.
 
-    Returns ``(image, projection)``. The image carries exactly ``S2_BANDS``,
-    reprojected onto B2's 10 m grid so the 20 m bands come back at 10 m.
-    Reflectance is kept as raw DN (0-10000): RF is scale-invariant and the
-    SVR/MLP pipelines wrap a StandardScaler, so rescaling would change nothing
-    while adding a needless divergence from notebook 01.
+    Everything up to (but not including) the reduction, shared by every
+    ``build_composite`` method. Masking happens HERE, before any reduction, so
+    cloudy observations are excluded from the sample entirely rather than
+    averaged in.
     """
-    if non_water is None:
-        non_water = water_mask(aoi_geom)
-
     date_filter = ee.Filter.Or(*[
         ee.Filter.date(d, ee.Date(d).advance(1, 'day')) for d in selected_dates
     ])
@@ -126,11 +136,142 @@ def build_composite(collection_id, selected_dates, aoi_geom, non_water=None):
            .map(harmonize))          # uniform bands -> median() won't raise
 
     proj = col.first().select('B2').projection()
+    return col.map(lambda i: i.updateMask(valid_mask(i))), proj
 
-    masked = col.map(lambda i: i.updateMask(valid_mask(i)))
-    img = (masked.median()
-           .select(S2_BANDS)
+
+def _reduce_median(masked, selected_dates):
+    """Per-pixel median across all dates. 10 bands, named ``S2_BANDS``."""
+    return masked.median(), list(S2_BANDS)
+
+
+def _reduce_percentile(masked, selected_dates):
+    """Per-pixel p25/p50/p75 per band. 30 bands, named ``B2_p25 ... B12_p75``.
+
+    The p75-p25 spread is a direct proxy for temporal stability -- asphalt and
+    roofs barely move across the year while crops and bare soil swing widely --
+    which is the defining property of an impervious surface.
+    """
+    if len(selected_dates) < MIN_DATES_PERCENTILE:
+        raise ValueError(
+            f"method='percentile' needs >= {MIN_DATES_PERCENTILE} dates, got "
+            f'{len(selected_dates)}. Over a shorter stack p25 and p75 are each '
+            'pinned by 2-3 observations, so one surviving cloud edge moves '
+            'them. Widen SELECTED_DATES (the scene table has ~30 usable dates '
+            "for 2018) or use method='median'.")
+
+    names = [f'{b}_p{p}' for b in S2_BANDS for p in PERCENTILES]
+    # GEE names these '<band>_p<n>' already; the explicit select() in
+    # build_composite pins the ORDER to `names` regardless.
+    return masked.reduce(ee.Reducer.percentile(list(PERCENTILES))), names
+
+
+def _reduce_stack(masked, selected_dates):
+    """No reduction -- every date contributes its own 10 bands as features.
+
+    ``10 * len(selected_dates)`` bands named ``B2_d00 ... B12_dNN``, in sorted
+    date order so the band list is a function of the dates themselves, not of
+    the order they happened to be typed in.
+
+    Masked pixels are gap-filled from the per-pixel median across all selected
+    dates, because a pixel clouded on any single date would otherwise drop the
+    whole point -- and with N dates the odds of a point being clean on all N
+    approach zero. Filled values are NOT observations and the model cannot tell
+    them apart from real ones; cloud is also not randomly distributed, so the
+    fill lands unevenly across the AOI. Keep N small (3-6) and check the
+    per-date fill rate before attributing any gain to temporal information.
+    """
+    dates = sorted(selected_dates)
+    fill  = masked.median()          # 10 bands, S2_BANDS names
+
+    per_date = []
+    for i, d in enumerate(dates):
+        day   = ee.Date(d)
+        names = [f'{b}_d{i:02d}' for b in S2_BANDS]
+        # mosaic(), not median(): Milan spans several MGRS tiles, so one date
+        # is usually 2+ scenes. Mosaicking keeps a date a single observation.
+        img = (masked.filter(ee.Filter.date(day, day.advance(1, 'day')))
+               .mosaic().select(S2_BANDS).rename(names))
+        per_date.append(img.unmask(fill.rename(names)))
+
+    names = [f'{b}_d{i:02d}' for i in range(len(dates)) for b in S2_BANDS]
+    return ee.Image.cat(per_date), names
+
+
+_REDUCERS = {
+    'median':     _reduce_median,
+    'percentile': _reduce_percentile,
+    'stack':      _reduce_stack,
+}
+
+
+def build_composite(collection_id, selected_dates, aoi_geom, non_water=None,
+                    method='median'):
+    """Composite ``selected_dates`` of cloud-masked S2 imagery.
+
+    ``method`` selects how the dates are combined:
+
+    ==============  ======================  ==========================________
+    method          bands                   what it does
+    ==============  ======================  ==========================________
+    ``median``      10                      per-pixel median (the default)
+    ``percentile``  30                      p25/p50/p75 per band, >= 10 dates
+    ``stack``       ``10 * n_dates``        no reduction; each date's own bands
+    ==============  ======================  ==========================________
+
+    Returns ``(image, projection, band_names)``. ``band_names`` is
+    method-dependent and is the single source of truth for the feature columns
+    downstream -- notebook 00 writes it to the metadata JSON and notebook 01b
+    asserts against it. Do NOT re-derive it from ``image.bandNames().getInfo()``
+    at the call site: that costs a round-trip and carries no ordering
+    guarantee, so the training table's columns could silently permute relative
+    to the classifier's ``inputProperties``. ``S2_BANDS`` keeps its own,
+    method-independent meaning: the 10 raw bands each scene is harmonized to.
+
+    The image is reprojected onto B2's 10 m grid so the 20 m bands come back at
+    10 m. Reflectance stays raw DN (0-10000): RF is scale-invariant and the
+    SVR/MLP pipelines wrap a StandardScaler -- fitted per-fold inside the CV,
+    which is the correct place -- so rescaling here would change nothing while
+    adding a needless divergence from notebook 01.
+    """
+    if method not in _REDUCERS:
+        raise ValueError(f'Unknown method {method!r}. '
+                         f'Expected one of {COMPOSITE_METHODS}.')
+    if not selected_dates:
+        raise ValueError('selected_dates is empty.')
+    if len(set(selected_dates)) != len(selected_dates):
+        raise ValueError('selected_dates contains duplicates -- under '
+                         "method='stack' that would double-weight a date.")
+
+    if non_water is None:
+        non_water = water_mask(aoi_geom)
+
+    masked, proj    = _masked_collection(collection_id, selected_dates, aoi_geom)
+    img, band_names = _REDUCERS[method](masked, selected_dates)
+
+    img = (img.select(band_names)     # pins band order to the Python list
            .setDefaultProjection(proj)
            .clip(aoi_geom)
            .updateMask(non_water))
-    return img, proj
+    return img, proj, band_names
+
+
+def stack_fill_rates(collection_id, selected_dates, aoi_geom, scale=60):
+    """Fraction of the AOI gap-filled per date under ``method='stack'``.
+
+    Client-side dict ``{date: pct}`` -- one ``reduceRegion`` per date, so it is
+    cheap at ``scale=60`` but not free. A date filling more than a few percent
+    is contributing mostly synthetic features and should be swapped out.
+    """
+    masked, _ = _masked_collection(collection_id, selected_dates, aoi_geom)
+
+    rates = {}
+    for d in sorted(selected_dates):
+        day = ee.Date(d)
+        # B2's mask after valid_mask: 1 where the date has a real observation.
+        present = (masked.filter(ee.Filter.date(day, day.advance(1, 'day')))
+                   .mosaic().select('B2').mask().unmask(0))
+        got = present.reduceRegion(reducer=ee.Reducer.mean(), geometry=aoi_geom,
+                                   scale=scale, bestEffort=True,
+                                   maxPixels=1e9).values().get(0)
+        rates[d] = round((1 - ee.Number(got).getInfo()) * 100, 3)
+    return rates

@@ -36,6 +36,10 @@ outputs_sampling/
 outputs_transfer_v2/
 samples_IMD/
 samples_S2/
+
+# Per-composite-method runs (samples_S2_stack/, outputs_S2_percentile/, ...)
+samples_S2_*/
+outputs_S2_*/
 data/
 aoi_milan/
 docs/
