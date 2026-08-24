@@ -35,11 +35,23 @@ CLDPRB_THRESH = 40
 # Composite methods available to ``build_composite`` (see its docstring).
 COMPOSITE_METHODS = ('median', 'percentile', 'stack')
 
-# Percentiles emitted by method='percentile', and the minimum stack depth that
-# makes them meaningful. Below this, p25/p75 are each pinned by 2-3
+# DEFAULT percentiles emitted by method='percentile'. Override per call with
+# build_composite(..., percentiles=(10, 25, 50, 75, 90)) to test other sets --
+# nothing downstream hardcodes these, the band names are derived from whatever
+# is passed and travel to notebook 01b through the metadata JSON.
+PERCENTILES = (25, 50, 75)
+
+# Minimum dates required per percentile requested. A percentile is only
+# meaningful once enough observations sit on each side of it, so the guard
+# scales with how many you ask for: 3 percentiles need >= 10 dates, 5 need
+# >= 17. Below that, the outermost percentiles are each pinned by 2-3
 # observations and a single surviving cloud edge moves them.
-PERCENTILES          = (25, 50, 75)
-MIN_DATES_PERCENTILE = 10
+MIN_DATES_PER_PERCENTILE = 3.33
+
+
+def min_dates_for(percentiles=PERCENTILES):
+    """Minimum stack depth for ``percentiles`` -- see MIN_DATES_PER_PERCENTILE."""
+    return int(round(len(percentiles) * MIN_DATES_PER_PERCENTILE))
 
 
 # Bands every image is reduced to before any mosaic/median.
@@ -139,30 +151,67 @@ def _masked_collection(collection_id, selected_dates, aoi_geom):
     return col.map(lambda i: i.updateMask(valid_mask(i))), proj
 
 
+def _check_percentiles(percentiles):
+    """Validate a user-supplied percentile set and return it as a sorted tuple.
+
+    Sorting is not cosmetic: band names are generated in the order given, and
+    GEE's percentile reducer emits its outputs in ascending order regardless.
+    Passing (75, 25) unsorted would therefore label the p25 image 'p75' and
+    vice versa -- a silent mislabel that survives every downstream assert,
+    since those only compare name lists. Normalising here makes that
+    unrepresentable.
+
+    Integers only, for the same reason: GEE names a band 'B2_p25', so a
+    fractional 12.5 would not round-trip to a name we can predict.
+    """
+    percentiles = tuple(percentiles)
+    if not percentiles:
+        raise ValueError('percentiles is empty.')
+    if not all(isinstance(p, int) and not isinstance(p, bool) for p in percentiles):
+        raise TypeError(f'percentiles must be ints, got {percentiles!r}. GEE '
+                        "names bands '<band>_p<n>', so fractional percentiles "
+                        'have no predictable band name.')
+    if not all(0 <= p <= 100 for p in percentiles):
+        raise ValueError(f'percentiles must lie in [0, 100], got {percentiles!r}.')
+    if len(set(percentiles)) != len(percentiles):
+        raise ValueError(f'percentiles contains duplicates: {percentiles!r} -- '
+                         'that would emit two identically named bands.')
+    return tuple(sorted(percentiles))
+
+
 def _reduce_median(masked, selected_dates):
     """Per-pixel median across all dates. 10 bands, named ``S2_BANDS``."""
     return masked.median(), list(S2_BANDS)
 
 
-def _reduce_percentile(masked, selected_dates):
-    """Per-pixel p25/p50/p75 per band. 30 bands, named ``B2_p25 ... B12_p75``.
+def _reduce_percentile(masked, selected_dates, percentiles=PERCENTILES):
+    """Per-pixel percentiles per band. ``10 * len(percentiles)`` bands, named
+    ``B2_p25 ... B12_p75`` for the default ``(25, 50, 75)``.
 
-    The p75-p25 spread is a direct proxy for temporal stability -- asphalt and
-    roofs barely move across the year while crops and bare soil swing widely --
-    which is the defining property of an impervious surface.
+    The spread between the outer percentiles is a direct proxy for temporal
+    stability -- asphalt and roofs barely move across the year while crops and
+    bare soil swing widely -- which is the defining property of an impervious
+    surface. Widening the set (e.g. adding p10/p90) sharpens that spread but
+    the extra columns are strongly collinear with the ones already there, so
+    check it against the narrower set rather than assuming a gain.
     """
-    if len(selected_dates) < MIN_DATES_PERCENTILE:
-        raise ValueError(
-            f"method='percentile' needs >= {MIN_DATES_PERCENTILE} dates, got "
-            f'{len(selected_dates)}. Over a shorter stack p25 and p75 are each '
-            'pinned by 2-3 observations, so one surviving cloud edge moves '
-            'them. Widen SELECTED_DATES (the scene table has ~30 usable dates '
-            "for 2018) or use method='median'.")
+    percentiles = _check_percentiles(percentiles)
 
-    names = [f'{b}_p{p}' for b in S2_BANDS for p in PERCENTILES]
+    need = min_dates_for(percentiles)
+    if len(selected_dates) < need:
+        raise ValueError(
+            f"method='percentile' with {len(percentiles)} percentiles "
+            f'{tuple(percentiles)} needs >= {need} dates, got '
+            f'{len(selected_dates)}. Over a shorter stack the outer '
+            'percentiles are each pinned by 2-3 observations, so one surviving '
+            'cloud edge moves them. Widen SELECTED_DATES (the scene table has '
+            '~30 usable dates for 2018), request fewer percentiles, or use '
+            "method='median'.")
+
+    names = [f'{b}_p{p}' for b in S2_BANDS for p in percentiles]
     # GEE names these '<band>_p<n>' already; the explicit select() in
     # build_composite pins the ORDER to `names` regardless.
-    return masked.reduce(ee.Reducer.percentile(list(PERCENTILES))), names
+    return masked.reduce(ee.Reducer.percentile(list(percentiles))), names
 
 
 def _reduce_stack(masked, selected_dates):
@@ -181,7 +230,7 @@ def _reduce_stack(masked, selected_dates):
     per-date fill rate before attributing any gain to temporal information.
     """
     dates = sorted(selected_dates)
-    fill  = masked.median()          # 10 bands, S2_BANDS names
+    fill = masked.select(S2_BANDS).median()         # 10 bands, S2_BANDS names
 
     per_date = []
     for i, d in enumerate(dates):
@@ -205,7 +254,7 @@ _REDUCERS = {
 
 
 def build_composite(collection_id, selected_dates, aoi_geom, non_water=None,
-                    method='median'):
+                    method='median', percentiles=PERCENTILES):
     """Composite ``selected_dates`` of cloud-masked S2 imagery.
 
     ``method`` selects how the dates are combined:
@@ -214,9 +263,17 @@ def build_composite(collection_id, selected_dates, aoi_geom, non_water=None,
     method          bands                   what it does
     ==============  ======================  ==========================________
     ``median``      10                      per-pixel median (the default)
-    ``percentile``  30                      p25/p50/p75 per band, >= 10 dates
+    ``percentile``  ``10 * n_pctl``         one band per band x percentile
     ``stack``       ``10 * n_dates``        no reduction; each date's own bands
     ==============  ======================  ==========================________
+
+    ``percentiles`` applies only to ``method='percentile'`` and defaults to the
+    module-level ``PERCENTILES``. Pass any set of ints in [0, 100] to test
+    another, e.g. ``percentiles=(10, 25, 50, 75, 90)`` -> 50 bands
+    ``B2_p10 ... B12_p90``. It is sorted ascending before use, and the required
+    stack depth scales with how many you ask for (see ``min_dates_for``). The
+    argument is ignored -- not rejected -- by the other two methods, so a
+    notebook can pass it unconditionally alongside a switchable ``method``.
 
     Returns ``(image, projection, band_names)``. ``band_names`` is
     method-dependent and is the single source of truth for the feature columns
@@ -245,8 +302,11 @@ def build_composite(collection_id, selected_dates, aoi_geom, non_water=None,
     if non_water is None:
         non_water = water_mask(aoi_geom)
 
-    masked, proj    = _masked_collection(collection_id, selected_dates, aoi_geom)
-    img, band_names = _REDUCERS[method](masked, selected_dates)
+    masked, proj = _masked_collection(collection_id, selected_dates, aoi_geom)
+    if method == 'percentile':
+        img, band_names = _reduce_percentile(masked, selected_dates, percentiles)
+    else:
+        img, band_names = _REDUCERS[method](masked, selected_dates)
 
     img = (img.select(band_names)     # pins band order to the Python list
            .setDefaultProjection(proj)
