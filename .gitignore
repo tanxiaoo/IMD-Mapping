@@ -40,7 +40,21 @@ samples_S2/
 # Per-composite-method runs (samples_S2_stack/, outputs_S2_percentile/, ...)
 samples_S2_*/
 outputs_S2_*/
-data/
+
+# data/ holds large rasters and the photo-interpreted CSVs -- not committed.
+# Written as data/* rather than data/ so the negations below can apply: git
+# does not descend into an excluded DIRECTORY, so a bare `data/` would make
+# `!data/FACTS.md` unreachable.
+data/*
+# ── The fact base IS version-controlled ──────────────────────────────────────
+# These four are the project's written record: the settled findings, the
+# experiment map, the figure inventory, and the figure gap list. They are
+# prose, small, and the thing most worth having history for.
+!data/FACTS.md
+!data/EXPERIMENT_MAP.md
+!data/FIGURES.md
+!data/FIGURE_GAPS.md
+
 aoi_milan/
 docs/
 
