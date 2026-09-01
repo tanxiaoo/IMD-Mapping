@@ -60,7 +60,7 @@ re-run per `COMPOSITE_METHOD`. `outputs_v2` has no `figE` and no
 | `fig05_all_metrics.png` | 2×2 grouped bars, all four metrics × models × blocks | DIAGNOSTIC | — | KEEP |
 | `fig06_inflation_heatmap.png` | Spatial-vs-random CV RMSE inflation, model × block | **RESULT** | every cell | NEEDS-EDIT — **not cited**, see below |
 | `fig07_holdout_scatter.png` | Observed vs predicted on the holdout, RF and SVR panels | **RESULT** | RMSE/MAE/R²/Bias | KEEP |
-| `figA_holdout_accuracy_GEE_RF.png` · `_GEE_SVR.png` | 3-panel accuracy: scatter by class, KDE density, abs-error boxplot | **RESULT** | RMSE/MAE/R²/Bias | NEEDS-EDIT — **wrong tuning block in the title**, see below |
+| `figA_holdout_accuracy_GEE_RF.png` · `_GEE_SVR.png` | 3-panel accuracy: scatter by class, KDE density, abs-error boxplot | **RESULT** | RMSE/MAE/R²/Bias | STALE-REGENERATE — **source fixed 2026-09-01**, images not yet rebuilt, see below |
 | `figB_model_cv_comparison.png` | Best-block CV RMSE per model, winner outlined | DIAGNOSTIC | CV RMSE + block | NEEDS-EDIT |
 | `figC_perclass_GEE_RF.png` · `_GEE_SVR.png` | RMSE/MAE/Bias per IMD class | **RESULT** | every bar | KEEP |
 | `figD_importance_RF.png` | RF impurity + permutation importance per band | DIAGNOSTIC | — | KEEP |
@@ -86,15 +86,46 @@ carry another model's block:
 The percentile copy is the more serious case: its label is derived from the
 estimator that is out of scope for this report, so the figure is downstream of a
 model the report must not name. The plotted data are correct in all copies —
-only the title is wrong. Fixing it at source means re-running notebook 01/01b,
-which CLAUDE.md forbids for a labelling change, so these figures are simply not
-cited. `fig07_holdout_scatter.png` (F4, §4.1) carries the same holdout scatter
-and the same four metrics with a correct title.
+only the title is wrong. `fig07_holdout_scatter.png` (F4, §4.1) carries the same
+holdout scatter and the same four metrics with a correct title.
+
+**Source fixed 2026-09-01; the images on disk are still the old ones.** Cell 40
+(nb 01) and cell 41 (nb 01b) now read `best_block_per_model[name.replace('GEE_',
+'')]` — the estimator's own tuning result — instead of the global
+`BEST_BLOCK_LABEL`, and the duplicating `Figure A · …` suptitle is reduced to the
+estimator name plus its block. `BEST_BLOCK_LABEL` remains defined in cell 22 and
+is still used for the overall-winner print and `model_metadata_*.json`; it no
+longer reaches any figure. The notebooks were **not** re-executed, per CLAUDE.md,
+so the PNGs still carry the old title until 01/01b next run deliberately. These
+figures remain uncited, so nothing in the report depends on the rebuild.
 
 **Largely duplicated by F4 in any case.** `figA`'s left panel plots the same
 1014 points with the same RMSE/MAE/R²/Bias box as `fig07`'s corresponding panel,
 differing only in point colouring; its right panel is per-class error, which is
 already F5 (`figC_perclass_GEE_RF`). Only the middle KDE panel is new.
+
+**`fig07_holdout_scatter.png` and `figC_perclass_GEE_RF.png` — suptitles removed
+2026-09-01, percentile run only.** Both are cited (F4 and F6, §4.1) and both
+carried a top-level suptitle that only repeated the report caption while exposing
+internal tags: `Figure 7 · [S2] Spatial Holdout Test Set -- Observed vs Predicted
+IMD (GEE raster)` and `Figure C · [S2] Per-Class Accuracy -- GEE_RF`. The
+in-image `Figure 7` / `Figure C` also disagreed with the report's own numbering,
+where they are Figures 4 and 6.
+
+Re-running notebook 01b for a labelling change is forbidden by CLAUDE.md, and it
+would overwrite every CSV `collect_metrics.py` builds `FACTS.md` from. So both
+are redrawn by `code/redraw_notebook_figs.py` **at their existing paths** from
+the CSVs the notebook already wrote — `holdout_residuals.csv` plus
+`holdout_test_metrics.csv` for F4, `perclass_metrics_GEE_RF.csv` for F6 — the
+same rule already used for F3 and F15. Panel geometry, colours, limits, marker
+sizes and annotation boxes are copied verbatim from cells 39 and 45; only the
+suptitle is dropped. Per-panel subplot titles are kept: they label the panels and
+are not duplication. The residuals CSV carries the out-of-scope third
+estimator's columns; only `pred_RF` and `pred_SVR` are read.
+
+The plotted values are unchanged — `FACTS.md` was rebuilt after the redraw and is
+byte-identical. Because these paths are gitignored notebook outputs, a future
+deliberate re-run of 01b will revert them; re-run the script afterwards.
 
 **`fig06_inflation_heatmap.png` — NEEDS-EDIT, resolved for the report by F3.**
 Its plotted values are correct, but it renders one row per *tuned* model, so it
