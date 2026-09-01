@@ -88,7 +88,7 @@ Identical figure code in both; only the raster suffix and one suptitle differ.
 | File | Shows | Kind | Numbers in title | Status |
 |---|---|---|---|---|
 | `fig00_spatial_split.png` | Train/test/buffer points over the 1 km grid, both cities | DIAGNOSTIC | train/test/removed n | KEEP |
-| `fig01_transfer_comparison.png` | 2×2 bars: Milan baseline vs A vs B, per city, all four metrics | **RESULT** | every bar | NEEDS-EDIT |
+| `fig01_transfer_comparison.png` | 2×2 bars: Milan baseline vs A vs B, per city, all four metrics | **RESULT** | every bar | KEEP |
 | `fig02_per_class_mae.png` | MAE per IMD class, transfer vs local retrain | **RESULT** | — | KEEP |
 | `fig_scatter_Hanoi.png` · `fig_scatter_HCMC.png` | Observed GHSL vs predicted, both scenarios | **RESULT** | RMSE/MAE/R²/Bias | KEEP |
 | `fig_obs_vs_pred_hanoi_hcmc.png` | GHSL / Milan transfer / local retrain rasters, 2×3 | MAP | per-panel RMSE/R²/Bias | KEEP |
@@ -96,11 +96,16 @@ Identical figure code in both; only the raster suffix and one suptitle differ.
 **Dates:** `outputs_transfer_v2` 2026-08-28 · `outputs_transfer_S2_median`
 2026-08-29. Both postdate their input rasters; neither is stale.
 
-**`fig01_transfer_comparison.png` — NEEDS-EDIT.** Its bias bars are measured
-against GHSL, so they show the models diverging from the target. Against
-photo-interpretation the sign reverses and the local retrains recover 7.6–13.1 pp
-of GHSL's deficit. The figure is correct for the same-source validation but must not be
-captioned as if it described accuracy.
+**`fig01_transfer_comparison.png` — FIXED 2026-09-01.** The figure had four
+panels labelled only `RMSE`, `MAE`, `R2`, `Bias` and no suptitle, so nothing
+said what they were scored against. The Bias panel in particular invited the
+reading that a model near zero is accurate, when every bar is measured against
+GHSL — which itself under-marks sealed area by ~20 pp against
+photo-interpretation. Notebooks 02 and 03 now add a suptitle naming the
+reference: *"Same-source validation: scored against GHSL (Milan baseline
+against CLMS) · Agreement with the training target, not accuracy."*
+
+The plotted values were always correct; only the labelling was incomplete.
 
 ## Independent validation — photo-interpreted plots
 

@@ -566,7 +566,7 @@ table; bias-recovery table.
 | F4 | `fig07_holdout_scatter.png` (percentile) | 4.1 | EXISTS / KEEP | FIGURES.md |
 | F5 | `figC_perclass_GEE_RF.png` (percentile) | 4.1 | EXISTS / KEEP | FIGURES.md |
 | F6 | `figD_importance_RF.png` (percentile) | 4.3 | EXISTS / KEEP | FIGURES.md |
-| F7 | `fig01_transfer_comparison.png` | 5.1 | **NEEDS-EDIT** (caption) | FIGURES.md |
+| F7 | `fig01_transfer_comparison.png` | 5.1 | EXISTS / KEEP | FIGURES.md |
 | F8 | `fig_obs_vs_pred_hanoi_hcmc.png` | 5.1 | EXISTS / KEEP | FIGURES.md |
 | F9 | `fig02_per_class_mae.png` | 5.2 | EXISTS / KEEP | FIGURES.md |
 | F10 | `fig02_forest_ci.png` | 6.1 | EXISTS / KEEP | FIGURES.md |
@@ -575,9 +575,8 @@ table; bias-recovery table.
 | F13 | `fig_hcmc_prediction_histogram.png` (`report/figs`) | 7.2 | **BUILT** | gaps 3 + 4 merged |
 | F14 | `fig_bias_recovery.png` (`report/figs`) | 7.3 | **BUILT** | gap 4 |
 
-**Total 14 figures** — 9 from notebooks (8 KEEP, 1 NEEDS-EDIT caption only)
-and 4 built into `report/figs/` by `code/make_report_figs.py`. Within the
-12–14 target.
+**Total 14 figures** — 9 from notebooks (all KEEP) and 4 built into
+`report/figs/` by `code/make_report_figs.py`. Within the 12–14 target.
 
 Tables (not counted as figures): same-source validation summary (§4.1), paired tests (§4.2),
 CV-vs-holdout (§4.3), rule sensitivity (§6.3).
