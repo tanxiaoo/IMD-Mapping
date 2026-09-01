@@ -154,8 +154,18 @@ def _outline_figures():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--report', default=DEFAULT_REPORT)
+    ap.add_argument('path', nargs='?', default=None,
+                    help='report file, or a directory holding report.md')
+    ap.add_argument('--report', default=None)
     args = ap.parse_args()
+
+    # Accept the bare form, a file, or a directory. A directory is resolved to
+    # report.md inside it, so `audit_numbers.py report/` works as naturally as
+    # `audit_numbers.py report/report.md`.
+    target = args.report or args.path or DEFAULT_REPORT
+    if os.path.isdir(target):
+        target = os.path.join(target, 'report.md')
+    args.report = target
 
     # relpath raises across Windows drive letters, so fall back to the path
     # as given when the report lives outside the repo.
