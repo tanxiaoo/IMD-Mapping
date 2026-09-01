@@ -113,7 +113,7 @@ falls short — no relaxation recovers them.
 Also state that Milan is **near-annual, not annual**: January, February and May
 are absent from all 30 dates.
 
-Figures: **F1** `fig_composite_depth` — **TO BUILD** (FIGURE_GAPS.md gap 5).
+Figures: **F1** `report/figs/fig_composite_depth.png` — **BUILT**.
 2018 calendar, usable dates per city, HCMC's two December dates marked as one
 effective look.
 FACTS.md: none. EXPERIMENT_MAP.md: composite-date-windows table.
@@ -429,8 +429,7 @@ disappear**: the gap is small relative to each map's own error, yet consistent
 enough across 450 paired plots to be significant. Both facts belong in the same
 paragraph, or a reader will take one and drop the other.
 
-Figures: **F12** `fig_trackA_vs_trackB` — **TO BUILD** (FIGURE_GAPS.md gap 1,
-ranked first). Slope chart, four Milan predictor sets, same-source RMSE → independent validation
+Figures: **F12** `report/figs/fig_samesource_vs_independent.png` — **BUILT**. Slope chart, four Milan predictor sets, same-source RMSE → independent validation
 RMSE, CLMS marked on the independent validation axis.
 FACTS.md: Table A Milan `GEE_RF` rows + Table B Milan primary-rule rows.
 
@@ -452,7 +451,7 @@ reference's 100.0. The low tail is absent, not displaced — a shifted map would
 keep its spread. The reference is bimodal (37.3 % of plots below 10 %, 35.8 %
 above 90 %) and a map spanning 31.9–91.4 can represent neither mode.
 
-Figures: **F13** `fig_hcmc_prediction_histogram` — **TO BUILD** (merges
+Figures: **F13** `report/figs/fig_hcmc_prediction_histogram.png` — **BUILT** (merges
 FIGURE_GAPS.md gap 3 with the saturation evidence). Predicted-IMD distribution
 for the four HCMC maps against the reference; the level-matching means annotated
 so one figure carries both arguments.
@@ -479,7 +478,7 @@ score better than its own training target, because random per-pixel label error
 cannot be fitted and is smoothed away, and because the predictors carry signal
 the target never encoded.
 
-Figures: **F14** `fig_bias_recovery` — **TO BUILD** (FIGURE_GAPS.md gap 4).
+Figures: **F14** `report/figs/fig_bias_recovery.png` — **BUILT**.
 Arrows from GHSL's bias to each local retrain's, per city.
 FACTS.md: bias-recovery table.
 
@@ -561,23 +560,24 @@ table; bias-recovery table.
 
 | # | Figure | Section | Status | Source |
 |---|---|---|---|---|
-| F1 | `fig_composite_depth` | 2.3, ref. 8 | **TO BUILD** | gap 5 |
+| F1 | `fig_composite_depth.png` (`report/figs`) | 2.3, ref. 8 | **BUILT** | gap 5 |
 | F2 | `fig01_spatial_split.png` (`outputs_v2`) | 3.1 | EXISTS / KEEP | FIGURES.md |
 | F3 | `fig06_inflation_heatmap.png` | 3.2 | EXISTS / KEEP | FIGURES.md |
 | F4 | `fig07_holdout_scatter.png` (percentile) | 4.1 | EXISTS / KEEP | FIGURES.md |
 | F5 | `figC_perclass_GEE_RF.png` (percentile) | 4.1 | EXISTS / KEEP | FIGURES.md |
-| F6 | `figD_importance_RF.png` (percentile) | 4.4 | EXISTS / KEEP | FIGURES.md |
+| F6 | `figD_importance_RF.png` (percentile) | 4.3 | EXISTS / KEEP | FIGURES.md |
 | F7 | `fig01_transfer_comparison.png` | 5.1 | **NEEDS-EDIT** (caption) | FIGURES.md |
 | F8 | `fig_obs_vs_pred_hanoi_hcmc.png` | 5.1 | EXISTS / KEEP | FIGURES.md |
 | F9 | `fig02_per_class_mae.png` | 5.2 | EXISTS / KEEP | FIGURES.md |
 | F10 | `fig02_forest_ci.png` | 6.1 | EXISTS / KEEP | FIGURES.md |
 | F11 | `fig01_scatter_grid.png` | 6.1 | EXISTS / KEEP | FIGURES.md |
-| F12 | `fig_trackA_vs_trackB` | 7.1 | **TO BUILD** | gap 1 |
-| F13 | `fig_hcmc_prediction_histogram` | 7.2 | **TO BUILD** | gaps 3 + 4 merged |
-| F14 | `fig_bias_recovery` | 7.3 | **TO BUILD** | gap 4 |
+| F12 | `fig_samesource_vs_independent.png` (`report/figs`) | 7.1 | **BUILT** | gap 1 |
+| F13 | `fig_hcmc_prediction_histogram.png` (`report/figs`) | 7.2 | **BUILT** | gaps 3 + 4 merged |
+| F14 | `fig_bias_recovery.png` (`report/figs`) | 7.3 | **BUILT** | gap 4 |
 
-**Total 14 figures** — 9 existing (8 KEEP, 1 NEEDS-EDIT caption only), 4 to
-build, 1 merged. Within the 12–14 target.
+**Total 14 figures** — 9 from notebooks (8 KEEP, 1 NEEDS-EDIT caption only)
+and 4 built into `report/figs/` by `code/make_report_figs.py`. Within the
+12–14 target.
 
 Tables (not counted as figures): same-source validation summary (§4.1), paired tests (§4.2),
 CV-vs-holdout (§4.3), rule sensitivity (§6.3).
