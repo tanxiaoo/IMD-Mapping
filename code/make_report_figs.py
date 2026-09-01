@@ -29,11 +29,18 @@ FIGS = os.path.join(REPO, 'report', 'figs')
 # ── House style ──────────────────────────────────────────────────────────────
 # These figures sit in the REPORT beside the notebook figures, not in the deck,
 # so the conventions come from the notebooks (01/01b/02/03/04) rather than from
-# make_presentation.py. Matched against outputs_v2/figA_holdout_accuracy_GEE_RF:
-# notebook rcParams verbatim, dpi 150, 'Figure N · Description' suptitle at 13pt
-# bold, axes titles 11pt bold, axis labels 10pt, plain matplotlib defaults for
-# font family and tick colour. No kicker, no conclusion-as-title, no in-figure
-# caption -- the claim belongs to the report text.
+# make_presentation.py: notebook rcParams verbatim, dpi 150, axes titles 11pt
+# bold, axis labels 10pt, plain matplotlib defaults for font family and tick
+# colour. No kicker, no conclusion-as-title.
+#
+# Figure code generates the visualisation; the report generates the title and
+# caption (CLAUDE.md). So none of these carries a describing suptitle and none
+# renders a figure number -- the report numbers figures by page order and
+# renumbers as sections move, and audit_numbers.py cannot read a number baked
+# into a PNG. Two suptitles survive because they are not captions: F15 names the
+# run that produced its raster panels, which three identically-named copies
+# cannot otherwise be told apart by, and F3 carries a legend for its bold
+# marking.
 DPI = 150
 
 plt.rcParams.update({
@@ -214,10 +221,8 @@ def build_f12():
     ax.legend(loc='lower right', fontsize=8, framealpha=0.9,
               handlelength=2.2, borderpad=0.7, labelspacing=0.5)
 
-    ax.set_title(f'Spread {spread_a:.2f} pp same-source, {spread_b:.2f} pp '
-                 f'independent', fontweight='bold')
-    fig.suptitle('Figure 15 · Milan predictor sets under both validations',
-                 fontsize=13, fontweight='bold', y=0.99)
+    # No title. The spread figures this used to state are the section's
+    # argument, not a reading off the plot, and Section 7.1 makes it in prose.
 
     os.makedirs(FIGS, exist_ok=True)
     path = os.path.join(FIGS, 'fig_samesource_vs_independent.png')
@@ -383,10 +388,9 @@ def build_f1():
     for side in ('left', 'bottom'):
         ax.spines[side].set_visible(False)
 
-    ax.set_title('Usable Sentinel-2 acquisitions after cloud screening',
-                 fontweight='bold')
-    fig.suptitle('Figure 1 · Composite depth by city',
-                 fontsize=13, fontweight='bold', y=1.06)
+    # Single panel, so an axes title here would be a figure title by another
+    # name -- and the caption already carries it. The per-city counts and
+    # obs/pixel annotations at the right of each row are measurements and stay.
 
     os.makedirs(FIGS, exist_ok=True)
     path = os.path.join(FIGS, 'fig_composite_depth.png')
@@ -644,8 +648,6 @@ def build_f13():
                  fontsize=7.5, color=REF_GREY, annotation_clip=False,
                  family='DejaVu Sans Mono')
 
-    fig.suptitle('Figure 16 · HCMC predicted IMD distributions '
-                 '(n = 450 plots)', fontsize=13, fontweight='bold', y=0.97)
 
     os.makedirs(FIGS, exist_ok=True)
     path = os.path.join(FIGS, 'fig_hcmc_prediction_histogram.png')
@@ -796,12 +798,12 @@ def build_f14():
                    ms=8, markeredgecolor='white', mew=1.2,
                    label='local retrain'),
     ]
-    axes[-1].legend(handles=handles, loc='upper right', fontsize=8.5,
-                    framealpha=0.9, handletextpad=0.5)
+    # Below the axes: with no suptitle above, 'upper right' overlaps the
+    # target marker's value label on the right-hand arrow.
+    axes[-1].legend(handles=handles, loc='upper center',
+                    bbox_to_anchor=(0.5, -0.06), ncol=2, fontsize=8.5,
+                    frameon=False, handletextpad=0.5)
 
-    fig.suptitle('Figure 17 · Bias against photo-interpretation, '
-                 'training target and local retrains',
-                 fontsize=13, fontweight='bold', y=1.01)
     fig.tight_layout()
 
     os.makedirs(FIGS, exist_ok=True)
@@ -897,8 +899,9 @@ def build_f15():
 
     # The label FIGURES.md asks for: a statement of what produced the panels,
     # not a conclusion about them.
-    fig.suptitle('Figure 7 · Milan IMD, observed against predicted — '
-                 'S2 percentile composite (p10/p25/p50/p75/p90), '
+    # Run identification, not a caption: figE exists in three composite run
+    # directories under the same filename and the panels cannot be told apart.
+    fig.suptitle('S2 percentile composite (p10/p25/p50/p75/p90) · '
                  'random forest',
                  fontsize=13, fontweight='bold', y=0.94)
 
@@ -994,9 +997,10 @@ def build_f3():
         ax.set_xlabel('Spatial block size', fontsize=9)
         fig.colorbar(im, ax=ax, fraction=0.046, pad=0.03)
 
-    fig.suptitle('Figure 3 · Spatial against random cross-validation RMSE, '
-                 'training set\n(bold = the block each model was tuned at)',
-                 fontsize=13, fontweight='bold', y=1.10)
+    # A legend for the bold marking, not a caption. y was clearance for the
+    # two-line suptitle that used to sit here; sit it just above the panels.
+    fig.suptitle('bold = the block each model was tuned at',
+                 fontsize=10, y=1.00)
     fig.tight_layout()
 
     os.makedirs(FIGS, exist_ok=True)
@@ -1096,9 +1100,6 @@ def build_f17():
     axes[0].set_title('Ranked on RMSE, best at top', fontsize=9.5,
                       fontweight='bold', loc='left')
 
-    fig.suptitle('Figure 5 · Milan predictor sets on the spatial holdout '
-                 '(GEE random forest, n = 1 014, vs CLMS)',
-                 fontsize=13, fontweight='bold', y=1.03)
     fig.tight_layout()
 
     os.makedirs(FIGS, exist_ok=True)

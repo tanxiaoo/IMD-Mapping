@@ -24,6 +24,9 @@ Companion to `reference/` — the AlphaEarth report by Matej Žgela.
 - Never mention MLP.
 - Cite Žgela for the AlphaEarth method, the shared Milan sample set, and
   anything his report established first.
+- **Figure code generates the visualisation; the report generates the figure
+  title and caption.** No figure carries a top-level `suptitle` that names or
+  describes it, and no figure renders a figure number. See `# Figures`.
 
 # Writing
 
@@ -35,6 +38,42 @@ Companion to `reference/` — the AlphaEarth report by Matej Žgela.
 - British English. No em dashes.
 - After each section, run: `python code/audit_numbers.py report/`
 - Figures are placed at their referenced positions with numbered captions below, matching reference/.
+
+# Figures
+
+**Figure code generates the visualisation; the report generates the title and
+caption.** The image carries what a reader cannot infer from the plot itself;
+the report carries what the figure means.
+
+Belongs in the image:
+
+- Per-panel subplot titles (`RMSE per Class`, `GEE_RF`, `Hanoi`). These label
+  panels, and dropping them makes a multi-panel figure unreadable.
+- Axis labels, units, legends, tick labels.
+- In-plot annotations that are measurements: metric boxes, bar value labels.
+- Run-identifying parameters **only** where the same filename exists in several
+  run directories and the plot cannot distinguish them — for example the
+  composite that produced a raster panel. Name the run, not the finding.
+
+Never in the image:
+
+- A figure number. The report numbers figures by page order, and it renumbers
+  as sections move. A number rendered into a PNG silently goes stale, and
+  `audit_numbers.py` checks caption-to-image agreement but **cannot read a
+  number inside an image**, so nothing catches it. Keeping numbers out of
+  figures removes that blind spot rather than policing it.
+- A restatement of the caption. If the suptitle and the caption say the same
+  thing, the suptitle goes.
+- Internal names: `[S2]` run tags, `Figure A`/`Figure C` notebook ids, variable
+  or estimator keys as description. A panel title of `GEE_RF` is fine; a
+  suptitle of `Figure C · [S2] Per-Class Accuracy -- GEE_RF` is not.
+- Conclusions. Figures state readings; every claim belongs to the caption. This
+  is a deliberate departure from `make_presentation.py`, whose slide titles are
+  written as conclusions.
+
+There is no separate figure-title file. Titles live in the report caption beside
+the prose that has to agree with them, and `data/FIGURES.md` remains the
+inventory of what each figure shows.
 
 # Regenerating
 

@@ -222,15 +222,15 @@ notebook figure covers; see `data/FIGURE_GAPS.md` for why each exists.
 | `fig_bias_recovery.png` | GHSL's bias against each local retrain's, per city, with the closed gap in pp | **RESULT** | 7.3 | KEEP |
 | `fig_milan_raster_comparison.png` | Observed CLMS / predicted / difference rasters, Milan, percentile run — `figE` relabelled with a run-identifying suptitle | MAP | 4.1 | KEEP — **cited** |
 
-**The suptitle carries the REPORT's figure number, not the outline's F-number.**
-The two differ: outline F-numbers are planning ids assigned in outline order,
-while the report numbers figures by the order they appear on the page. A
-suptitle reading "Figure 12" beside a caption reading "Figure 15" is a defect a
-reader sees immediately, so the number in the image tracks the caption. Any
-renumbering of the report must therefore be followed by editing the `suptitle`
-calls in `code/make_report_figs.py` and rebuilding; `code/audit_numbers.py`
-checks caption-to-image agreement but cannot read the number rendered inside a
-PNG.
+**Figure numbers are no longer rendered into any image (2026-09-01).** They used
+to be, and the suptitle had to track the report's numbering — outline F-numbers
+are planning ids in outline order, while the report numbers figures by page
+order, so the two differ and a suptitle reading "Figure 12" beside a caption
+reading "Figure 15" was a defect a reader sees immediately. That made every
+renumbering of the report a matching edit to `code/make_report_figs.py`, policed
+by nothing: `code/audit_numbers.py` checks caption-to-image agreement but cannot
+read a number rendered inside a PNG. Removing the numbers removes the hazard —
+renumber the report freely; no figure needs rebuilding.
 
 **Every plotted value is read from `data/FACTS.md`.** `facts_value()` raises on
 an absent row, an ambiguous match, or a `MISSING` cell rather than substituting
@@ -249,6 +249,22 @@ numeric values that are measurements. Every claim ("saturated, not shifted",
 "recovers 38–67 %", the ≥ 17-date percentile floor) belongs to the report
 caption. This is a deliberate departure from `make_presentation.py`, whose
 slide titles are written as conclusions.
+
+**No figure carries its own title or number (2026-09-01).** Figure code
+generates the visualisation; the report generates the title and caption
+(CLAUDE.md). Applied across `make_report_figs.py` and all five notebooks:
+describing suptitles removed, `Figure N ·` / `Figure A–E ·` prefixes and `[S2]`
+run tags dropped everywhere they were rendered. What stays is what the plot
+cannot say for itself — per-panel titles, axis labels, legends, measured
+annotations, and run parameters (buffer, folds, block size, composite depth).
+Three suptitles survive as run identification rather than caption: F15 and
+notebook 02/03 cell 23 name the predictor set behind otherwise identical raster
+panels, and 02/03 cell 13 keeps "scored against GHSL" so the Bias panel cannot
+be read as accuracy. Two conclusions were also removed: `figB`'s axes title
+named the CV winner, and `fig_samesource_vs_independent`'s stated the spread
+that Section 7.1 argues in prose.
+
+This retires the numbering hazard described below rather than managing it.
 
 **House style** follows the notebooks, not the deck: notebook `rcParams`
 verbatim, dpi 150, `Figure N · Description` suptitle at 13 pt bold, axes titles

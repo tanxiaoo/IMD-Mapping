@@ -1,21 +1,30 @@
-"""Redraw two cited notebook-01b figures with their duplicating suptitles removed.
+"""Redraw the two cited notebook-01b figures under the CLAUDE.md figure rule.
 
-The report caption carries the description, so the top-level suptitle in
-`fig07_holdout_scatter.png` and `figC_perclass_GEE_RF.png` only repeats it and
-exposes internal run tags (`[S2]`) and estimator keys (`GEE_RF`). Per-panel
-subplot titles are kept -- they label the panels and are not duplication.
+Figure code generates the visualisation; the report generates the title and
+caption. The suptitles in `fig07_holdout_scatter.png` and
+`figC_perclass_GEE_RF.png` broke that: they restated the caption, carried
+internal run tags (`[S2]`) and notebook ids (`Figure 7`, `Figure C`), and
+rendered figure numbers that disagreed with the report's own numbering, where
+these are Figures 4 and 6.
 
-Fixing this at source would mean re-executing notebook 01b, which CLAUDE.md
-forbids for a labelling change: it re-tunes RF and SVR, re-exports a raster to
-Earth Engine, and overwrites the CSVs `collect_metrics.py` builds FACTS.md from.
-So these are redrawn from the CSVs the notebook already wrote, following the
-same rule already used for `fig_cv_inflation` (F3) and
-`fig_milan_raster_comparison` (F15).
+Notebook 01b has since been fixed at source, so a deliberate future run of it
+produces these same figures. This script reproduces that result now, without
+re-executing. Keep the two in step: what 01b renders and what this writes must
+match.
+
+Re-executing 01b to pick the fix up is what CLAUDE.md forbids for a labelling
+change: it re-tunes RF and SVR, re-exports a raster to Earth Engine, and
+overwrites the CSVs `collect_metrics.py` builds FACTS.md from. So these are
+redrawn from the CSVs the notebook already wrote, following the same rule
+already used for `fig_cv_inflation` (F3) and `fig_milan_raster_comparison`
+(F15).
 
 The plotted values are the notebook's. Panel geometry, colours, limits, marker
-sizes and annotation boxes are copied verbatim from cells 39 and 45; only the
-suptitle is dropped. Figures are rewritten at their existing paths, so
-`report.md`, `data/FIGURES.md` and `report/OUTLINE.md` keep working unchanged.
+sizes and annotation boxes are copied verbatim from cells 39 and 45. Figures are
+rewritten at their existing paths, so `report.md`, `data/FIGURES.md` and
+`report/OUTLINE.md` keep working unchanged. Because those paths are gitignored
+notebook outputs, a future 01b run overwrites them -- harmlessly now, since 01b
+renders the same thing.
 
 The residuals CSV carries a third estimator that is out of scope for this
 report. Only the RF and SVR columns are read.
@@ -113,7 +122,10 @@ def redraw_figC(run_dir: Path, name: str = 'GEE_RF') -> Path:
         print(f'  {metric}: ' + '  '.join(
             f'C{c}={v}' for c, v in zip(cls_df['Class'], cls_df[metric])))
 
-    # No suptitle: the report caption carries the description.
+    # Matches the notebook after the CLAUDE.md figure rule: the estimator name
+    # identifies which model the panels plot (the notebook writes one copy per
+    # estimator under different filenames); the description is the caption's.
+    fig.suptitle(name, fontsize=13, fontweight='bold', y=1.01)
     plt.tight_layout()
     out = run_dir / f'figC_perclass_{name}.png'
     plt.savefig(out, dpi=150, bbox_inches='tight')
