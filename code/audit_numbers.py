@@ -9,7 +9,9 @@ Five checks, each reported with the line number that failed:
   5. NUMBERING  figures are numbered 1..N in the order they appear, each
                 caption matches its image, and every in-text "Figure N"
                 resolves to a figure that exists
-  6. (report absent or partial is not a failure -- see below)
+  6. CITATIONS  every [N] citation resolves to a References entry, and every
+                entry is cited at least once
+  7. (report absent or partial is not a failure -- see below)
 
 Runs cleanly against an empty, missing or partial report: a report that does
 not exist yet, or cites no figures yet, produces a clean pass with a note.
@@ -265,6 +267,75 @@ def check_numbering(lines):
     return out
 
 
+def check_citations(lines):
+    """Numbered citations resolve, and every reference entry is cited.
+
+    The report cites in the style `[1]`, `[1, p. 5]`, `[1, pp. 3-5, Fig. 3]`,
+    against a numbered References section at the end. Two failure modes matter
+    and neither is visible to the other checks:
+
+      DANGLING  a citation whose number has no entry -- the reader follows it
+                to nothing.
+      ORPHAN    an entry nothing cites -- usually a reference left behind when
+                the text that needed it was cut.
+
+    Also reports a References section that is absent, or numbered with gaps or
+    out of order, since the numbering is what makes a citation resolvable.
+
+    Returns a list of (line_no, message).
+    """
+    out = []
+
+    start = next((i for i, ln in enumerate(lines, start=1)
+                  if re.match(r'^#{1,3}\s+References\s*$', ln.strip())), None)
+    body = lines if start is None else lines[:start - 1]
+    refs = [] if start is None else lines[start - 1:]
+
+    # Citations in the body only: a bracketed number optionally followed by
+    # locators. `[1, p. 5]` and `[12]` both count; `[12] Benjamini...` inside
+    # the reference list does not, which is why the body is sliced off first.
+    cited = {}
+    for i, line in enumerate(body, start=1):
+        for m in re.finditer(r'\[(\d+)(?:,[^\]]*)?\]', line):
+            cited.setdefault(int(m.group(1)), i)
+
+    if start is None:
+        if cited:
+            out.append((min(cited.values()),
+                        f'{len(cited)} numbered citation(s) but no '
+                        '"## References" section to resolve them against'))
+        return out
+
+    entries = {}
+    for off, line in enumerate(refs):
+        m = re.match(r'^\[(\d+)\]', line.strip())
+        if m:
+            entries[int(m.group(1))] = start + off
+
+    if not entries:
+        out.append((start, 'References section has no `[N]` entries'))
+        return out
+
+    expected = list(range(1, len(entries) + 1))
+    if sorted(entries) != expected:
+        out.append((start,
+                    f'reference numbering is {sorted(entries)}, expected '
+                    f'{expected} — entries must run 1..N without gaps'))
+
+    for num, line_no in sorted(cited.items()):
+        if num not in entries:
+            out.append((line_no,
+                        f'citation [{num}] has no entry in the References '
+                        f'section'))
+
+    for num, line_no in sorted(entries.items()):
+        if num not in cited:
+            out.append((line_no,
+                        f'reference [{num}] is never cited in the report'))
+
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('path', nargs='?', default=None,
@@ -309,6 +380,15 @@ def main():
     disk = _figure_index()
     cited = set()
 
+    # The References section is bibliography, not results. Its DOIs, arXiv ids,
+    # volume/page numbers and years are identifiers that cannot trace to the
+    # fact base and must not be checked against it -- 2507.22291 is an arXiv
+    # id, not a measurement. Everything before it is checked as normal, and the
+    # TERMS and FIGURES checks still run over the whole file.
+    refs_from = next((i for i, ln in enumerate(lines, start=1)
+                      if re.match(r'^#{1,3}\s+References\s*$', ln.strip())),
+                     None)
+
     for i, line in enumerate(lines, start=1):
         # 4. TERMS — stale vocabulary.
         for term in ('Track A', 'Track B'):
@@ -319,13 +399,14 @@ def main():
                     f'validation" / "independent validation"'))
 
         # 1. NUMBERS — every measurement must trace to FACTS.md.
-        for value in sorted(_numbers(line)):
-            if value in YEARS:
-                continue
-            if not _known(value, facts):
-                failures.append((
-                    'NUMBERS', i,
-                    f'{value} not found in data/FACTS.md'))
+        if refs_from is None or i < refs_from:
+            for value in sorted(_numbers(line)):
+                if value in YEARS:
+                    continue
+                if not _known(value, facts):
+                    failures.append((
+                        'NUMBERS', i,
+                        f'{value} not found in data/FACTS.md'))
 
         # 2. FIGURES — every filename mentioned must exist.
         for m in re.finditer(r'([\w./-]*\bfig[\w.-]*\.(?:png|pdf|svg))',
@@ -341,6 +422,10 @@ def main():
     # 5. NUMBERING — sequential figure numbers, captions and references.
     for line_no, msg in check_numbering(lines):
         failures.append(('NUMBERING', line_no, msg))
+
+    # 6. CITATIONS — every [N] resolves, every entry is cited.
+    for line_no, msg in check_citations(lines):
+        failures.append(('CITATIONS', line_no, msg))
 
     # 3. COVERAGE — every planned figure must be cited somewhere.
     outline_figs = _outline_figures()
@@ -396,7 +481,7 @@ def main():
         for check, line_no, msg in failures:
             by_check.setdefault(check, []).append((line_no, msg))
         for check in ('SETUP', 'TERMS', 'NUMBERS', 'FIGURES', 'NUMBERING',
-                      'COVERAGE'):
+                      'CITATIONS', 'COVERAGE'):
             items = by_check.get(check)
             if not items:
                 continue
@@ -416,6 +501,7 @@ def main():
     print('  NUMBERS   ok')
     print('  FIGURES   ok')
     print('  NUMBERING ok')
+    print('  CITATIONS ok')
     print('  COVERAGE  ok')
     print('  TERMS     ok')
     print()

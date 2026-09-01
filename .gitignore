@@ -108,3 +108,5 @@ desktop.ini
 .idea/
 *.swp
 *~
+report/*.docx
+report/*.pdf

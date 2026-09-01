@@ -9,7 +9,7 @@ Local Climate Zones, Urban Heat Island and Geomatics (LCZ-UHI-GEO, CUP
 D47G24000110001), which is why those three cities and that year. A
 high-resolution imperviousness layer is an input to that project's wider
 objectives, being relevant to local climate zone characterisation and to urban
-heat island analysis in the Vietnamese cities (Žgela p. 11).
+heat island analysis in the Vietnamese cities [1, p. 11].
 
 The study extends an earlier one. Mapping impervious density from AlphaEarth
 satellite embeddings in Milan was established by Žgela, whose report is the
@@ -38,7 +38,7 @@ The embeddings pipeline was independently re-run in this project. It reproduces
 his published holdout figures exactly, for both estimators. The random forest
 gives RMSE 14.123, MAE 10.675, R² 0.837 and bias +0.624 against his reported
 14.12, 10.68, 0.837 and +0.62; the support vector regressor gives 14.756,
-11.400, 0.822 and +0.274 against his 14.76, 11.40, 0.822 and +0.27 (Žgela p. 5).
+11.400, 0.822 and +0.274 against his 14.76, 11.40, 0.822 and +0.27 [1, p. 5].
 Every figure matches to the precision at which he published it.
 
 This is recorded as verification that the shared baseline is correctly
@@ -140,8 +140,8 @@ new to this project and is described in full.
 ### 2.1 Targets: CLMS and GHS-BUILT-S
 
 The models are fitted to two different products. Milan uses the Copernicus Land
-Monitoring Service imperviousness density layer for 2018, and Hanoi and Ho Chi
-Minh City use GHS-BUILT-S for the same year. Both are supplied at 10 m and both
+Monitoring Service imperviousness density layer for 2018 [3], and Hanoi and Ho
+Chi Minh City use GHS-BUILT-S for the same year [5]. Both are supplied at 10 m and both
 report a percentage per pixel, so they enter the modelling identically. What
 they measure is not the same thing, and the difference is not noise.
 
@@ -152,7 +152,7 @@ alike. GHS-BUILT-S measures built-up surface, which is a narrower quantity.
 than asserted independently here: the product does not include all impervious
 surfaces such as roads, accounting only for built-up surfaces, namely buildings
 and a limited set of other roofed infrastructure, and he describes this as an
-inherent limitation of the chosen reference dataset (pp. 8, 10).
+inherent limitation of the chosen reference dataset [1, pp. 8, 10].
 
 Roads are therefore in the Milan target and largely absent from the Vietnamese
 one. This matters later. Section 6 scores both products against
@@ -170,18 +170,18 @@ Vietnamese experiment at all.
 
 ### 2.2 AlphaEarth embeddings
 
-The first predictor set is the AlphaEarth satellite embedding,
+The first predictor set is the AlphaEarth satellite embedding [2],
 `GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL`, a 64-dimensional learned representation
 supplied at 10 m. The collection is filtered to a single year and all 64 bands,
 `A00` to `A63`, are taken as predictors. The method and its rationale are
-Žgela's (pp. 3 to 5) and are not re-derived here.
+Žgela's [1, pp. 3-5] and are not re-derived here.
 
 Two properties of that treatment matter for what follows.
 
 The first is that all 64 bands are used, without feature selection. Žgela tested
-every band against the IMD groups by Kruskal-Wallis and found 60 of the 64 to
+every band against the IMD groups by Kruskal-Wallis [13] and found 60 of the 64 to
 differ significantly across classes, and a separate feature-selection experiment
-found the full set to outperform any reduced subset (pp. 3 to 5, Fig. 3). The
+found the full set to outperform any reduced subset [1, pp. 3-5, Fig. 3]. The
 embeddings are therefore used whole in this project rather than pruned, and the
 obvious question of whether a smaller subset would do as well has already been
 answered in the negative on this same data.
@@ -195,7 +195,7 @@ against annual coverage, and the Sentinel-2 one does not.
 
 ### 2.3 Sentinel-2: search, screening and composites
 
-The second predictor set is built from Sentinel-2 surface reflectance,
+The second predictor set is built from Sentinel-2 surface reflectance [4],
 `COPERNICUS/S2_SR_HARMONIZED`, over each city's area of interest for 2018. Ten
 bands are carried: B2, B3, B4, B5, B6, B7, B8, B8A, B11 and B12. The four
 visible and near-infrared bands are native 10 m and the remainder are resampled
@@ -237,18 +237,22 @@ dates. Hanoi's 4 and Ho Chi Minh City's 3 fall far short.
 The shortfall is not a consequence of the screening thresholds, and this was
 tested rather than assumed. The scene search evaluates a ceiling case in which
 every threshold is disabled and every candidate acquisition is accepted
-regardless of cloud, validity or coverage. Even then the 2018 archive holds only
-10 dates over Hanoi and 16 over Ho Chi Minh City, against the 17 required.
-Hanoi is short by 7 and Ho Chi Minh City by 1.
+regardless of cloud, validity or coverage.
 
-Ho Chi Minh City is worth stating explicitly, because it is the case that comes
-closest and still fails. One further usable date would have brought it to the
-threshold, and no threshold in the screening chain can produce that date: at the
-ceiling nothing is being screened out, so the 16 dates are all the 2018 archive
-holds over that area of interest. The margin is narrow and the conclusion is not
-weakened by it. A composite computed from the ceiling set would in any case be
-built from acquisitions rejected for cloud, which is why the screened count is
-3 rather than 16.
+**Even then Ho Chi Minh City reaches 16 dates against the 17 required. It fails
+by one.** Hanoi reaches 10 and fails by seven. Neither city can compute a
+percentile composite from imagery that does not exist, and Ho Chi Minh City is
+the sharper case precisely because it comes so close: one further acquisition
+anywhere in 2018 would have carried it over the threshold, and no adjustment to
+the screening can conjure one, because at the ceiling nothing is being screened
+out at all. The 16 dates are the whole of what the 2018 archive holds over that
+area of interest.
+
+The narrowness of that margin does not weaken the conclusion, and it is worth
+saying why. The ceiling set is not a usable alternative that was passed over: it
+consists of every acquisition including those rejected for cloud, which is how a
+count of 16 becomes a screened count of 3. A percentile composite computed from
+it would be a percentile of largely cloudy observations.
 
 The stack composite fails for the same reason at a smaller count, since it
 requires four dates spread one per season and Ho Chi Minh City's three fall in
@@ -325,8 +329,8 @@ reports the sensitivity of the results to the choice.
 ### 3.1 Sampling, spatial blocking and buffering
 
 The Milan point set is Žgela's and is used unchanged. His design is summarised
-here rather than re-derived; the provenance and the rationale are his (pp. 2 and
-4, Figs. 1 and 2).
+here rather than re-derived; the provenance and the rationale are his
+[1, pp. 2, 4, Figs. 1-2].
 
 The CLMS reference map was classified into seven IMD groups (0 %, 1 to 20, 21
 to 40, 41 to 60, 61 to 80, 81 to 99 and 100 %) and 500 points were drawn at
@@ -345,7 +349,7 @@ often the same rooftops, and would return an accuracy figure that measures
 interpolation between neighbouring pixels rather than prediction.
 
 The design's own spatial randomness was checked by Žgela with an average nearest
-neighbour index, which runs from 1.02 for the 0 % class down to 0.75 for the
+neighbour index [15], which runs from 1.02 for the 0 % class down to 0.75 for the
 100 % class. The lower value records that fully impervious pixels cluster in the
 city centre, which he acknowledges as a limitation of the sampling rather than
 correcting for it. It is repeated here on the same terms.
@@ -375,9 +379,10 @@ CLMS, giving 895 test points in Hanoi and 887 in Ho Chi Minh City.
 Three estimators were tuned on the Milan data under a randomised hyperparameter
 search with spatially aware five-fold cross-validation, at three block sizes:
 500 m, 1 km and 2 km. Two are carried forward and reported here, a random forest
-and a support vector regressor. Only estimators whose trained form can be
-applied to a raster through Earth Engine's Python API were considered for the
-final maps, since every map in this report is produced by predicting over the
+[7] and a support vector regressor [8]. Tuning is performed with scikit-learn
+[10]. Only estimators whose trained form can be
+applied to a raster through the Google Earth Engine Python API [6] were
+considered for the final maps, since every map in this report is produced by predicting over the
 full scene in Earth Engine rather than by scoring a table of points.
 
 The scope of each estimator is fixed once, here, and holds for the rest of the
@@ -619,7 +624,7 @@ the model reads more impervious than CLMS.
 ### 4.2 The CV-versus-holdout reversal
 
 SVR wins cross-validation and loses the holdout. This reproduces Žgela's result
-(p. 5) rather than adding to it: he reports SVR best on cross-validation with RF
+[1, p. 5] rather than adding to it: he reports SVR best on cross-validation with RF
 close behind, then RF winning every holdout metric, and selects RF for that
 reason.
 
@@ -644,7 +649,7 @@ winner in metadata, while RF is the model carried downstream.
 RF is carried forward because the transfer experiment in Section 5 requires a
 random forest and the comparison across cities holds the estimator fixed
 (Section 3.2). It is not carried forward because SVR could not be rastered: SVR
-is supported in Earth Engine through `ee.Classifier.libsvm` with
+is supported in Earth Engine through `ee.Classifier.libsvm` [9] with
 `svmType='EPSILON_SVR'`, and the SVR raster for Milan was produced and retained.
 
 ### 4.3 Where the signal is
@@ -676,7 +681,7 @@ particular bands the median throws away.
 
 The comparison with the embeddings run is instructive. There the two most
 important predictors are bands B16 and B08 of the 64-dimensional embedding
-(Žgela p. 6, Fig. 7), which have no physical interpretation. The Sentinel-2
+[1, p. 6, Fig. 7], which have no physical interpretation. The Sentinel-2
 composites give an interpretable answer to why they work; the embeddings do not.
 
 ![Figure 8](../outputs_S2_percentile_p10p25p50p75p90/figD_importance_RF.png)
@@ -793,7 +798,7 @@ Above 80 % imperviousness the ordering reverses. In Hanoi the embeddings model's
 C6 MAE rises from 17.25 under zero-shot to 30.95 after retraining, and in HCMC
 from 12.93 to 25.20. The S2 median behaves the same way: Hanoi C6 rises from
 8.07 to 26.16 and HCMC C6 from 5.91 to 22.58. This is a real limitation of local
-retraining and not noise. Žgela reports the same pattern (p. 9), with
+retraining and not noise. Žgela reports the same pattern [1, p. 9], with
 improvements mainly in classes C0 to C3 and the retrained model challenged at
 the top of the range.
 
@@ -887,8 +892,8 @@ the Milan models' intervals overlap CLMS's.
 
 ![Figure 13](../outputs_validation/fig02_forest_ci.png)
 
-Figure 13. RMSE and MAE with 95 % percentile bootstrap confidence intervals for
-all fifteen maps, three cities, strict rule. Intervals are over 10,000
+Figure 13. RMSE and MAE with 95 % percentile bootstrap [14] confidence intervals
+for all fifteen maps, three cities, strict rule. Intervals are over 10,000
 resamples of the 450 plots, the plot being the independent unit. Diamonds mark the training products, scored
 here as maps rather than as targets; the tick on each RMSE bar is the
 noise-corrected RMSE.
@@ -952,9 +957,9 @@ This analysis is independent validation and belongs here rather than in Section
 so placing it beside the CLMS-scored holdout numbers of Section 4 would merge
 the two validations that Section 3.4 keeps apart.
 
-Table 5 gives the six Milan pairs, tested by paired Wilcoxon on per-plot
-absolute error with Benjamini-Hochberg control of the false discovery rate
-within the city.
+Table 5 gives the six Milan pairs, tested by paired Wilcoxon signed-rank [11] on
+per-plot absolute error with Benjamini-Hochberg control of the false discovery
+rate [12] within the city.
 
 | Map A | Map B | MAE A | MAE B | Median difference | p | q (BH) | Distinguishable |
 |---|---|---|---|---|---|---|---|
@@ -1197,7 +1202,7 @@ Local retraining does not merely reproduce its training target's offset. It
 recovers between a third and two thirds of it, which means the fitted models
 extract signal their labels do not carry.
 
-The effect itself is not new here. Žgela reports it qualitatively (p. 10),
+The effect itself is not new here. Žgela reports it qualitatively [1, p. 10],
 observing that roads and unroofed impervious surfaces "are visibly better
 represented in the predicted maps, although still imperfectly, as the model
 itself was trained against the GHS-BUILT-S reference", and that this "highlights
@@ -1402,3 +1407,72 @@ to these labels measurably outperforms them. The recovery is bounded rather than
 complete, and the bound is part of the conclusion: retraining on a product that
 under-marks by roughly 20 points still yields maps that under-mark by 7 to 12.
 
+## References
+
+[1] Žgela, M. (2026). *Imperviousness Mapping Using Satellite Embeddings and
+Method Transferability and Application in Vietnam.* Report of the activities,
+open call BANDO N. 2026_VALCOMP_DICA_9, ID 18754, call ID 12370. Department of
+Civil and Environmental Engineering, Politecnico di Milano. Supporting the
+ITALY-VIETNAM "Local Climate Zones, Urban Heat Island and Geomatics
+(LCZ-UHI-GEO)" project, CUP D47G24000110001.
+
+[2] Brown, C. F., Kazmierski, M. R., Pasquarella, V. J., Rucklidge, W. J.,
+Samsikova, M., Zhang, C., Shelhamer, E., Lahera, E., Wiles, O., Ilyushchenko,
+S., Gorelick, N., Zhang, L. L., Alj, S., Schechter, E., Askay, S., Guinan, O.,
+Moore, R., Boukouvalas, A., & Kohli, P. (2025). AlphaEarth foundations: An
+embedding field model for accurate and efficient global mapping from sparse
+label data. *arXiv preprint* arXiv:2507.22291.
+
+[3] European Union, Copernicus Land Monitoring Service (2018). *Imperviousness
+Density 2018 (raster 10 m), Europe, 3-yearly.* European Environment Agency.
+https://doi.org/10.2909/3bf542bd-eebd-4d73-8d62-0f1ffb8b3b0b
+
+[4] European Space Agency (2018). *Copernicus Sentinel-2 MSI Level-2A surface
+reflectance.* Processed by ESA. Accessed through Google Earth Engine as
+`COPERNICUS/S2_SR_HARMONIZED`.
+
+[5] Pesaresi, M., & Politis, P. (2023). *GHS-BUILT-S R2023A: GHS built-up
+surface grid, derived from Sentinel-2 composite and Landsat, multitemporal
+(1975-2030).* European Commission, Joint Research Centre (JRC).
+https://doi.org/10.2905/9F06F36F-4B11-47EC-ABB0-4F8B7B1D72EA
+
+[6] Gorelick, N., Hancher, M., Dixon, M., Ilyushchenko, S., Thau, D., & Moore,
+R. (2017). Google Earth Engine: Planetary-scale geospatial analysis for
+everyone. *Remote Sensing of Environment*, 202, 18-27.
+https://doi.org/10.1016/j.rse.2017.06.031
+
+[7] Breiman, L. (2001). Random forests. *Machine Learning*, 45(1), 5-32.
+https://doi.org/10.1023/A:1010933404324
+
+[8] Drucker, H., Burges, C. J. C., Kaufman, L., Smola, A., & Vapnik, V. (1996).
+Support vector regression machines. In *Advances in Neural Information
+Processing Systems* 9 (pp. 155-161). MIT Press.
+
+[9] Chang, C.-C., & Lin, C.-J. (2011). LIBSVM: A library for support vector
+machines. *ACM Transactions on Intelligent Systems and Technology*, 2(3), 27.
+https://doi.org/10.1145/1961189.1961199
+
+[10] Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V., Thirion, B.,
+Grisel, O., Blondel, M., Prettenhofer, P., Weiss, R., Dubourg, V., Vanderplas,
+J., Passos, A., Cournapeau, D., Brucher, M., Perrot, M., & Duchesnay, E. (2011).
+Scikit-learn: Machine learning in Python. *Journal of Machine Learning
+Research*, 12, 2825-2830.
+
+[11] Wilcoxon, F. (1945). Individual comparisons by ranking methods.
+*Biometrics Bulletin*, 1(6), 80-83. https://doi.org/10.2307/3001968
+
+[12] Benjamini, Y., & Hochberg, Y. (1995). Controlling the false discovery
+rate: A practical and powerful approach to multiple testing. *Journal of the
+Royal Statistical Society: Series B*, 57(1), 289-300.
+https://doi.org/10.1111/j.2517-6161.1995.tb02031.x
+
+[13] Kruskal, W. H., & Wallis, W. A. (1952). Use of ranks in one-criterion
+variance analysis. *Journal of the American Statistical Association*, 47(260),
+583-621. https://doi.org/10.1080/01621459.1952.10483441
+
+[14] Efron, B., & Tibshirani, R. J. (1993). *An Introduction to the Bootstrap.*
+Chapman & Hall, New York.
+
+[15] Esri (2024). *How Average Nearest Neighbor works.* ArcGIS Pro
+documentation.
+https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-statistics/h-how-average-nearest-neighbor-distance-spatial-st.htm
