@@ -30,8 +30,17 @@ Companion to `reference/` — the AlphaEarth report by Matej Žgela.
 
 # Writing
 
-- Draft in Markdown at report/report.md.
-- Export to .docx for review, then to PDF for the final version. Do neither until the writing is finished.
+- The report is LaTeX at `report/report.tex`. It is the single source.
+  `report.md` was retired on 2026-09-01 after the conversion was verified;
+  recover it from git history if an old wording is ever needed.
+- Build the PDF with `cd report && latexmk`. It writes `report/report.pdf`
+  beside the source and keeps the auxiliary files in `report/build/`.
+  `latexmkrc` sets the engine (XeLaTeX) and both paths, so `latexmk` takes no
+  arguments. Run it twice-equivalent automatically; it reruns until the
+  cross-references settle.
+- Cross-reference every float with `\cref{}` against the label bound to its own
+  caption. Never write a literal "Figure 7" or "Table 3" in the prose: LaTeX
+  numbers the floats, and a hardcoded number goes stale the moment one moves.
 - One section per turn. Never write the whole report in one pass.
 - Match `reference/` for tone: numbered sections, plain declarative
   sentences, figures captioned below.

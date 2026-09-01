@@ -1,0 +1,10 @@
+# latexmk configuration for report.tex.
+#
+# The PDF is written next to report.tex; the ~8 auxiliary files LaTeX needs
+# (.aux, .log, .out, .xdv, .fls, .fdb_latexmk) go to build/ so they do not
+# clutter the report directory. Both are set here rather than passed on the
+# command line, so `latexmk` with no arguments does the right thing.
+$pdf_mode = 5;              # 5 = xelatex (the report needs it: U+2212, mid dots)
+$aux_dir  = 'build';
+$out_dir  = '.';
+$emulate_aux = 1;           # MiKTeX resolves \label across a split aux/out dir

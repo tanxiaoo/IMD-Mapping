@@ -11,10 +11,9 @@ Six checks, each reported with the line number that failed:
   6. CITATIONS  every [N] citation resolves to a References entry, and every
                 entry is cited at least once
 
-The report is LaTeX. Markdown is still accepted -- `--report x.md` works and
-the source format is detected from the extension -- because report.md is kept
-in the repo until the conversion is verified, and an auditor that could only
-read one of the two would be useless for comparing them.
+The report is LaTeX: `report/report.tex` is the single source. Markdown is still
+accepted via an explicit `--report x.md`, and the format is detected from the
+extension, so an older draft can be audited if one is ever recovered from git.
 
 Two LaTeX details drive the NUMBERS check and neither is optional:
 
@@ -385,11 +384,10 @@ def main():
     # `audit_numbers.py report/report.md`.
     target = args.report or args.path or DEFAULT_REPORT
     if os.path.isdir(target):
-        # report.tex is the source; report.md is kept until the conversion is
-        # verified, so fall back to it rather than reporting nothing to audit.
-        tex = os.path.join(target, 'report.tex')
-        md = os.path.join(target, 'report.md')
-        target = tex if os.path.exists(tex) else md
+        # report.tex is the single source since 2026-09-01. Markdown parsing is
+        # kept for an explicit `--report x.md`, so an older draft can still be
+        # audited, but a directory resolves to the .tex.
+        target = os.path.join(target, 'report.tex')
     args.report = target
 
     # relpath raises across Windows drive letters, so fall back to the path
