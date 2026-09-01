@@ -1117,7 +1117,14 @@ values, is the distributional failure Section 7.2 measures.
 \begin{landscape}
 \begin{figure}[p]
   \centering
-  \includegraphics[height=0.86\textheight,keepaspectratio]{outputs_validation/fig01_scatter_grid.png}
+  % pdflscape rotates the page but does NOT swap \textwidth and \textheight:
+  % inside this environment \textwidth (455pt) is still the measure the image
+  % is laid out against, and \textheight (703pt) is the long side the rotated
+  % page actually offers. Asking for width=\textheight therefore silently
+  % clamps to \textwidth. Scaling by \textwidth keeps the 45-panel grid on one
+  % ordinary A4 page -- the page stays A4 and only its content is rotated.
+  \includegraphics[width=\textwidth,keepaspectratio]%
+    {outputs_validation/fig01_scatter_grid.png}
   \caption{Photo-interpreted reference against predicted IMD, every registered
   map in the three cities, strict rule.}
   \label{fig:scatter-grid}
