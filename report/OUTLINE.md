@@ -243,9 +243,18 @@ Percentile 9.462, stack 10.864, median 11.285, embeddings 14.123 (all `GEE_RF`).
 The ranking is identical on RMSE, MAE and R², so it is not a metric artefact.
 
 Figures: **F4** `fig07_holdout_scatter.png` (percentile) — **EXISTS/KEEP**;
-**F5** `figC_perclass_GEE_RF.png` (percentile) — **EXISTS/KEEP**, per-class
+**F17** `report/figs/fig_milan_predictor_ranking.png` — **BUILT**, the four
+predictor sets on RMSE/MAE/R² so the ranking is visible rather than only
+tabulated, and so the "identical on all three metrics" claim can be checked by
+eye; **F5** `figC_perclass_GEE_RF.png` (percentile) — **EXISTS/KEEP**, per-class
 behaviour; **F15** `fig_milan_raster_comparison.png` (`report/figs`) —
 **BUILT**, the map view, qualitative support only.
+
+⚠ **`figA_holdout_accuracy_*` is NOT cited.** Its left panel duplicates F4 (same
+1014 points, same four metrics) and its right panel duplicates F5 (per-class
+error); only its middle KDE panel is new. Its title also carries the wrong
+tuning block — see the `BEST_BLOCK_LABEL` note in `data/FIGURES.md`. F17 is
+built instead.
 FACTS.md: Table A, all eight Milan rows.
 
 ### 4.2 The CV-versus-holdout reversal — 0.5 pp
@@ -591,6 +600,7 @@ table; bias-recovery table.
 | F2 | `fig01_spatial_split.png` (`outputs_v2`) | 3.1 | EXISTS / KEEP | FIGURES.md |
 | F3 | `fig_cv_inflation.png` (`report/figs`) | 3.2 | **BUILT** | redrawn from `inflation_analysis.csv` |
 | F4 | `fig07_holdout_scatter.png` (percentile) | 4.1 | EXISTS / KEEP | FIGURES.md |
+| F17 | `fig_milan_predictor_ranking.png` (`report/figs`) | 4.1 | **BUILT** | ranking made visible, not only tabulated |
 | F5 | `figC_perclass_GEE_RF.png` (percentile) | 4.1 | EXISTS / KEEP | FIGURES.md |
 | F6 | `figD_importance_RF.png` (percentile) | 4.3 | EXISTS / KEEP | FIGURES.md |
 | F7 | `fig01_transfer_comparison.png` (`outputs_transfer_v2`) | 5.1 | EXISTS / KEEP | FIGURES.md |
@@ -604,7 +614,7 @@ table; bias-recovery table.
 | F15 | `fig_milan_raster_comparison.png` (`report/figs`) | 4.1 | **BUILT** | relabelled `figE` |
 | F16 | `fig01_transfer_comparison.png` (`outputs_transfer_S2_median`) | 5.1 | EXISTS / KEEP | S2 median pair to F7 |
 
-**Total 16 figures** — 10 from notebooks (all KEEP) and 6 built into
+**Total 17 figures** — 10 from notebooks (all KEEP) and 7 built into
 `report/figs/` by `code/make_report_figs.py`. Two over the 12–14 target: F15,
 the relabelled raster comparison, and F16, the S2 median pair to F7 that keeps
 §5.1 from showing one predictor set and tabulating two.

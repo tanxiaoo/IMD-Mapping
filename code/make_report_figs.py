@@ -216,7 +216,7 @@ def build_f12():
 
     ax.set_title(f'Spread {spread_a:.2f} pp same-source, {spread_b:.2f} pp '
                  f'independent', fontweight='bold')
-    fig.suptitle('Figure 12 · Milan predictor sets under both validations',
+    fig.suptitle('Figure 15 · Milan predictor sets under both validations',
                  fontsize=13, fontweight='bold', y=0.99)
 
     os.makedirs(FIGS, exist_ok=True)
@@ -442,17 +442,56 @@ def _pct(cell):
 
 
 def f13_values():
-    """Bin table and summary stats for the HCMC maps, read from FACTS.md."""
+    """Bin table and summary stats for the HCMC maps, read from FACTS.md.
+
+    FACTS.md carries the SAME table shape for Hanoi and for HCMC, one after the
+    other, and neither carries a city column -- the city is named only in the
+    prose heading above each. Selecting by column shape alone therefore matches
+    both and silently takes whichever comes first, which is Hanoi. Every lookup
+    here is scoped to the HCMC half of the file by position, and the scoping is
+    asserted rather than assumed.
+    """
+    text = open(FACTS, encoding='utf-8').read()
+    marker = text.find('**HCMC.**')
+    if marker < 0:
+        raise LookupError(
+            "FACTS.md has no '**HCMC.**' range-diagnostics heading, which is "
+            'what scopes this figure to the right city. Re-run '
+            'code/collect_metrics.py.')
+    # The retention table that follows both cities' blocks repeats map_id with
+    # a different column set, so the HCMC window ends where it begins.
+    end = text.find('**Tail and spread retention', marker)
+    hcmc = text[marker:end if end > 0 else len(text)]
+
+    def hcmc_tables():
+        """Tables inside the HCMC window only."""
+        out, header, rows = [], None, []
+        for line in hcmc.split('\n'):
+            if line.startswith('|'):
+                cells = [c.strip() for c in line.strip('|').split('|')]
+                if all(set(c) <= set('-: ') and c for c in cells):
+                    continue
+                if header is None:
+                    header = cells
+                else:
+                    rows.append(dict(zip(header, cells)))
+            else:
+                if header and rows:
+                    out.append((header, rows))
+                header, rows = None, []
+        if header and rows:
+            out.append((header, rows))
+        return out
+
+    tables = hcmc_tables()
+
     # Bin table: identified by its 'bin' column plus the reference column.
-    rows = []
-    for header, table in _tables():
-        if 'bin' in header and REFERENCE_COL in header:
-            rows = table
-            break
+    rows = next((t for h, t in tables
+                 if 'bin' in h and REFERENCE_COL in h), [])
     if not rows:
         raise LookupError(
-            'FACTS.md has no HCMC bin-distribution table (a table with a '
-            "'bin' column and a '(reference)' column). Re-run "
+            'The HCMC section of FACTS.md has no bin-distribution table (a '
+            "table with a 'bin' column and a '(reference)' column). Re-run "
             'code/collect_metrics.py.')
 
     edges = [r['bin'] for r in rows]
@@ -462,18 +501,36 @@ def f13_values():
             raise LookupError(f'Bin table has no column {col!r}.')
         dist[col] = [_pct(r[col]) for r in rows]
 
-    # Summary stats: the row carrying an IQR column is the saturation table.
+    # Summary stats: the HCMC table carrying an IQR column.
+    stat_rows = next((t for h, t in tables if 'IQR' in h and 'map_id' in h), [])
+    if not stat_rows:
+        raise LookupError(
+            'The HCMC section of FACTS.md has no summary table with an IQR '
+            'column. Re-run code/collect_metrics.py.')
+
     stats = {}
     for col in [m for m, _ in HCMC_MAPS] + [REFERENCE_COL]:
-        hit = [r for r in facts_rows(map_id=col) if 'IQR' in r]
+        hit = [r for r in stat_rows if r.get('map_id') == col]
         if len(hit) != 1:
             raise LookupError(
-                f'Expected exactly one summary row with an IQR column for '
-                f'{col!r}, found {len(hit)}.')
+                f'Expected exactly one HCMC summary row for {col!r}, found '
+                f'{len(hit)}.')
         r = hit[0]
         stats[col] = {k: float(r[k].rstrip('%'))
                       for k in ('mean', 'sd', 'min', 'max', 'IQR',
                                 'pct_gt80', 'pct_lt20')}
+
+    # The city scoping is the whole point of the window above, so verify it
+    # landed rather than trusting the heading search: HCMC's reference mean is
+    # 51.06 and Hanoi's is 46.05, and taking the wrong table would be silent.
+    ref_mean = stats[REFERENCE_COL]['mean']
+    hcmc_ref = facts_value('mean_reference', city='HCMC', map_id='emb_zeroshot')
+    if abs(ref_mean - hcmc_ref) > 0.01:
+        raise LookupError(
+            f'Scoping check failed: the selected reference mean is {ref_mean}, '
+            f"but FACTS.md gives HCMC's as {hcmc_ref}. The window landed on "
+            'the wrong city.')
+
     return edges, dist, stats
 
 
@@ -587,7 +644,7 @@ def build_f13():
                  fontsize=7.5, color=REF_GREY, annotation_clip=False,
                  family='DejaVu Sans Mono')
 
-    fig.suptitle('Figure 13 · HCMC predicted IMD distributions '
+    fig.suptitle('Figure 16 · HCMC predicted IMD distributions '
                  '(n = 450 plots)', fontsize=13, fontweight='bold', y=0.97)
 
     os.makedirs(FIGS, exist_ok=True)
@@ -742,7 +799,7 @@ def build_f14():
     axes[-1].legend(handles=handles, loc='upper right', fontsize=8.5,
                     framealpha=0.9, handletextpad=0.5)
 
-    fig.suptitle('Figure 14 · Bias against photo-interpretation, '
+    fig.suptitle('Figure 17 · Bias against photo-interpretation, '
                  'training target and local retrains',
                  fontsize=13, fontweight='bold', y=1.01)
     fig.tight_layout()
@@ -840,7 +897,7 @@ def build_f15():
 
     # The label FIGURES.md asks for: a statement of what produced the panels,
     # not a conclusion about them.
-    fig.suptitle('Figure 15 · Milan IMD, observed against predicted — '
+    fig.suptitle('Figure 7 · Milan IMD, observed against predicted — '
                  'S2 percentile composite (p10/p25/p50/p75/p90), '
                  'random forest',
                  fontsize=13, fontweight='bold', y=0.94)
@@ -974,8 +1031,105 @@ def build_f3():
     return path
 
 
+# ── F17 · Milan predictor-set ranking ────────────────────────────────────────
+# Table 1 tabulates the four predictor sets on RMSE, MAE and R2; this shows the
+# same four rows so the ranking is visible rather than only read off. The claim
+# it supports is that the ordering is IDENTICAL on all three metrics, which is
+# a statement about three columns at once and is exactly what a table makes the
+# reader verify by eye.
+#
+# Built rather than taken from a notebook. figA_holdout_accuracy_* would have
+# been the notebook candidate, but its left panel duplicates F4 and its right
+# panel duplicates F5, and its title carries the wrong tuning block (see
+# data/FIGURES.md).
+RANK_METRICS = [
+    ('RMSE', 'RMSE (IMD pp)',  'lower is better'),
+    ('MAE',  'MAE (IMD pp)',   'lower is better'),
+    ('R2',   'R²',        'higher is better'),
+]
+
+
+def f17_values():
+    """The four Milan predictor sets on three metrics, read from FACTS.md."""
+    rows = []
+    for a_name, _ in PREDICTORS:
+        rec = {'predictor': a_name}
+        for key, _, _ in RANK_METRICS:
+            rec[key] = facts_value(key, city='Milan', predictor_set=a_name,
+                                   model='GEE_RF')
+        rows.append(rec)
+    # Rank on RMSE, best first. Ordering the bars by the result rather than by
+    # band count is the point: the reader should see the ranking, not recover it.
+    return sorted(rows, key=lambda r: r['RMSE'])
+
+
+def build_f17():
+    rows = f17_values()
+    labels = [r['predictor'] for r in rows]
+    colours = [CMAP[r['predictor']] for r in rows]
+    y = np.arange(len(rows))[::-1]          # best at the top
+
+    fig, axes = plt.subplots(1, 3, figsize=(10.4, 3.4))
+
+    for ax, (key, xlabel, sense) in zip(axes, RANK_METRICS):
+        vals = [r[key] for r in rows]
+        ax.barh(y, vals, height=0.62, color=colours, linewidth=0, zorder=2)
+
+        # Headroom for the value labels, and a floor at zero so bar LENGTH is
+        # proportional to the value. A truncated axis would exaggerate the
+        # spread, which is the whole quantity under discussion in 7.1.
+        ax.set_xlim(0, max(vals) * 1.28)
+        for yi, v in zip(y, vals):
+            ax.annotate(f'{v:.3f}', xy=(v, yi), xytext=(4, 0),
+                        textcoords='offset points', va='center', ha='left',
+                        fontsize=8.5, fontweight='bold')
+
+        ax.set_yticks(y)
+        ax.set_yticklabels(labels if ax is axes[0] else [], fontsize=9)
+        ax.set_xlabel(f'{xlabel}  ({sense})', fontsize=9)
+        ax.tick_params(axis='both', labelsize=8, length=0)
+        ax.set_axisbelow(True)
+        ax.grid(axis='x', color='#ececec', zorder=0)
+        for side in ('left', 'bottom'):
+            ax.spines[side].set_color(REF_GREY)
+
+    axes[0].set_title('Ranked on RMSE, best at top', fontsize=9.5,
+                      fontweight='bold', loc='left')
+
+    fig.suptitle('Figure 5 · Milan predictor sets on the spatial holdout '
+                 '(GEE random forest, n = 1 014, vs CLMS)',
+                 fontsize=13, fontweight='bold', y=1.03)
+    fig.tight_layout()
+
+    os.makedirs(FIGS, exist_ok=True)
+    path = os.path.join(FIGS, 'fig_milan_predictor_ranking.png')
+    fig.savefig(path, dpi=DPI, bbox_inches='tight')
+    plt.close(fig)
+
+    # ── Plotted values, for checking against FACTS.md ───────────────────────
+    print('F17 · fig_milan_predictor_ranking — plotted values')
+    print(f'{"predictor":24s} {"RMSE":>9s} {"MAE":>9s} {"R2":>9s}')
+    print('-' * 54)
+    for r in rows:
+        print(f'{r["predictor"]:24s} {r["RMSE"]:9.3f} {r["MAE"]:9.3f} '
+              f'{r["R2"]:9.3f}')
+    print('-' * 54)
+    order = {k: [r['predictor'] for r in
+                 sorted(rows, key=lambda x: x[k], reverse=(k == 'R2'))]
+             for k, _, _ in RANK_METRICS}
+    same = len({tuple(v) for v in order.values()}) == 1
+    print(f'ordering identical on RMSE, MAE and R2: {same}')
+    if not same:
+        for k, v in order.items():
+            print(f'  {k}: {v}')
+    print('')
+    print(f'Saved {os.path.relpath(path, REPO)}')
+    return path
+
+
 FIGURES = {'F1': build_f1, 'F3': build_f3, 'F12': build_f12,
-           'F13': build_f13, 'F14': build_f14, 'F15': build_f15}
+           'F13': build_f13, 'F14': build_f14, 'F15': build_f15,
+           'F17': build_f17}
 
 
 def main():

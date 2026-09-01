@@ -60,7 +60,7 @@ re-run per `COMPOSITE_METHOD`. `outputs_v2` has no `figE` and no
 | `fig05_all_metrics.png` | 2×2 grouped bars, all four metrics × models × blocks | DIAGNOSTIC | — | KEEP |
 | `fig06_inflation_heatmap.png` | Spatial-vs-random CV RMSE inflation, model × block | **RESULT** | every cell | NEEDS-EDIT — **not cited**, see below |
 | `fig07_holdout_scatter.png` | Observed vs predicted on the holdout, RF and SVR panels | **RESULT** | RMSE/MAE/R²/Bias | KEEP |
-| `figA_holdout_accuracy_GEE_RF.png` · `_GEE_SVR.png` | 3-panel accuracy: scatter by class, KDE density, abs-error boxplot | **RESULT** | RMSE/MAE/R²/Bias | KEEP |
+| `figA_holdout_accuracy_GEE_RF.png` · `_GEE_SVR.png` | 3-panel accuracy: scatter by class, KDE density, abs-error boxplot | **RESULT** | RMSE/MAE/R²/Bias | NEEDS-EDIT — **wrong tuning block in the title**, see below |
 | `figB_model_cv_comparison.png` | Best-block CV RMSE per model, winner outlined | DIAGNOSTIC | CV RMSE + block | NEEDS-EDIT |
 | `figC_perclass_GEE_RF.png` · `_GEE_SVR.png` | RMSE/MAE/Bias per IMD class | **RESULT** | every bar | KEEP |
 | `figD_importance_RF.png` | RF impurity + permutation importance per band | DIAGNOSTIC | — | KEEP |
@@ -70,6 +70,31 @@ re-run per `COMPOSITE_METHOD`. `outputs_v2` has no `figE` and no
 `outputs_S2_stack` 2026-08-19 · `outputs_S2_percentile_p10p25p50p75p90`
 2026-08-24 · `outputs_S2_median` 2026-08-27. `figE` in stack and percentile was
 regenerated 2026-08-25.
+
+**`figA_holdout_accuracy_*.png` — NEEDS-EDIT, not cited.** Its title reads
+`(tuning block=<X>)`, and the value is wrong for every copy but one. In
+notebooks 01/01b cell 22 `BEST_BLOCK_LABEL` is a **single global** holding the
+block of whichever model won CV *overall*; cell 40 then loops over both
+estimators and stamps that same label onto both figures. So the `GEE_RF` copies
+carry another model's block:
+
+| Run | `figA_GEE_RF` title says | FACTS.md has RF at | Label came from |
+|---|---|---|---|
+| `outputs_v2` | 500m | **1000m** | SVR |
+| `outputs_S2_percentile_p10p25p50p75p90` | 500m | **1000m** | the excluded third estimator |
+
+The percentile copy is the more serious case: its label is derived from the
+estimator that is out of scope for this report, so the figure is downstream of a
+model the report must not name. The plotted data are correct in all copies —
+only the title is wrong. Fixing it at source means re-running notebook 01/01b,
+which CLAUDE.md forbids for a labelling change, so these figures are simply not
+cited. `fig07_holdout_scatter.png` (F4, §4.1) carries the same holdout scatter
+and the same four metrics with a correct title.
+
+**Largely duplicated by F4 in any case.** `figA`'s left panel plots the same
+1014 points with the same RMSE/MAE/R²/Bias box as `fig07`'s corresponding panel,
+differing only in point colouring; its right panel is per-class error, which is
+already F5 (`figC_perclass_GEE_RF`). Only the middle KDE panel is new.
 
 **`fig06_inflation_heatmap.png` — NEEDS-EDIT, resolved for the report by F3.**
 Its plotted values are correct, but it renders one row per *tuned* model, so it
@@ -160,10 +185,21 @@ notebook figure covers; see `data/FIGURE_GAPS.md` for why each exists.
 |---|---|---|---|---|
 | `fig_composite_depth.png` | Usable S2 acquisitions per city on a 2018 calendar, with counts and obs/pixel | **RESULT** | 2.3 | KEEP |
 | `fig_cv_inflation.png` | Spatial-vs-random CV RMSE, model × block — the notebook's `fig06` redrawn from `inflation_analysis.csv` with the out-of-scope estimator's row filtered out | DIAGNOSTIC | 3.2 | KEEP — **cited** |
+| `fig_milan_predictor_ranking.png` | The four Milan predictor sets on holdout RMSE, MAE and R², ranked, GEE RF | **RESULT** | 4.1 | KEEP — **cited** |
 | `fig_samesource_vs_independent.png` | The four Milan predictor sets under both validations, shared 5–30 pp axis | **RESULT** | 7.1 | KEEP |
 | `fig_hcmc_prediction_histogram.png` | Predicted-IMD distributions for the four HCMC maps plus the reference, with a range/IQR/mean strip | **RESULT** | 7.2 | KEEP |
 | `fig_bias_recovery.png` | GHSL's bias against each local retrain's, per city, with the closed gap in pp | **RESULT** | 7.3 | KEEP |
 | `fig_milan_raster_comparison.png` | Observed CLMS / predicted / difference rasters, Milan, percentile run — `figE` relabelled with a run-identifying suptitle | MAP | 4.1 | KEEP — **cited** |
+
+**The suptitle carries the REPORT's figure number, not the outline's F-number.**
+The two differ: outline F-numbers are planning ids assigned in outline order,
+while the report numbers figures by the order they appear on the page. A
+suptitle reading "Figure 12" beside a caption reading "Figure 15" is a defect a
+reader sees immediately, so the number in the image tracks the caption. Any
+renumbering of the report must therefore be followed by editing the `suptitle`
+calls in `code/make_report_figs.py` and rebuilding; `code/audit_numbers.py`
+checks caption-to-image agreement but cannot read the number rendered inside a
+PNG.
 
 **Every plotted value is read from `data/FACTS.md`.** `facts_value()` raises on
 an absent row, an ambiguous match, or a `MISSING` cell rather than substituting

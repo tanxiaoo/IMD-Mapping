@@ -1,5 +1,134 @@
 # Impervious surface density from Sentinel-2 composites and AlphaEarth embeddings: Milan, Hanoi and Ho Chi Minh City, 2018
 
+## 1. Introduction
+
+Impervious surface density is the share of a pixel that is sealed against
+infiltration, and it is the quantity this report maps for three cities in 2018:
+Milan, Hanoi and Ho Chi Minh City. The work supports the ITALY-VIETNAM project on
+Local Climate Zones, Urban Heat Island and Geomatics (LCZ-UHI-GEO, CUP
+D47G24000110001), which is why those three cities and that year. A
+high-resolution imperviousness layer is an input to that project's wider
+objectives, being relevant to local climate zone characterisation and to urban
+heat island analysis in the Vietnamese cities (Žgela p. 11).
+
+The study extends an earlier one. Mapping impervious density from AlphaEarth
+satellite embeddings in Milan was established by Žgela, whose report is the
+companion to this one and is assumed read. This project changes three things.
+It adds explicit Sentinel-2 composites as an alternative predictor set, so that
+a learned general-purpose representation can be compared against reflectance
+statistics chosen for this task. It extends the work to two Vietnamese cities,
+which turns a single-city study into a test of whether a model transfers. And it
+adds a second validation against photo-interpreted plots that no model saw,
+which is what allows the difference between agreement and accuracy to be
+measured rather than assumed.
+
+### Attribution
+
+The AlphaEarth method and the shared Milan sample set are Žgela's work and are
+used here as supplied. The 3 500-point stratified sample, the spatial blocking
+and buffering that separate training from test, and the treatment of the
+64-dimensional embedding are all his design, described in Sections 2.2 and 3.1
+with citations rather than re-derived. Several results in this report are
+reproductions of his and are labelled as such where they appear: the
+cross-validation against holdout reversal in Section 4.2, the per-class pattern
+of local retraining in Section 5.2, and the qualitative observation behind the
+bias recovery of Section 7.3.
+
+The embeddings pipeline was independently re-run in this project. It reproduces
+his published holdout figures exactly, for both estimators. The random forest
+gives RMSE 14.123, MAE 10.675, R² 0.837 and bias +0.624 against his reported
+14.12, 10.68, 0.837 and +0.62; the support vector regressor gives 14.756,
+11.400, 0.822 and +0.274 against his 14.76, 11.40, 0.822 and +0.27 (Žgela p. 5).
+Every figure matches to the precision at which he published it.
+
+This is recorded as verification that the shared baseline is correctly
+reconstructed, and it is not a new result. Its purpose is narrow and worth
+stating plainly: every comparison in Sections 4 and 7 measures a new predictor
+set against that baseline, so a baseline that had drifted would move those
+comparisons without announcing itself. The reproduction establishes that it has
+not drifted. Nothing about the embeddings is being claimed here beyond what
+Žgela already established.
+
+### What this report finds
+
+The results are summarised here because two of them qualify each other, and a
+reader who takes the first without the second will overstate what the study
+shows.
+
+Against CLMS in Milan, all three Sentinel-2 composites outperform the AlphaEarth
+embeddings, and the margin is wide. The percentile composite reaches an RMSE of
+9.462 against the embeddings' 14.123, a reduction of 33 %, with the same ordering
+on RMSE, MAE and R². The advantage is also mechanistically interpretable: it
+comes from the low percentiles of the red band and the high percentiles of the
+near infrared, which are precisely the quantiles a median composite discards.
+
+That margin is measured against the product the models were trained on, and it
+does not survive the change of reference intact. Scored against photo-interpreted
+plots instead, the four-way spread between predictor sets compresses about
+6.4-fold, from 33.0 % to 5.2 % of the worst map, and the ordering partly
+reshuffles.
+Most of what the first validation measured as separation between predictor sets
+was agreement with CLMS rather than accuracy. The compression is not a
+dissolution, however: paired testing on the same plots still resolves the four
+maps into two distinguishable tiers. The honest statement, developed in Section
+7.1, is that the advantage shrinks sharply and remains real.
+
+Zero-shot transfer of a Milan-trained model to either Vietnamese city fails. The
+transferred models score R² at or below zero in three of the four city and
+predictor combinations, which is no more informative than predicting the mean
+everywhere, and local retraining recovers R² to between 0.522 and 0.649 in every
+case. The failure has a distributional mechanism rather than merely a
+calibration one: the transferred embedding maps lose the low end of the
+predicted distribution almost entirely, retaining 3.1 % of the reference's
+sub-20 % mass in Hanoi and none of it in Ho Chi Minh City, and every local
+retrain restores it. Retraining is not uniformly better, though. Above 80 %
+imperviousness it is worse than the transferred model, which Section 5.2 reports
+rather than sets aside.
+
+Both training products, scored against photo-interpretation on the same terms as
+the models, do no better than the models fitted to them. That measures the
+quality of the labels and not a ceiling on the maps, and the two are distinct: a
+model can outperform its own training target, and here it measurably does.
+GHS-BUILT-S under-marks the interpreted reference by close to 20 percentage
+points in both Vietnamese cities, largely because it excludes roads by design,
+while the models fitted to it recover between 38 % and 67 % of that deficit.
+
+### How to read this report
+
+Two conventions carry through and are set out where they are defined, in
+Sections 3.3 and 3.4.
+
+The first is that every map is scored twice. Same-source validation scores a map
+against the product it was trained on and measures agreement with that target.
+Independent validation scores it against the photo-interpreted plots and
+measures accuracy against a reference no model saw. Both are necessary, because
+the first cannot distinguish a good map from one that merely resembles its
+labels. They are never merged, and their numbers are never compared directly:
+they are scored against different references on different samples, so a
+difference between one and the other would measure the change of reference
+rather than anything about a map. Sections 4 and 5 report the first, Section 6
+the second, and Section 7.1 is the one place they are set side by side, with the
+relationship between them as its subject.
+
+The second is the sign of the bias. Bias is observed minus predicted throughout,
+so a positive value means the reference is higher than the map and the map
+under-predicts. The convention is identical in both validations, and the two
+produce biases of opposite sign for reasons that are not a contradiction:
+Section 5 reports negative biases where models read higher than GHS-BUILT-S, and
+Section 6 reports positive ones where GHS-BUILT-S reads lower than the
+interpreted reference. Those are different comparisons and the signs must not be
+read across them.
+
+Section 8 sets out five constraints that bound what the results support, each
+stated with the conclusion it forbids. Two are worth flagging in advance because
+they limit comparisons a reader might otherwise expect this report to make. The
+Vietnamese Sentinel-2 composites are built from far fewer usable dates than
+Milan's, so composite depth is confounded with predictor type there and the
+ordering between the two predictor sets in Vietnam is not a controlled
+comparison. And the validation plots are stratified rather than drawn at random
+over each city, so the independent metrics compare maps against one another but
+do not estimate city-wide accuracy.
+
 ## 2. Data
 
 Four data sets enter this study: two impervious-density products used as
@@ -429,17 +558,20 @@ Bias is observed minus predicted, so a positive value means the map
 under-predicts.
 
 The ordering is the same on RMSE, on MAE and on R², so it is not an artefact of
-a single metric. The gap between the best composite and the embeddings, 4.661
-RMSE, is larger than the gap between the best and worst composite, 1.823. All
-four maps are close to unbiased on this validation, between −0.169 and 0.624,
-which is expected of a model fitted to the product it is then scored against.
+a single metric. Figure 5 shows the three metrics side by side, which is the
+form in which that claim can be checked rather than taken on trust: the four
+bars fall in the same order in all three panels. The gap between the best
+composite and the embeddings, 4.661 RMSE, is larger than the gap between the
+best and worst composite, 1.823. All four maps are close to unbiased on this
+validation, between −0.169 and 0.624, which is expected of a model fitted to the
+product it is then scored against.
 
 The equivalent SVR rows follow the same ordering: percentile 9.051, stack
 10.219, median 10.939, embeddings 14.756. The advantage of the composites over
 the embeddings therefore does not depend on the estimator.
 
 Figure 4 shows observed against predicted values on the holdout for the
-percentile composite, and Figure 5 breaks the same run down by IMD class.
+percentile composite, and Figure 6 breaks the same run down by IMD class.
 
 ![Figure 4](../outputs_S2_percentile_p10p25p50p75p90/fig07_holdout_scatter.png)
 
@@ -447,13 +579,23 @@ Figure 4. Observed CLMS against predicted IMD on the 1 014-point holdout, S2
 percentile composite, random forest and SVR panels.
 (`outputs_S2_percentile_p10p25p50p75p90/fig07_holdout_scatter.png`)
 
-![Figure 5](../outputs_S2_percentile_p10p25p50p75p90/figC_perclass_GEE_RF.png)
+![Figure 5](figs/fig_milan_predictor_ranking.png)
 
-Figure 5. RMSE, MAE and bias per IMD class, S2 percentile composite, GEE random
+Figure 5. The four Milan predictor sets on the 1 014-point spatial holdout,
+scored against CLMS under the GEE random forest, ranked on RMSE with the best at
+the top. The same four values appear in Table 1. Bars start at zero on all three
+panels, so bar length is proportional to the metric and the spread is not
+exaggerated by a truncated axis. Section 7.1 returns to that spread, which
+compresses sharply under the independent validation.
+(`report/figs/fig_milan_predictor_ranking.png`)
+
+![Figure 6](../outputs_S2_percentile_p10p25p50p75p90/figC_perclass_GEE_RF.png)
+
+Figure 6. RMSE, MAE and bias per IMD class, S2 percentile composite, GEE random
 forest, scored against CLMS.
 (`outputs_S2_percentile_p10p25p50p75p90/figC_perclass_GEE_RF.png`)
 
-Figure 6 maps the percentile prediction against CLMS across the whole scene. The
+Figure 7 maps the percentile prediction against CLMS across the whole scene. The
 two upper panels agree on the structure of the conurbation: the dense core, the
 satellite towns to the north, and the largely agricultural south. The difference
 panel is where the disagreement is legible. It is close to zero over most of the
@@ -467,9 +609,9 @@ CLMS fills. The map is qualitative support for Table 1 and not a measurement:
 the whole-scene comparison is not the 1 014-point holdout the metrics are scored
 on, and no number is quoted from it.
 
-![Figure 6](figs/fig_milan_raster_comparison.png)
+![Figure 7](figs/fig_milan_raster_comparison.png)
 
-Figure 6. Milan IMD, observed CLMS against the predicted map and their
+Figure 7. Milan IMD, observed CLMS against the predicted map and their
 difference, S2 percentile composite, random forest. Positive difference means
 the model reads more impervious than CLMS.
 (`report/figs/fig_milan_raster_comparison.png`)
@@ -537,9 +679,9 @@ important predictors are bands B16 and B08 of the 64-dimensional embedding
 (Žgela p. 6, Fig. 7), which have no physical interpretation. The Sentinel-2
 composites give an interpretable answer to why they work; the embeddings do not.
 
-![Figure 7](../outputs_S2_percentile_p10p25p50p75p90/figD_importance_RF.png)
+![Figure 8](../outputs_S2_percentile_p10p25p50p75p90/figD_importance_RF.png)
 
-Figure 7. Impurity and permutation importance per band, random forest, S2
+Figure 8. Impurity and permutation importance per band, random forest, S2
 percentile composite.
 (`outputs_S2_percentile_p10p25p50p75p90/figD_importance_RF.png`)
 
@@ -608,13 +750,13 @@ compares Milan's 30-date composite against 3 to 4 Vietnamese dates. Composite
 depth is confounded with predictor type here, so the near-equality of the two
 failures should not be read as a controlled comparison between them.
 
-Figures 8 and 9 show the two predictor sets separately, on identical axes. They
+Figures 9 and 10 show the two predictor sets separately, on identical axes. They
 are the same experiment run on different features, so they are read as a pair:
 the shape of the result is the same in both, which is the point of Section 5.1.
 
-![Figure 8](../outputs_transfer_v2/fig01_transfer_comparison.png)
+![Figure 9](../outputs_transfer_v2/fig01_transfer_comparison.png)
 
-Figure 8. **AlphaEarth embeddings.** Milan baseline, zero-shot transfer and
+Figure 9. **AlphaEarth embeddings.** Milan baseline, zero-shot transfer and
 local retrain across all four metrics, Hanoi and HCMC. Every bar is scored
 against the training target, GHS-BUILT-S in Hanoi and HCMC and CLMS for the
 Milan baseline, and measures agreement with that target rather than accuracy. In
@@ -622,17 +764,17 @@ particular a bias bar near zero indicates agreement with GHSL, not a correct
 map.
 (`outputs_transfer_v2/fig01_transfer_comparison.png`)
 
-![Figure 9](../outputs_transfer_S2_median/fig01_transfer_comparison.png)
+![Figure 10](../outputs_transfer_S2_median/fig01_transfer_comparison.png)
 
-Figure 9. **S2 median composite.** The same four metrics and the same two
-scenarios as Figure 8, for the Sentinel-2 median predictor set rather than the
+Figure 10. **S2 median composite.** The same four metrics and the same two
+scenarios as Figure 9, for the Sentinel-2 median predictor set rather than the
 embeddings, and scored against the same targets: GHS-BUILT-S in Hanoi and HCMC,
 CLMS for the Milan baseline. Again agreement with the target, not accuracy.
 (`outputs_transfer_S2_median/fig01_transfer_comparison.png`)
 
-![Figure 10](../outputs_transfer_v2/fig_obs_vs_pred_hanoi_hcmc.png)
+![Figure 11](../outputs_transfer_v2/fig_obs_vs_pred_hanoi_hcmc.png)
 
-Figure 10. GHS-BUILT-S, the Milan zero-shot transfer and the local retrain as
+Figure 11. GHS-BUILT-S, the Milan zero-shot transfer and the local retrain as
 rasters, Hanoi and HCMC, **AlphaEarth embeddings**, scored against GHS-BUILT-S.
 (`outputs_transfer_v2/fig_obs_vs_pred_hanoi_hcmc.png`)
 
@@ -669,9 +811,9 @@ are single-valued strata, so their variance is exactly zero and their R² is
 undefined. Per-class RMSE, MAE and bias are the appropriate within-class
 measures, and R² is reserved for the global comparison in Section 5.1.
 
-![Figure 11](../outputs_transfer_v2/fig02_per_class_mae.png)
+![Figure 12](../outputs_transfer_v2/fig02_per_class_mae.png)
 
-Figure 11. MAE per IMD class, zero-shot transfer against local retrain, Hanoi and
+Figure 12. MAE per IMD class, zero-shot transfer against local retrain, Hanoi and
 HCMC, **AlphaEarth embeddings**, scored against GHS-BUILT-S. The S2 median
 figures quoted in this subsection are read from that run's per-class table
 rather than from a second copy of this figure.
@@ -739,13 +881,13 @@ city's reference level happens to fall relative to the transferred map's level
 and not evidence that transfer succeeded there. The embeddings zero-shot map in
 the same city is the worst of all fifteen at 38.494.
 
-Figure 12 is the summary view, and carries the bootstrap confidence intervals
+Figure 13 is the summary view, and carries the bootstrap confidence intervals
 that the table omits. The Milan intervals overlap one another substantially, and
 the Milan models' intervals overlap CLMS's.
 
-![Figure 12](../outputs_validation/fig02_forest_ci.png)
+![Figure 13](../outputs_validation/fig02_forest_ci.png)
 
-Figure 12. RMSE and MAE with 95 % percentile bootstrap confidence intervals for
+Figure 13. RMSE and MAE with 95 % percentile bootstrap confidence intervals for
 all fifteen maps, three cities, strict rule. Intervals are over 10,000
 resamples of the 450 plots, the plot being the independent unit. Diamonds mark the training products, scored
 here as maps rather than as targets; the tick on each RMSE bar is the
@@ -793,9 +935,9 @@ from. It does not measure a ceiling on achievable model performance, and nothing
 here should be read as one: a model is not confined to the accuracy of its
 labels. Section 7.3 gives the mechanism and measures it.
 
-![Figure 13](../outputs_validation/fig01_scatter_grid.png)
+![Figure 14](../outputs_validation/fig01_scatter_grid.png)
 
-Figure 13. Photo-interpreted reference against predicted IMD, every registered
+Figure 14. Photo-interpreted reference against predicted IMD, every registered
 map in the three cities, strict rule.
 (`outputs_validation/fig01_scatter_grid.png`)
 
@@ -901,11 +1043,11 @@ RMSE, 9.462 against 14.123. On the independent validation the same two maps are
 24.809 and 25.625, a lead of 0.816. Across all four predictor sets the spread
 falls from 4.661, which is 33.0 % of the worst map at 14.123, to 1.340, which is
 5.2 % of the worst map at 25.984. That is a compression of about 6.4 times.
-Figure 14 shows the four maps moving between the two validations.
+Figure 15 shows the four maps moving between the two validations.
 
-![Figure 14](figs/fig_samesource_vs_independent.png)
+![Figure 15](figs/fig_samesource_vs_independent.png)
 
-Figure 14. The four Milan predictor sets, same-source RMSE against CLMS on the
+Figure 15. The four Milan predictor sets, same-source RMSE against CLMS on the
 1 014-point holdout on the left, independent RMSE against the 450
 photo-interpreted plots on the right. CLMS is marked on the independent axis as
 a map under test. The two axes are different measurements against different
@@ -1030,12 +1172,12 @@ while the embeddings fail harder. Section 8's caveat applies to that contrast: t
 two zero-shot experiments differ in composite depth as well as in predictor type,
 so the ordering between them is not a controlled comparison.
 
-Figure 15 carries the argument for HCMC: the predicted distributions for the four
+Figure 16 carries the argument for HCMC: the predicted distributions for the four
 maps against the reference, with the level means annotated.
 
-![Figure 15](figs/fig_hcmc_prediction_histogram.png)
+![Figure 16](figs/fig_hcmc_prediction_histogram.png)
 
-Figure 15. Distribution of predicted IMD over the 450 HCMC plots for the four
+Figure 16. Distribution of predicted IMD over the 450 HCMC plots for the four
 maps and the photo-interpreted reference, strict rule, with each map's mean
 level marked. The reference is bimodal; the embeddings zero-shot distribution is
 confined to a narrow band with no low tail. HCMC is shown because it is the
@@ -1082,12 +1224,12 @@ GHS-BUILT-S under-marks by 19.68 percentage points in Hanoi and 19.80 in HCMC.
 The models fitted to it are biased by only 6.59 to 12.23, recovering 7.57 to
 13.09 percentage points, or 38 % to 67 % of the target's systematic deficit. The
 recovery is larger in Hanoi than in HCMC and larger for the embeddings than for
-the S2 median in both cities, but it is substantial in all four cases. Figure 16
+the S2 median in both cities, but it is substantial in all four cases. Figure 17
 shows the four movements.
 
-![Figure 16](figs/fig_bias_recovery.png)
+![Figure 17](figs/fig_bias_recovery.png)
 
-Figure 16. Bias against photo-interpretation, from GHS-BUILT-S to each local
+Figure 17. Bias against photo-interpretation, from GHS-BUILT-S to each local
 retrain fitted to it, Hanoi and HCMC. Each arrow spans the share of the
 reference's systematic deficit that the model recovers.
 (`report/figs/fig_bias_recovery.png`)
@@ -1142,7 +1284,7 @@ independent observations. No spatial autocorrelation check was applied at plot
 level, and the sampling design does not guarantee independence: plots drawn from
 the same neighbourhood share both land cover and, plausibly, correlated model
 error. If residual autocorrelation is present, the effective sample size is
-below 450, the bootstrap intervals in Figure 12 are narrower than they should be,
+below 450, the bootstrap intervals in Figure 13 are narrower than they should be,
 and the paired q values of Section 6.2 are optimistic. This bears most directly
 on the two-tier result. The tier separation runs from q = 3.57e-08 to
 q = 6.84e-03, and the stronger of those would survive a considerable inflation
@@ -1178,7 +1320,7 @@ reference value affects both maps in the pair and drops out of that difference,
 and the tier structure is robust to it to that extent. No such cancellation
 applies anywhere else. The absolute RMSE and MAE levels of Table 4 carry an
 unquantified interpreter component in full, as do the bootstrap intervals of
-Figure 12 and the bias measurements of Section 7.3, because each of those scores
+Figure 13 and the bias measurements of Section 7.3, because each of those scores
 a map against the reference rather than against another map. Nor does the shared
 reference protect the rankings: a tendency that displaces the reference by
 different amounts in different kinds of plot penalises maps unequally, so the
