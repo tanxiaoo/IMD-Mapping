@@ -27,12 +27,14 @@ Companion to `reference/` — the AlphaEarth report by Matej Žgela.
 
 # Writing
 
-- Draft in Markdown at `report/report.md`. Export to `.docx` only at the end.
+- Draft in Markdown at report/report.md.
+- Export to .docx for review, then to PDF for the final version. Do neither until the writing is finished.
 - One section per turn. Never write the whole report in one pass.
 - Match `reference/` for tone: numbered sections, plain declarative
   sentences, figures captioned below.
 - British English. No em dashes.
 - After each section, run: `python code/audit_numbers.py report/`
+- Figures are placed at their referenced positions with numbered captions below, matching reference/.
 
 # Regenerating
 
