@@ -4,7 +4,24 @@ Findings established in `data/FACTS.md` and `data/EXPERIMENT_MAP.md` that no
 existing figure carries. Ranked by how central the finding is to the project's
 argument.
 
-Last updated: 2026-08-30 · none of these have been built
+Last updated: 2026-09-01 · **4 of 7 built**, 1 merged, 2 dropped
+
+| Gap | Status | File |
+|---|---|---|
+| 1 · same-source vs independent | **BUILT** (F12) | `report/figs/fig_samesource_vs_independent.png` |
+| 2 · Milan two-tier | dropped — §6.2 carries it as a table | — |
+| 3 · Vietnam level-matching | merged into F13 | `report/figs/fig_hcmc_prediction_histogram.png` |
+| 4 · bias recovery | **BUILT** (F14) | `report/figs/fig_bias_recovery.png` |
+| 5 · composite depth | **BUILT** (F1) | `report/figs/fig_composite_depth.png` |
+| 6 · CV vs holdout | dropped — §4.2 is a paragraph plus a table row | — |
+| 7 · rule sensitivity | dropped — §6.4 carries it as a table | — |
+
+All four are built by `code/make_report_figs.py`, which reads every value from
+`data/FACTS.md` and raises rather than substituting a literal when a number is
+absent. Each figure prints its plotted values to the console for checking.
+
+The sections below record what each gap was for; they are kept as the rationale
+for the built figures rather than as outstanding work.
 
 See `data/FIGURES.md` for what already exists and for the house style any new
 figure should match (accent `#0B6E4F`, DejaVu Sans, figsize 11.5–13.0 ×
@@ -12,17 +29,17 @@ figure should match (accent `#0B6E4F`, DejaVu Sans, figsize 11.5–13.0 ×
 
 ## Ranked
 
-### 1 — Track A vs Track B, paired
+### 1 — Same-source vs independent validation, paired
 
 **The single most important missing figure.** The four Milan predictor sets on
-two axes: agreement with CLMS (Track A holdout) against accuracy versus
-photo-interpretation (Track B). A slope chart or connected dumbbell, one line per
-predictor set.
+two axes: agreement with CLMS (same-source) against accuracy versus
+photo-interpretation (independent). A slope chart or connected dumbbell, one
+line per predictor set.
 
-**Shows:** a Track A spread of **9.46 → 14.12 RMSE** collapsing to **24.64 →
-25.98** against independent validation. Most of the apparent Track A separation
-was agreement with CLMS, not accuracy. Percentile leads Track A by 4.7 RMSE but
-leads Track B by 1.2.
+**Shows:** a same-source spread of **9.46 → 14.12 RMSE** collapsing to
+**24.64 → 25.98** under independent validation. Most of the apparent
+separation was agreement with CLMS, not accuracy. Percentile leads by 4.66
+RMSE on same-source but only 0.82 on independent.
 
 **Carries:** findings 1 and 2 together — that pairing is the point, and it is why
 this ranks first.

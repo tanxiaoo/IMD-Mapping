@@ -164,6 +164,50 @@ The `method`, `band_names` and `selected_dates` fields in the same files are
 independently corroborated by the matching
 `samples_S2_*/s2_extraction_metadata.json` and need no such label.
 
+## Relationship to the Žgela reference report
+
+`reference/RELAZIONE FINALE - Zgela_LCZ-UHI-GEO_Incarico_Report_signed (1).pdf`
+(Matej Žgela, 12 pp) is the study this project extends. The AlphaEarth method and
+the shared Milan sample set (`outputs_sampling`) are his work, used here as
+supplied.
+
+**The embeddings baseline reproduces his published figures exactly**, for both
+estimators (Žgela p. 5):
+
+| | RF | SVR |
+|---|---|---|
+| Žgela p. 5 | R² 0.837, MAE 10.68, RMSE 14.12, Bias +0.62 | 0.822 / 11.40 / 14.76 / +0.27 |
+| This project (`outputs_v2`) | 0.837 / 10.675 / 14.123 / +0.624 | 0.822 / 11.400 / 14.756 / +0.274 |
+
+This is **verification that the shared baseline is correctly reconstructed**, not
+a new result.
+
+Two findings in this project are reproductions of his, and must be reported as
+such rather than as new observations:
+
+- **The CV-versus-holdout reversal** (p. 5). He reports SVR best on CV at 11.5 %
+  with RF ~1.6 % worse, then RF winning every holdout metric, and selects RF.
+  Note that his reason for excluding a third estimator is that it is unsupported
+  in GEE's Python API — that does **not** apply to SVR, which is supported
+  (`ee.Classifier.libsvm`) and is rastered in this project.
+- **Bias recovery** (p. 10). He observed qualitatively that roads and unroofed
+  impervious surfaces "are visibly better represented in the predicted maps",
+  which "highlights the ability of the model to recover additional information
+  beyond what was explicitly provided during training." This project's
+  contribution is to **quantify** that against an independent reference
+  (7.57–13.09 pp, 38–67 % of the deficit) — see the bias-recovery table in
+  `FACTS.md`.
+
+He also states the GHS-BUILT-S road exclusion himself (pp. 8, 10), and records
+that no other suitable 2018 reference existed for Vietnam. Cite him for that
+limitation rather than asserting it independently.
+
+Design parameters he established, reused unchanged here (pp. 2, 4): 7 IMD groups,
+500 points each = 3 500; 1 km blocks assigned whole to train or test; 250 m
+buffer; **2 449 train / 1 014 test**; spatially aware 5-fold CV over 500 m / 1 km
+/ 2 km blocks. All 64 embedding bands are used because his feature-selection
+experiment found any reduced subset worse (p. 5).
+
 ## Validation unit of analysis
 
 **n = 450 plots per city, 1350 total. The 3×3 sub-cells are never observations.**
@@ -275,9 +319,9 @@ agree; nothing was harmonised.
 
 | Track | Definition | Location |
 |---|---|---|
-| Track B (independent validation) | `Bias = float(np.mean(yt - yp))`; docstring `"Bias (obs-pred)"`; `'error': ref - pred, # obs - pred (repo convention)` | [04](../04_Validation_PhotoInterpreted.ipynb) cells 14, 16 |
-| Track A Vietnam | `float(np.mean(y_te - y_pred_zs))`, `..._lr`; per-class `np.mean(obs_c - pred_c)` | [02](../02_Transferability_Vietnam_v2.ipynb) / [03](../03_Transferability_Vietnam_S2_median.ipynb) cells 7, 17 |
-| Track A Milan | `float(np.mean(yte - yp))`, `np.mean(y_test - yp)` | [01](../01_IMD_Prediction_Milan_blockCV_v2.ipynb) / [01b](../01b_IMD_Prediction_Milan_blockCV_S2.ipynb) cells 16, 36/37 |
+| independent validation (independent validation) | `Bias = float(np.mean(yt - yp))`; docstring `"Bias (obs-pred)"`; `'error': ref - pred, # obs - pred (repo convention)` | [04](../04_Validation_PhotoInterpreted.ipynb) cells 14, 16 |
+| same-source validation Vietnam | `float(np.mean(y_te - y_pred_zs))`, `..._lr`; per-class `np.mean(obs_c - pred_c)` | [02](../02_Transferability_Vietnam_v2.ipynb) / [03](../03_Transferability_Vietnam_S2_median.ipynb) cells 7, 17 |
+| same-source validation Milan | `float(np.mean(yte - yp))`, `np.mean(y_test - yp)` | [01](../01_IMD_Prediction_Milan_blockCV_v2.ipynb) / [01b](../01b_IMD_Prediction_Milan_blockCV_S2.ipynb) cells 16, 36/37 |
 
 Therefore:
 
@@ -303,12 +347,12 @@ GHSL reads ~26–31 % impervious where interpreters see ~46–51 %. It under-mar
 sealed area by ~20 points, exactly as excluding roads by design would predict. No
 correction to the roads argument is required.
 
-Note the Vietnam Track A biases are **negative** (−23 to −30 for zero-shot): there
+Note the Vietnam same-source validation biases are **negative** (−23 to −30 for zero-shot): there
 the *models* over-predict relative to GHSL. Same convention, different comparison —
-Track A compares model against GHSL, Track B compares GHSL against interpretation.
+same-source validation compares model against GHSL, independent validation compares GHSL against interpretation.
 The two are not in conflict, and the signs must not be read across tracks.
 
-### Track B reference results — all three cities
+### independent validation reference results — all three cities
 
 The training targets scored against the photo-interpreted plots, strict rule,
 n = 450 per city (`table1_headline_ci.csv`):
@@ -330,10 +374,10 @@ but wrong by more when wrong, whereas the models spread moderate error evenly. Q
 one metric consistently; the MAE column does not contradict the target-quality
 argument.
 
-## Track A metrics — same-source spatial holdout
+## Same-source validation metrics
 
-Track A scores each run against the source it was trained on: **CLMS** in Milan,
-**GHSL** in Vietnam. Distinct from notebook 04 (Track B), which scores against
+same-source validation scores each run against the source it was trained on: **CLMS** in Milan,
+**GHSL** in Vietnam. Distinct from notebook 04 (independent validation), which scores against
 independent photo-interpretation.
 
 ### Milan runs — identical structure in all four
@@ -369,8 +413,22 @@ label the JSON values `provenance = "backfilled"` if used (see above).
 **Nothing is missing and nothing is notebook-output-only** — every run in all six
 directories has RMSE/MAE/R²/Bias on disk, globally and per class.
 
-**One gap: the Vietnam per-class tables carry no R² column** (`RMSE`, `MAE`, `Bias`
-only). Milan's per-class tables are the only place per-class R² exists.
+**Vietnam per-class R² was added on 2026-08-31** (notebooks 02 and 03, cell 17)
+and both notebooks re-run. Their headline metrics reproduced bit-identically, so
+the change is purely additive.
+
+**Read the per-class R² with care — it is not comparable to the global R².**
+Restricting to one IMD class removes most of the observed variance, so the
+denominator of R² collapses and a modest offset produces a large negative value.
+Every defined per-class value is negative: **−1.3 to −115.6** (embeddings),
+**−6.6 to −80.7** (S2 median), while the same models reach global R² of 0.52–0.65
+in the local-retrain scenario. Both are correct; they answer different questions.
+Quote per-class RMSE, MAE or Bias for within-class performance, and reserve R²
+for the global comparison.
+
+Classes 0 and 6 are **blank by design**: they are the single-valued 0 % and 100 %
+strata, so observed variance is exactly zero and R² is undefined rather than 0.
+The guard is `np.ptp(obs_c) > 0`, else `NaN`.
 
 ## Composite date windows
 

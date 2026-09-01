@@ -55,6 +55,14 @@ data/*
 !data/FIGURES.md
 !data/FIGURE_GAPS.md
 
+# ── Report figures ARE version-controlled ────────────────────────────────────
+# The four figures under report/figs/ are built by code/make_report_figs.py
+# from data/FACTS.md, so they are regenerable -- but the report cites them and
+# they are ~330 KB in total, far below the limit that makes *.png a problem
+# for the notebook outputs. Track them so the report is self-contained.
+!report/figs/
+!report/figs/*.png
+
 aoi_milan/
 docs/
 

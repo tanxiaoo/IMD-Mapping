@@ -3,7 +3,7 @@
 Every figure and presentation-ready table in the repo, with what produces it and
 whether it can be used as-is.
 
-Last updated: 2026-08-30 · 84 image artefacts
+Last updated: 2026-09-01 · 84 notebook/deck artefacts + 4 report figures
 
 **Every figure here was identified from the code that produces it** — the
 `savefig` block, its titles, axis labels, legend entries and plotted data — not
@@ -15,7 +15,7 @@ Notebook `04_Validation_PhotoInterpreted.ipynb` was re-executed at
 **2026-08-30 01:37** to apply the `role='ceiling'` → `role='reference'` rename.
 
 **That re-run wrote only `outputs_validation/`.** Notebook 04 reads existing
-rasters and retrains nothing, so it cannot and did not touch the Milan Track A
+rasters and retrains nothing, so it cannot and did not touch the Milan
 directories (`outputs_v2`, `outputs_S2_*`) or the Vietnam transfer directories
 (`outputs_transfer_*`). Those figures are **unaffected by the rename** — their
 producing notebooks (01, 01b, 02, 03) never reference `role` at all, since the
@@ -43,7 +43,7 @@ a ceiling on achievable accuracy" — deliberate.
 
 ---
 
-## Milan Track A — same-source spatial holdout (CLMS)
+## Milan — same-source validation (vs CLMS)
 
 Four directories, one filename set. `outputs_v2` ← notebook 01;
 `outputs_S2_median` / `_stack` / `_percentile_p10p25p50p75p90` ← notebook 01b
@@ -80,7 +80,7 @@ selected. See the estimator-selection section of `EXPERIMENT_MAP.md`.
 the producing code, so the three copies carry no label identifying which
 composite produced them and are indistinguishable outside their directory path.
 
-## Vietnam transfer — same-source spatial holdout (GHSL)
+## Vietnam transfer — same-source validation (vs GHSL)
 
 `outputs_transfer_v2` ← notebook 02 · `outputs_transfer_S2_median` ← notebook 03.
 Identical figure code in both; only the raster suffix and one suptitle differ.
@@ -99,8 +99,8 @@ Identical figure code in both; only the raster suffix and one suptitle differ.
 **`fig01_transfer_comparison.png` — NEEDS-EDIT.** Its bias bars are measured
 against GHSL, so they show the models diverging from the target. Against
 photo-interpretation the sign reverses and the local retrains recover 7.6–13.1 pp
-of GHSL's deficit. The figure is correct for Track A but must not be captioned as
-if it described accuracy.
+of GHSL's deficit. The figure is correct for the same-source validation but must not be
+captioned as if it described accuracy.
 
 ## Independent validation — photo-interpreted plots
 
@@ -116,8 +116,41 @@ the `(target)` suffix and diamond markers.
 | `fig04_calibration.png` | Mean predicted vs reference level with 95% CI, 1:1 line | **RESULT** | — | KEEP |
 
 `fig02_forest_ci.png` is the single most load-bearing figure in the repo: it
-carries both the Track B collapse and the result that CLMS and GHSL score no
-better than the models trained on them.
+carries both the collapse under independent validation and the result that
+CLMS and GHSL score no better than the models trained on them.
+
+## Report figures — built for the report, not by a notebook
+
+`report/figs/` ← `code/make_report_figs.py`. These four carry findings no
+notebook figure covers; see `data/FIGURE_GAPS.md` for why each exists.
+
+| File | Shows | Kind | §  | Status |
+|---|---|---|---|---|
+| `fig_composite_depth.png` | Usable S2 acquisitions per city on a 2018 calendar, with counts and obs/pixel | **RESULT** | 2.3 | KEEP |
+| `fig_samesource_vs_independent.png` | The four Milan predictor sets under both validations, shared 5–30 pp axis | **RESULT** | 7.1 | KEEP |
+| `fig_hcmc_prediction_histogram.png` | Predicted-IMD distributions for the four HCMC maps plus the reference, with a range/IQR/mean strip | **RESULT** | 7.2 | KEEP |
+| `fig_bias_recovery.png` | GHSL's bias against each local retrain's, per city, with the closed gap in pp | **RESULT** | 7.3 | KEEP |
+
+**Every value is read from `data/FACTS.md`.** `facts_value()` raises on an absent
+row, an ambiguous match, or a `MISSING` cell rather than substituting a literal,
+so a figure cannot drift from the numbers it claims to show. Each build prints
+its plotted values for checking against the fact base.
+
+**These figures state readings, never conclusions.** No conclusion sentences, no
+interpretive annotations, no callouts — only axis labels, panel titles, and
+numeric values that are measurements. Every claim ("saturated, not shifted",
+"recovers 38–67 %", the ≥ 17-date percentile floor) belongs to the report
+caption. This is a deliberate departure from `make_presentation.py`, whose
+slide titles are written as conclusions.
+
+**House style** follows the notebooks, not the deck: notebook `rcParams`
+verbatim, dpi 150, `Figure N · Description` suptitle at 13 pt bold, axes titles
+11 pt bold, default matplotlib font and tick colours. The only thing carried
+over from the deck is the per-predictor palette.
+
+Regenerate with `python code/make_report_figs.py` (all four) or
+`python code/make_report_figs.py F12` (one). Unlike every other figure in this
+repo, these **are** version-controlled — see the negation in `.gitignore`.
 
 ## Presentation-ready tables
 
@@ -127,7 +160,7 @@ better than the models trained on them.
 | `outputs_validation/table2_wilcoxon_pairs.csv` | Pairwise Wilcoxon per city with `q_bh` and `sig` | KEEP — carries the Milan two-tier result |
 | `outputs_validation/table3_rule_sensitivity.csv` | MAE/RMSE under strict/B/C with ranks and `rank_changed` | KEEP — carries the rule-C rank swap |
 | `outputs_validation/table4_perlevel_metrics.csv` · `table4b_perclass7_metrics.csv` | Per-level and per-class metrics | KEEP — long; subset before use |
-| `outputs_*/holdout_test_metrics.csv` (×4) | `Model,RMSE,MAE,R2,Bias` for GEE_RF and GEE_SVR | KEEP — the Track A headline table |
+| `outputs_*/holdout_test_metrics.csv` (×4) | `Model,RMSE,MAE,R2,Bias` for GEE_RF and GEE_SVR | KEEP — the same-source validation headline table |
 | `outputs_*/spatial_cv_summary.csv` (×4) | Model × CV method, all metrics mean+std | KEEP — wide; prune columns |
 | `outputs_*/inflation_analysis.csv` (×4) | Tabular twin of `fig06` | KEEP |
 | `outputs_*/perclass_metrics_GEE_{RF,SVR}.csv` (×4) | Tabular twin of `figC` | KEEP |
@@ -167,11 +200,13 @@ prose assertions the script never verifies:
 - **Slide 6, "Random-CV and spatial-CV RMSE agree to within ~1%"** — checked and
   **correct**: maximum inflation in `inflation_analysis.csv` is exactly 1.0 %.
 - **Slide 13, naming `B4_p25`/`B4_p10` and `B8_p90`/`B8_p75` as the top
-  features — has no CSV backing.** Permutation importance is computed inside
-  notebook 01b and rendered straight to `figD_importance_RF.png`; no importance
-  table is written to disk. The claim cannot be verified without re-running the
-  notebook, and a re-run could invalidate it while the deck still renders. Either
-  persist an importance CSV or soften the slide text.
+  features — now verified and correct.** Notebooks 01 and 01b were changed on
+  2026-08-31 to persist `feature_importance_RF.csv` alongside
+  `figD_importance_RF.png`, and 01b was re-run on the percentile composite. The
+  CSV ranks by permutation importance: **B4_p25 (0.181), B4_p10 (0.056),
+  B8_p90 (0.040), B4_p50 (0.023), B8_p75 (0.021)**. The deck's four named bands
+  are ranks 1, 2, 3 and 5 — the claim holds, with `B4_p50` sitting between them
+  at rank 4. The claim is no longer unverifiable: cite the CSV.
 
 Also hardcoded and worth watching: the holdout count `1 014` appears literally in
 three places (`fig_holdout` footer, `fig_paired` title, slide 11) while slide 17
