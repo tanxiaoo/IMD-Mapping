@@ -361,7 +361,7 @@ from the embeddings run rather than recomputing it, so the four Milan predictor
 sets are scored on exactly the same held-out points. That is what makes their
 comparison a comparison of predictors. The second is that the 1 014 figure
 matches the one Žgela reports, which is one of the checks that the shared
-baseline was correctly reconstructed.
+baseline was correctly reconstructed. Figure 2 shows the resulting split.
 
 ![Figure 2](../outputs_v2/fig01_spatial_split.png)
 
@@ -427,8 +427,9 @@ Section 4.2 takes up the one place where the two disagree in direction.
 
 ### 3.3 Accuracy metrics
 
-Four metrics are reported throughout. For n observations with reference values
-y_i and predicted values ŷ_i, and with ȳ the mean of the reference values:
+Four metrics are reported throughout, and a fifth is derived from RMSE in the
+independent validation. For n observations with reference values y_i and
+predicted values ŷ_i, and with ȳ the mean of the reference values:
 
 - **RMSE** = √( (1/n) Σ (y_i − ŷ_i)² ), the root mean squared error, in IMD
   percentage points;
@@ -463,15 +464,24 @@ GHS-BUILT-S itself, where the product reads lower than the interpreted
 reference. Those are different comparisons, not a contradiction, and the signs
 must not be read across them.
 
-One derived quantity is reported alongside RMSE in the independent validation.
-The photo-interpreted reference is itself measured with error: a plot's IMD is
-the proportion of nine interpreted sub-cells that are impervious, so it is a
+The fifth metric is reported alongside RMSE in the independent validation. The
+photo-interpreted reference is itself measured with error: a plot's IMD is the
+proportion of nine interpreted sub-cells that are impervious, so it is a
 proportion estimated from nine draws and carries a sampling error of its own.
-Treating those draws as independent gives a binomial standard error per plot,
-and averaging its square across plots gives an estimate of the reference noise
-variance. Subtracting that from the mean squared error before taking the root
-gives **RMSE_corr**, the noise-corrected RMSE: an estimate of map error with the
-reference's own measurement error removed.
+Writing n_i for the number of sub-cells retained at plot i, normally nine but
+eight where an ambiguous cell was dropped and the denominator renormalised, and
+taking the predicted value ŷ_i as a proportion for the plug-in estimate of the
+plot's true impervious fraction, the binomial variance of the reference estimate
+is ŷ_i(1 − ŷ_i) / n_i. Averaging it across plots and removing it from the mean
+squared error gives:
+
+- **RMSE_corr** = √( max( 0, RMSE² − (1/n) Σ ŷ_i(1 − ŷ_i) / n_i ) ), the
+  noise-corrected RMSE, in the same units: an estimate of map error with the
+  reference's own measurement error removed.
+
+The correction is floored at zero because it is a difference of two variances
+and can go negative for a map that is closer to the reference than the
+reference's own noise.
 
 `RMSE_corr` is an **upper bound** on map error rather than a point estimate, and
 is used only as one. The independence assumption behind the binomial correction
@@ -659,7 +669,8 @@ band and the high percentiles of the near infrared, a seasonal signal that a
 single median cannot express.
 
 Table 2 gives the five most important bands of the percentile run by permutation
-importance on the holdout, with mean decrease in impurity alongside.
+importance on the holdout, with mean decrease in impurity alongside, and Figure 8
+gives the ranking across all fifty bands.
 
 | Rank | Band | Permutation importance | Impurity importance |
 |---|---|---|---|
@@ -777,6 +788,9 @@ embeddings, and scored against the same targets: GHS-BUILT-S in Hanoi and HCMC,
 CLMS for the Milan baseline. Again agreement with the target, not accuracy.
 (`outputs_transfer_S2_median/fig01_transfer_comparison.png`)
 
+Figure 11 shows the same three maps as rasters, where the level shift the
+metrics report is visible directly.
+
 ![Figure 11](../outputs_transfer_v2/fig_obs_vs_pred_hanoi_hcmc.png)
 
 Figure 11. GHS-BUILT-S, the Milan zero-shot transfer and the local retrain as
@@ -815,6 +829,8 @@ per-class value is negative even where the same model reaches a global R² of
 are single-valued strata, so their variance is exactly zero and their R² is
 undefined. Per-class RMSE, MAE and bias are the appropriate within-class
 measures, and R² is reserved for the global comparison in Section 5.1.
+
+Figure 12 shows the pattern across all seven classes.
 
 ![Figure 12](../outputs_transfer_v2/fig02_per_class_mae.png)
 
@@ -893,7 +909,7 @@ the Milan models' intervals overlap CLMS's.
 ![Figure 13](../outputs_validation/fig02_forest_ci.png)
 
 Figure 13. RMSE and MAE with 95 % percentile bootstrap [14] confidence intervals
-for all fifteen maps, three cities, strict rule. Intervals are over 10,000
+for all fifteen maps, three cities, strict rule. Intervals are over 10 000
 resamples of the 450 plots, the plot being the independent unit. Diamonds mark the training products, scored
 here as maps rather than as targets; the tick on each RMSE bar is the
 noise-corrected RMSE.
@@ -910,7 +926,7 @@ points in both cities. That is the road exclusion of Section 2.1 appearing as a
 number.
 
 One apparent counter-example needs settling, because CLMS holds the best MAE of
-any Milan map at 14.606 alongside the worst RMSE at 26.253. Table 6 gives the
+any Milan map at 14.606 alongside the worst RMSE at 26.253. Table 5 gives the
 per-plot error distribution behind that split. CLMS is right far more often than
 any model, landing within 5 percentage points of the interpretation on 53.3 % of
 plots against 34.2 % for the closest model, and wrong by more when it is wrong,
@@ -929,7 +945,7 @@ each other.
 | S2 median | 18.36 | 25.98 | 12.17 | 41.49 | 94.41 | 21.8 % | 6.9 % |
 | CLMS | 14.61 | 26.25 | 3.00 | 45.20 | 100.00 | 53.3 % | 8.7 % |
 
-Table 6. Distribution of per-plot absolute error, Milan, strict rule, n = 450.
+Table 5. Distribution of per-plot absolute error, Milan, strict rule, n = 450.
 "Within 5 pp" and "over 50 pp" are the percentages of plots whose absolute error
 falls below and above those thresholds.
 
@@ -939,6 +955,12 @@ models themselves do, which bears on where further gains are likely to come
 from. It does not measure a ceiling on achievable model performance, and nothing
 here should be read as one: a model is not confined to the accuracy of its
 labels. Section 7.3 gives the mechanism and measures it.
+
+Figure 14 gives the plot-level view behind these summaries, every registered map
+in all three cities on common axes. It is the one place the scatter itself is
+shown rather than reduced to a metric, and the shape of the Vietnamese
+zero-shot panels, mass held away from the 1:1 line at low reference values, is
+the distributional failure Section 7.2 measures.
 
 ![Figure 14](../outputs_validation/fig01_scatter_grid.png)
 
@@ -957,7 +979,7 @@ This analysis is independent validation and belongs here rather than in Section
 so placing it beside the CLMS-scored holdout numbers of Section 4 would merge
 the two validations that Section 3.4 keeps apart.
 
-Table 5 gives the six Milan pairs, tested by paired Wilcoxon signed-rank [11] on
+Table 6 gives the six Milan pairs, tested by paired Wilcoxon signed-rank [11] on
 per-plot absolute error with Benjamini-Hochberg control of the false discovery
 rate [12] within the city.
 
@@ -970,7 +992,7 @@ rate [12] within the city.
 | S2 stack | S2 percentile | 16.55 | 16.49 | +0.19 | 6.55e-01 | 7.86e-01 | no |
 | emb_RF | S2 median | 18.30 | 18.36 | −0.64 | 7.90e-01 | 7.90e-01 | no |
 
-Table 5. Paired Wilcoxon tests on per-plot absolute error, Milan, strict rule,
+Table 6. Paired Wilcoxon tests on per-plot absolute error, Milan, strict rule,
 n = 450 plots. Median difference is the median of the paired per-plot
 differences in absolute error.
 
@@ -1047,8 +1069,9 @@ validation the percentile composite leads the AlphaEarth embeddings by 4.661
 RMSE, 9.462 against 14.123. On the independent validation the same two maps are
 24.809 and 25.625, a lead of 0.816. Across all four predictor sets the spread
 falls from 4.661, which is 33.0 % of the worst map at 14.123, to 1.340, which is
-5.2 % of the worst map at 25.984. That is a compression of about 6.4 times.
-Figure 15 shows the four maps moving between the two validations.
+5.2 % of the worst map at 25.984. Relative to each validation's own error scale,
+that is a compression of about 6.4 times. Figure 15 shows the four maps moving
+between the two validations.
 
 ![Figure 15](figs/fig_samesource_vs_independent.png)
 
