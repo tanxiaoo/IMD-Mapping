@@ -127,48 +127,55 @@ The plotted values are unchanged — `FACTS.md` was rebuilt after the redraw and
 byte-identical. Because these paths are gitignored notebook outputs, a future
 deliberate re-run of 01b will revert them; re-run the script afterwards.
 
-**Eight more cited figures — title bands removed 2026-09-01, at the LaTeX
-conversion.** The two figures above were the only ones fixed when the rule was
-first applied. Converting the report to LaTeX made the rest visible, because
-LaTeX prints its own figure number directly beneath an image that was already
-displaying a different one:
+**Eight more cited figures — PNGs were STALE, rebuilt 2026-09-01.** The two
+figures above were fixed at source in commit `9b5c792` ("Separate figure code
+from figure titles"), which removed the numbered suptitles from notebooks 01,
+01b, 02, 03 and 04. **The notebook source has been correct ever since.** What was
+wrong was the images: they were never rebuilt after that commit, so eight cited
+PNGs still displayed a title from the pre-fix code:
 
-| File | Was rendered in the image | Report figure |
+| File | Stale PNG displayed | Report figure |
 |---|---|---|
-| `outputs_v2/fig01_spatial_split.png` | `Figure 1 · Spatial Train/Test Split` + train/test/buffer counts | Figure 2 |
-| `outputs_S2_percentile_.../figD_importance_RF.png` | `Figure D · Feature Importance -- RF · Sentinel-2 (tuning block=1000m)` | Figure 8 |
-| `outputs_transfer_v2/fig01_transfer_comparison.png` | `Figure 1 · Same-source validation: … Agreement with the training target, not accuracy` | Figure 9 |
+| `outputs_v2/fig01_spatial_split.png` | `Figure 1 · Spatial Train/Test Split` | Figure 2 |
+| `outputs_S2_percentile_.../figD_importance_RF.png` | `Figure D · Feature Importance …` | Figure 8 |
+| `outputs_transfer_v2/fig01_transfer_comparison.png` | `Figure 1 · Same-source validation: … not accuracy` | Figure 9 |
 | `outputs_transfer_S2_median/fig01_transfer_comparison.png` | same | Figure 10 |
-| `outputs_transfer_v2/fig_obs_vs_pred_hanoi_hcmc.png` | `Observed vs Predicted IMD — AlphaEarth embedding (64 dims)` + `Hanoi & HCMC` | Figure 11 |
-| `outputs_transfer_v2/fig02_per_class_mae.png` | `Figure 2 · Per-Class MAE -- Milan model transfer vs Local Retrain` | Figure 12 |
-| `outputs_validation/fig02_forest_ci.png` | `Figure 2 · Map accuracy against photo-interpreted reference` | Figure 13 |
-| `outputs_validation/fig01_scatter_grid.png` | `Figure 1 · Reference vs predicted IMD (centre pixel, strict rule)` | Figure 14 |
+| `outputs_transfer_v2/fig_obs_vs_pred_hanoi_hcmc.png` | `Observed vs Predicted IMD …` + `Hanoi & HCMC` | Figure 11 |
+| `outputs_transfer_v2/fig02_per_class_mae.png` | `Figure 2 · Per-Class MAE …` | Figure 12 |
+| `outputs_validation/fig02_forest_ci.png` | `Figure 2 · Map accuracy …` | Figure 13 |
+| `outputs_validation/fig01_scatter_grid.png` | `Figure 1 · Reference vs predicted IMD …` | Figure 14 |
 
-Seven of the eight rendered a figure number, and the two transfer suptitles were
-also **conclusions** ("Agreement with the training target, not accuracy"), which
-the rule reserves for the caption. This is exactly the blind spot CLAUDE.md
-names: `audit_numbers.py` checks caption-to-image agreement but cannot read a
-number *inside* an image, so a figure captioned "Figure 14" while displaying
-"Figure 1" passed every check.
+The LaTeX conversion is what exposed them: LaTeX prints its own figure number
+directly beneath an image already showing a different one. This is the blind spot
+CLAUDE.md names — `audit_numbers.py` checks caption-to-image agreement but cannot
+read a number *inside* a PNG, so a figure captioned "Figure 14" while displaying
+"Figure 1" passed every check. **A figure whose PNG predates a labelling fix is
+invisible to every automated check in this repo; only rebuilding catches it.**
 
-**No title text was lost.** Each was checked against the `\caption{}` in
-`report/report.tex` before removal, and every one is already carried there more
-fully. This is why CLAUDE.md states there is no separate figure-title file: the
-title lives in the caption, beside the prose that has to agree with it.
+**The fix was to rebuild, not to post-process.** `code/redraw_cited_figs.py`
+redraws F2, F8, F9, F10, F11 and F12 from the CSVs, point files and rasters the
+notebooks already wrote, reproducing cells 12, 47, 13, 17 and 23 verbatim.
+F13 and F14 came from re-executing notebook 04, which is safe because it reads
+existing rasters, retrains nothing and makes no Earth Engine calls — its six CSVs
+and `FACTS.md` were verified byte-identical afterwards. Notebooks 01 and 02 were
+**not** re-executed: they re-tune models and export rasters to Earth Engine,
+which CLAUDE.md forbids for a labelling change.
 
-`code/strip_figure_titles.py` does the removal. These eight do not qualify for
-the `redraw_notebook_figs.py` treatment — three plot Earth Engine raster exports
-that exist only as PNGs, and reconstructing the others' panel geometry would risk
-changing plotted data while fixing a label. So the title band is removed from the
-image instead, which touches no plotted pixel: seven are cropped at the blank gap
-below the title, and `fig_obs_vs_pred_hanoi_hcmc.png` is erased in place because
-its second title line vertically overlaps its panel titles and no horizontal cut
-separates them. Band positions are found per image rather than hardcoded, and
-guarded on line height, so a regenerated figure with a different layout refuses
-loudly instead of being mis-cropped. The script is idempotent — cropped figures
-are recognised by height, the erased one by where its first ink starts — so
-re-running after a notebook re-run is safe. Run `--check` to test without
-writing.
+**What the rebuilt figures legitimately keep.** The rule is not "remove every
+suptitle" — CLAUDE.md permits run-identifying parameters where the same filename
+exists in several run directories and the plot cannot distinguish them. So these
+survive, and should:
+
+| Figure | Kept suptitle | Why |
+|---|---|---|
+| F2 | `Train: 2449 pts \| Test: 1014 pts \| Buffer: 250m` | run parameters |
+| F8 | `RF · Sentinel-2 (tuning block=1000m)` | same filename in 4 run dirs |
+| F9, F10 | `scored against GHSL (Milan baseline against CLMS)` | same filename in 2 run dirs; names the reference, not the finding |
+| F11 | `AlphaEarth embedding (64 dims)` | distinguishes from the S2 median run |
+| F12 | `spatial test set \| 1000m blocks, 250m buffer` | run parameters |
+| F13, F14 | none | notebook 04 emits none |
+
+None carries a figure number, a restatement of the caption, or a conclusion.
 
 **`fig06_inflation_heatmap.png` — NEEDS-EDIT, resolved for the report by F3.**
 Its plotted values are correct, but it renders one row per *tuned* model, so it
