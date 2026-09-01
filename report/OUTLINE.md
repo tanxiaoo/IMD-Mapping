@@ -14,9 +14,10 @@ compressed to a short account with a citation, not re-derived.
   between them; §7 does the reconciling work.
 - Vietnam argues **transfer fails, retraining is required**. Level-matching is
   the supporting mechanism, not the headline.
-- Reference-product quality is folded into the §6 forest plot as a paragraph,
-  not promoted to its own section. Its quantitative form — bias recovery — moves
-  to §7 as evidence that retraining works.
+- Reference-product quality is folded into the §6 forest plot as prose, not
+  promoted to its own section — it is written into §6.1 immediately after F10,
+  since the figure's diamonds already carry the result. Its quantitative form —
+  bias recovery — moves to §7 as evidence that retraining works.
 - Data and Methods stay short but self-contained: a reader should not need the
   Zgela report open to follow them.
 - **SVR appears in §4 only.** Vietnam is RF throughout. Stated once in §3.2.
@@ -164,14 +165,32 @@ Cite: Žgela pp. 2 and 4, Figs. 1–2.
 **Claim:** Both estimators are tuned by randomised search under spatial block CV;
 RF is carried forward everywhere outside §4.
 
+**Estimator scope.** Three estimators are tuned; the two carried forward, RF and
+SVR, are the ones reported. Do **not** name the third, and do **not** attribute
+its exclusion to GEE raster support — that is Žgela's reason for his own third
+estimator, it is unsupported by this repo's evidence, and the excluded model in
+fact wins CV on the percentile run (`best_model_name` in its
+`model_metadata_S2.json`). State the count neutrally and give the real reason RF
+is carried: notebook 02 requires an RF and notebook 04 holds the estimator fixed.
+`collect_metrics.py` filters the name at collection and exposes
+`reported_model()` for any `best_model_*` field.
+
 **The single statement about model scope goes here:** SVR is evaluated in Milan
 only. Vietnam is RF throughout, because notebook 02's transfer design requires an
 RF and the comparison across cities must hold the estimator fixed. Notebook 04
 likewise validates the RF raster from every run, so the validation comparison
 isolates the predictor set rather than confounding predictor with estimator.
 
-Figures: **F3** `fig06_inflation_heatmap.png` — **EXISTS/KEEP**. Shows that
-spatial blocking has removed what leakage there was: maximum inflation 1.0 %.
+Figures: **F3** `report/figs/fig_cv_inflation.png` — **BUILT**. Shows that
+spatial blocking has removed what leakage there was: over the reported
+estimators the largest absolute inflation is 0.3 %.
+⚠ The notebook's `fig06_inflation_heatmap.png` has a row per tuned model, so it
+renders the excluded estimator's name and is **not** cited. F3 is redrawn from
+`inflation_analysis.csv` filtered to RF and SVR by `code/make_report_figs.py`
+— per CLAUDE.md, redrawn from the CSV rather than by re-executing the notebook.
+`figB_model_cv_comparison.png`, `fig04_rmse_boxplots.png` and
+`fig_repeated_cv_results.png` have the same exposure if any later section
+reaches for them.
 FACTS.md: none directly.
 
 ### 3.3 Accuracy metrics — 1 pp
@@ -225,7 +244,8 @@ The ranking is identical on RMSE, MAE and R², so it is not a metric artefact.
 
 Figures: **F4** `fig07_holdout_scatter.png` (percentile) — **EXISTS/KEEP**;
 **F5** `figC_perclass_GEE_RF.png` (percentile) — **EXISTS/KEEP**, per-class
-behaviour.
+behaviour; **F15** `fig_milan_raster_comparison.png` (`report/figs`) —
+**BUILT**, the map view, qualitative support only.
 FACTS.md: Table A, all eight Milan rows.
 
 ### 4.2 The CV-versus-holdout reversal — 0.5 pp
@@ -303,10 +323,14 @@ against GHSL.
 Both predictor sets behave the same way, so the failure is not specific to
 embeddings or to S2.
 
-Figures: **F7** `fig01_transfer_comparison.png` — **NEEDS-EDIT**. Correct for
-same-source validation but its bias bars are measured against GHSL; the caption must say so
-explicitly and must not be read as accuracy. **F8**
-`fig_obs_vs_pred_hanoi_hcmc.png` — **EXISTS/KEEP**, the qualitative map view.
+Figures: **F7** `fig01_transfer_comparison.png` (`outputs_transfer_v2`,
+embeddings) and **F16** the same filename in `outputs_transfer_S2_median` (S2
+median) — **both cited, as a pair**, so §5.1 shows both predictor sets rather
+than tabulating two and plotting one. Both are correct for same-source
+validation but their bias bars are measured against GHSL; each caption must name
+its predictor set and its reference explicitly, and neither may be read as
+accuracy. **F8** `fig_obs_vs_pred_hanoi_hcmc.png` (`outputs_transfer_v2`) —
+**EXISTS/KEEP**, the qualitative map view, embeddings only.
 FACTS.md: Table A, all eight Vietnam rows.
 
 ### 5.2 Per-class behaviour — 1 pp
@@ -345,10 +369,26 @@ Every map in all three cities scored on 450 plots each, strict rule. The Milan
 four collapse from a same-source validation spread of 9.46–14.12 to 24.64–25.98. Overlapping
 bootstrap CIs make the point visually.
 
+**The training products are folded in here as unnumbered prose after the forest
+plot**, per the structural decision above — the diamonds in F10 already carry the
+result, so it is written as a reading of that figure rather than as a subsection
+competing with it. Three blocks: the headline (CLMS 26.253 worse than all four
+models it trained; GHSL 40.345 / 37.355 worse than every local retrain; bias
+≈ +20 pp tying back to §2.1), the MAE/RMSE reconciliation carried by the
+error-distribution table, and the not-a-ceiling guard handing off to §7.3.
+
+The reconciliation is compressed to about four sentences but **must not be cut**.
+CLMS holds the *best* MAE (14.606) and the *worst* RMSE (26.253), which reads as
+a counter-example to the headline unless the distributional cause is given:
+CLMS is right more often (53.3 % within 5 pp against 34.2 %) and wrong by more
+when wrong (8.7 % of plots above 50 pp). Without it the table's MAE column
+contradicts the paragraph above it.
+
 Figures: **F10** `fig02_forest_ci.png` — **EXISTS/KEEP**. The report's
 centrepiece: all 15 maps, targets as diamonds, noise-corrected RMSE ticked.
 **F11** `fig01_scatter_grid.png` — **EXISTS/KEEP**.
-FACTS.md: Table B, all primary-rule rows.
+FACTS.md: Table B, all primary-rule rows, including `role = reference`; Milan
+per-plot absolute-error distribution table.
 
 ### 6.2 Two tiers under paired testing — 1 pp
 
@@ -378,20 +418,7 @@ Two points to state explicitly, because §6.1 has just shown overlapping CIs:
 Figures: none — carried by a table.
 FACTS.md: paired-significance table, six Milan rows.
 
-### 6.3 The training products, scored as maps — 1 pp
-
-**A paragraph, not a subsection with its own figures** — the forest plot already
-shows it. CLMS scores RMSE 26.253, worse than all four Milan models it trained.
-GHSL scores 40.345 (Hanoi) and 37.355 (HCMC), worse than every local retrain.
-Note the CLMS MAE/RMSE split (best MAE 14.61, worst RMSE) and that this does not
-contradict the argument.
-
-State plainly that this measures **label quality**, and is **not** a ceiling on
-achievable model performance — §7.3 gives the mechanism and the measurement.
-
-FACTS.md: Table B rows with `role = reference`.
-
-### 6.4 Rule sensitivity — 1 pp
+### 6.3 Rule sensitivity — 1 pp
 
 **Claim:** The conclusion does not depend on the impervious coding.
 
@@ -515,7 +542,7 @@ composite-window sections.
 
 **Claim:** Explicit Sentinel-2 composites outperform the foundation-model
 embeddings against CLMS in Milan by a wide margin; against independent
-photo-interpretation that margin **shrinks roughly sevenfold but remains
+photo-interpretation that margin **compresses about 6.4-fold but remains
 resolvable**; zero-shot transfer to Vietnam fails and local retraining is
 required; and both training products score no better than the models fitted to
 them — which measures the quality of the labels, not a limit on the maps.
@@ -548,7 +575,7 @@ Four numbered conclusions:
    interpretation this much. It does **not** bound achievable accuracy — §7.3
    measures the models recovering **38–67 %** of GHSL's systematic deficit,
    which is a model outperforming its own labels. Any sentence implying the
-   target caps the map contradicts §6.3 and §7.3 and must not be written.
+   target caps the map contradicts §6.1 and §7.3 and must not be written.
 
 Figures: none.
 FACTS.md: Table A Milan rows; Table B primary-rule rows; paired-significance
@@ -562,24 +589,35 @@ table; bias-recovery table.
 |---|---|---|---|---|
 | F1 | `fig_composite_depth.png` (`report/figs`) | 2.3, ref. 8 | **BUILT** | gap 5 |
 | F2 | `fig01_spatial_split.png` (`outputs_v2`) | 3.1 | EXISTS / KEEP | FIGURES.md |
-| F3 | `fig06_inflation_heatmap.png` | 3.2 | EXISTS / KEEP | FIGURES.md |
+| F3 | `fig_cv_inflation.png` (`report/figs`) | 3.2 | **BUILT** | redrawn from `inflation_analysis.csv` |
 | F4 | `fig07_holdout_scatter.png` (percentile) | 4.1 | EXISTS / KEEP | FIGURES.md |
 | F5 | `figC_perclass_GEE_RF.png` (percentile) | 4.1 | EXISTS / KEEP | FIGURES.md |
 | F6 | `figD_importance_RF.png` (percentile) | 4.3 | EXISTS / KEEP | FIGURES.md |
-| F7 | `fig01_transfer_comparison.png` | 5.1 | EXISTS / KEEP | FIGURES.md |
-| F8 | `fig_obs_vs_pred_hanoi_hcmc.png` | 5.1 | EXISTS / KEEP | FIGURES.md |
-| F9 | `fig02_per_class_mae.png` | 5.2 | EXISTS / KEEP | FIGURES.md |
+| F7 | `fig01_transfer_comparison.png` (`outputs_transfer_v2`) | 5.1 | EXISTS / KEEP | FIGURES.md |
+| F8 | `fig_obs_vs_pred_hanoi_hcmc.png` (`outputs_transfer_v2`) | 5.1 | EXISTS / KEEP | FIGURES.md |
+| F9 | `fig02_per_class_mae.png` (`outputs_transfer_v2`) | 5.2 | EXISTS / KEEP | FIGURES.md |
 | F10 | `fig02_forest_ci.png` | 6.1 | EXISTS / KEEP | FIGURES.md |
 | F11 | `fig01_scatter_grid.png` | 6.1 | EXISTS / KEEP | FIGURES.md |
 | F12 | `fig_samesource_vs_independent.png` (`report/figs`) | 7.1 | **BUILT** | gap 1 |
 | F13 | `fig_hcmc_prediction_histogram.png` (`report/figs`) | 7.2 | **BUILT** | gaps 3 + 4 merged |
 | F14 | `fig_bias_recovery.png` (`report/figs`) | 7.3 | **BUILT** | gap 4 |
+| F15 | `fig_milan_raster_comparison.png` (`report/figs`) | 4.1 | **BUILT** | relabelled `figE` |
+| F16 | `fig01_transfer_comparison.png` (`outputs_transfer_S2_median`) | 5.1 | EXISTS / KEEP | S2 median pair to F7 |
 
-**Total 14 figures** — 9 from notebooks (all KEEP) and 4 built into
-`report/figs/` by `code/make_report_figs.py`. Within the 12–14 target.
+**Total 16 figures** — 10 from notebooks (all KEEP) and 6 built into
+`report/figs/` by `code/make_report_figs.py`. Two over the 12–14 target: F15,
+the relabelled raster comparison, and F16, the S2 median pair to F7 that keeps
+§5.1 from showing one predictor set and tabulating two.
 
-Tables (not counted as figures): same-source validation summary (§4.1), paired tests (§4.2),
-CV-vs-holdout (§4.3), rule sensitivity (§6.3).
+**Two notebook figures now share the filename `fig01_transfer_comparison.png`**
+(F7 in `outputs_transfer_v2`, F16 in `outputs_transfer_S2_median`), as do F8 and
+F9 with their unused S2 median twins. Every citation must carry its directory;
+a bare filename is ambiguous.
+
+Tables (not counted as figures): same-source validation summary (§4.1),
+CV-vs-holdout (§4.2), feature importance (§4.3), independent validation summary
+and Milan per-plot error distribution (§6.1), paired tests (§6.2), rule
+sensitivity (§6.3).
 
 ## Disposition of the seven gaps
 
@@ -622,8 +660,8 @@ evaluation* on p. 4), **"2. Method Transferability and Application in Vietnam"**
 | Fig. 4 — CV RMSE, best models | 5 | §3.2 tuning, §4.3 |
 | Fig. 5 — RMSE and MAE per IMD class | 6 | §4.1 |
 | Fig. 6 — holdout test accuracy, RF | 6 | §4.1 |
-| Fig. 7 — impurity and permutation importance, top 20 bands | 7 | §4.4 |
-| Fig. 8 — observed/predicted rasters and difference | 7 | §4.4 |
+| Fig. 7 — impurity and permutation importance, top 20 bands | 7 | §4.3 |
+| Fig. 8 — observed/predicted rasters and difference | 7 | not cited |
 | Fig. 9 — transfer vs local retrain metrics | 9 | §5.1 |
 | Fig. 10 — per-class MAE, transfer vs local | 9 | §5.2 |
 | Fig. 11 — GHSL vs predicted IMD | 10 | §2.1, §6.2 |
@@ -703,7 +741,7 @@ All three code changes are made **and the notebooks re-run** (2026-08-31 /
   every defined value is negative and must not be quoted as a performance figure.
 - **Feature importance CSV** — notebooks 01 (cell 46) and 01b (cell 47) write
   `feature_importance_RF.csv`: band, impurity importance, permutation mean and
-  std, rank. 01b re-run on the percentile composite; §4.4 now has its numbers.
+  std, rank. 01b re-run on the percentile composite; §4.3 now has its numbers.
 - **Reproducibility confirmed as a side effect.** All three re-runs reproduced
   their headline metrics **bit-identically** against `FACTS.md` — Vietnam
   transfer (both predictor sets, both cities, both scenarios) and the Milan

@@ -6,7 +6,10 @@ Five checks, each reported with the line number that failed:
   2. FIGURES    every figure filename mentioned exists on disk
   3. COVERAGE   every figure in OUTLINE.md's consolidated list is cited
   4. TERMS      no stale "Track A" / "Track B" terminology
-  5. (report absent or partial is not a failure -- see below)
+  5. NUMBERING  figures are numbered 1..N in the order they appear, each
+                caption matches its image, and every in-text "Figure N"
+                resolves to a figure that exists
+  6. (report absent or partial is not a failure -- see below)
 
 Runs cleanly against an empty, missing or partial report: a report that does
 not exist yet, or cites no figures yet, produces a clean pass with a note.
@@ -152,6 +155,116 @@ def _outline_figures():
     return figs
 
 
+def check_numbering(lines):
+    """Sequential figure numbering, caption pairing and reference resolution.
+
+    Renumbering a report is exactly the kind of edit that leaves a figure
+    number pointing at the wrong picture while every filename still resolves,
+    so the FIGURES check above passes and nothing notices. Three things are
+    verified here:
+
+      ORDER    the Nth embedded image is Figure N. Numbers must run 1..N in
+               the order the images appear on the page -- a gap, a repeat or
+               an out-of-order number all fail.
+      CAPTION  each image is followed within a few lines by a caption whose
+               number matches it. Captions carry the numbers a reader
+               actually sees, so a caption that disagrees with its image is
+               the failure mode a renumber most easily introduces.
+      REFS     every in-text "Figure N" names a figure that exists.
+
+    An in-text reference to a figure defined LATER is allowed: forward
+    references are normal prose. Only unresolvable numbers fail.
+
+    Returns a list of (line_no, message).
+    """
+    out = []
+
+    images = []      # (line_no, number, path)
+    captions = []    # (line_no, number)
+    refs = []        # (line_no, number)
+
+    for i, line in enumerate(lines, start=1):
+        stripped = line.strip()
+
+        m = re.match(r'!\[[^\]]*\]\(([^)]+)\)', stripped)
+        if m:
+            path = m.group(1)
+            alt = re.match(r'!\[\s*Figure\s+(\d+)\s*\]', stripped)
+            if alt:
+                images.append((i, int(alt.group(1)), path))
+            else:
+                # An unnumbered embed cannot be checked for order, and
+                # silently skipping it would let a figure escape the check.
+                out.append((i, f'embedded image {os.path.basename(path)} has '
+                               'no "Figure N" alt text, so its position in '
+                               'the numbering cannot be checked'))
+            continue
+
+        m = re.match(r'\*{0,2}Figure\s+(\d+)\*{0,2}\.\s', stripped)
+        if m:
+            captions.append((i, int(m.group(1))))
+            continue
+
+        # In-text references. Citations of the REFERENCE report use the
+        # "Fig. N" form after a page number ("Žgela p. 6, Fig. 7") and are
+        # not references to this report's figures, so only the spelled-out
+        # "Figure N" / "Figures N and M" form is collected.
+        for m in re.finditer(r'\bFigures?\s+(\d+)(?:\s+and\s+(\d+))?', line):
+            refs.append((i, int(m.group(1))))
+            if m.group(2):
+                refs.append((i, int(m.group(2))))
+
+    if not images:
+        return out
+
+    # ── ORDER ───────────────────────────────────────────────────────────────
+    for pos, (line_no, num, path) in enumerate(images, start=1):
+        if num != pos:
+            out.append((line_no,
+                        f'{os.path.basename(path)} is embedded as "Figure '
+                        f'{num}" but is the {pos}{"st" if pos == 1 else "nd" if pos == 2 else "rd" if pos == 3 else "th"} '
+                        f'image in the report — figures must be numbered in '
+                        f'the order they appear'))
+
+    # ── CAPTION ─────────────────────────────────────────────────────────────
+    # Pair each image with the first caption following it, within a short
+    # window: a caption further away belongs to something else.
+    WINDOW = 4
+    for line_no, num, path in images:
+        following = [c for c in captions if 0 < c[0] - line_no <= WINDOW]
+        if not following:
+            out.append((line_no,
+                        f'Figure {num} ({os.path.basename(path)}) has no '
+                        f'"Figure N." caption within {WINDOW} lines below it'))
+            continue
+        cap_line, cap_num = following[0]
+        if cap_num != num:
+            out.append((cap_line,
+                        f'caption reads "Figure {cap_num}." but the image '
+                        f'above it at line {line_no} is Figure {num} '
+                        f'({os.path.basename(path)})'))
+
+    # A caption with no image above it is an orphan the pairing above misses.
+    paired = {c[0] for line_no, _, _ in images
+              for c in captions if 0 < c[0] - line_no <= WINDOW}
+    for cap_line, cap_num in captions:
+        if cap_line not in paired:
+            out.append((cap_line,
+                        f'caption "Figure {cap_num}." has no embedded image '
+                        f'in the {WINDOW} lines above it'))
+
+    # ── REFS ────────────────────────────────────────────────────────────────
+    defined = {num for _, num, _ in images}
+    hi = max(defined)
+    for line_no, num in refs:
+        if num not in defined:
+            out.append((line_no,
+                        f'in-text reference to Figure {num}, but the report '
+                        f'defines Figures 1 to {hi}'))
+
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('path', nargs='?', default=None,
@@ -225,6 +338,10 @@ def main():
                     'FIGURES', i,
                     f'{ref} does not exist in {" / ".join(FIG_DIRS[:3])}…'))
 
+    # 5. NUMBERING — sequential figure numbers, captions and references.
+    for line_no, msg in check_numbering(lines):
+        failures.append(('NUMBERING', line_no, msg))
+
     # 3. COVERAGE — every planned figure must be cited somewhere.
     outline_figs = _outline_figures()
     if not lines:
@@ -278,7 +395,8 @@ def main():
         by_check = {}
         for check, line_no, msg in failures:
             by_check.setdefault(check, []).append((line_no, msg))
-        for check in ('SETUP', 'TERMS', 'NUMBERS', 'FIGURES', 'COVERAGE'):
+        for check in ('SETUP', 'TERMS', 'NUMBERS', 'FIGURES', 'NUMBERING',
+                      'COVERAGE'):
             items = by_check.get(check)
             if not items:
                 continue
@@ -297,6 +415,7 @@ def main():
 
     print('  NUMBERS   ok')
     print('  FIGURES   ok')
+    print('  NUMBERING ok')
     print('  COVERAGE  ok')
     print('  TERMS     ok')
     print()

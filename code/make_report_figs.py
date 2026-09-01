@@ -769,8 +769,213 @@ def build_f14():
     return path
 
 
-FIGURES = {'F1': build_f1, 'F12': build_f12, 'F13': build_f13,
-           'F14': build_f14}
+# ── F15 · Milan raster comparison ────────────────────────────────────────────
+# The one figure here built from rasters rather than from FACTS.md. It is a
+# relabelling of the notebook's figE_raster_comparison_1.png, which FIGURES.md
+# records as NEEDS-EDIT: its suptitle is commented out in 01b, so the three
+# composite runs' copies are indistinguishable outside their directory path.
+#
+# Rebuilt rather than re-executed. Notebook 01b would re-tune models and
+# re-export rasters (CLAUDE.md), but this figure only READS two GeoTIFFs that
+# already exist, so redrawing them standalone is safe and changes no model.
+# The panel geometry, colours, scale and limits are copied from 01b verbatim;
+# the only change is a suptitle naming the run.
+RASTER_OBS = 'data/IMD_2018_CLMS_UTM32N.tif'
+RASTER_PRED = ('outputs_S2_percentile_p10p25p50p75p90/'
+               'IMD_predicted_RF_S2_Milan.tif')
+DISPLAY_SCALE = 2          # 01b's decimation factor, kept for comparability
+
+
+def build_f15():
+    import matplotlib.ticker as mticker
+    from matplotlib.colors import ListedColormap
+    import rioxarray as rxr
+
+    obs_path = os.path.join(REPO, RASTER_OBS)
+    pred_path = os.path.join(REPO, RASTER_PRED)
+    for p in (obs_path, pred_path):
+        if not os.path.exists(p):
+            raise SystemExit(f'F15 needs {os.path.relpath(p, REPO)}, '
+                             'which is not on disk.')
+
+    obs = rxr.open_rasterio(obs_path, masked=False).squeeze(
+        'band', drop=True)[::DISPLAY_SCALE, ::DISPLAY_SCALE]
+    pred = rxr.open_rasterio(pred_path, masked=False).squeeze(
+        'band', drop=True)[::DISPLAY_SCALE, ::DISPLAY_SCALE]
+    if pred.rio.crs != obs.rio.crs or pred.shape != obs.shape:
+        pred = pred.rio.reproject_match(obs)
+    diff = pred - obs
+
+    imd_cmap = ListedColormap(
+        ['#1a9641', '#a6d96a', '#ffffbf', '#fdae61', '#d7191c'])
+
+    def show(ax, da, **kw):
+        b = da.rio.bounds()
+        im = ax.imshow(da.values, extent=(b[0], b[2], b[1], b[3]), **kw)
+        ax.set_aspect('equal')
+        ax.xaxis.set_major_locator(mticker.MaxNLocator(nbins=4))
+        ax.yaxis.set_major_locator(mticker.MaxNLocator(nbins=4))
+        ax.tick_params(axis='both', labelsize=8)
+        ax.set_xlabel('Easting [m]', fontsize=9)
+        ax.set_ylabel('Northing [m]', fontsize=9)
+        return im
+
+    fig, ax = plt.subplots(2, 2, figsize=(15, 12),
+                           gridspec_kw={'wspace': 0.25, 'hspace': 0.04})
+    im1 = show(ax[0, 0], obs, cmap=imd_cmap, vmin=0, vmax=100)
+    ax[0, 0].set_title('Observed IMD (CLMS 2018)',
+                       fontweight='bold', fontsize=12)
+    show(ax[0, 1], pred, cmap=imd_cmap, vmin=0, vmax=100)
+    ax[0, 1].set_title('Predicted IMD (S2 percentile, RF)',
+                       fontweight='bold', fontsize=12)
+    im3 = show(ax[1, 0], diff, cmap='RdBu_r', vmin=-30, vmax=30)
+    ax[1, 0].set_title('Difference (Predicted - Observed)',
+                       fontweight='bold', fontsize=12)
+    ax[1, 1].axis('off')
+
+    fig.colorbar(im1, ax=ax[0, :], orientation='vertical',
+                 fraction=0.025, pad=0.02, label='IMD (%)')
+    fig.colorbar(im3, ax=ax[1, :], orientation='vertical',
+                 fraction=0.025, pad=0.02, label='Pred - Obs (%)')
+
+    # The label FIGURES.md asks for: a statement of what produced the panels,
+    # not a conclusion about them.
+    fig.suptitle('Figure 15 · Milan IMD, observed against predicted — '
+                 'S2 percentile composite (p10/p25/p50/p75/p90), '
+                 'random forest',
+                 fontsize=13, fontweight='bold', y=0.94)
+
+    os.makedirs(FIGS, exist_ok=True)
+    path = os.path.join(FIGS, 'fig_milan_raster_comparison.png')
+    fig.savefig(path, dpi=DPI, bbox_inches='tight')
+    plt.close(fig)
+
+    d = diff.values.astype('float64')
+    d = d[np.isfinite(d)]
+    print('F15 · fig_milan_raster_comparison — inputs and difference summary')
+    print(f'  observed  : {RASTER_OBS}')
+    print(f'  predicted : {RASTER_PRED}')
+    print(f'  decimation: every {DISPLAY_SCALE}nd pixel (display only)')
+    print(f'  difference: mean {d.mean():+.2f}, sd {d.std():.2f}, '
+          f'range {d.min():+.1f} to {d.max():+.1f} (pp, pred - obs)')
+    print('  NOTE: raster-wide and city-wide; not the 1014-point holdout in '
+          'Table A, and not quoted in the report.')
+    print('')
+    print(f'Saved {os.path.relpath(path, REPO)}')
+    return path
+
+
+# ── F3 · spatial-vs-random CV inflation ──────────────────────────────────────
+# A redraw of the notebook's fig06_inflation_heatmap.png, which FIGURES.md
+# records as usable but which carries one row per TUNED model -- including a
+# third estimator that is out of scope for this report and whose name the
+# figure would render. Filtering the estimator out is the whole reason this
+# rebuild exists.
+#
+# Redrawn from inflation_analysis.csv rather than by re-executing notebook 01,
+# per CLAUDE.md: re-running the notebook would re-tune models and re-export
+# rasters. The CSV is the tabular twin of the notebook figure, so the values
+# are the notebook's; only the row filter and the labelling change.
+INFLATION_CSV = 'outputs_v2/inflation_analysis.csv'
+REPORTED_MODELS = ('RF', 'SVR')
+
+
+def f3_values():
+    """Inflation rows for the reported estimators, read from the run's CSV."""
+    import csv
+
+    path = os.path.join(REPO, INFLATION_CSV)
+    if not os.path.exists(path):
+        raise LookupError(
+            f'{INFLATION_CSV} is missing; it is the tabular twin of the '
+            'notebook inflation heatmap. Re-run notebook 01 rather than '
+            'hardcoding the values.')
+    with open(path, encoding='utf-8', newline='') as fh:
+        rows = list(csv.DictReader(fh))
+
+    kept = [r for r in rows if r['Model'] in REPORTED_MODELS]
+    if {r['Model'] for r in kept} != set(REPORTED_MODELS):
+        raise LookupError(
+            f'{INFLATION_CSV} does not carry rows for every reported '
+            f'estimator {REPORTED_MODELS}; found '
+            f'{sorted({r["Model"] for r in rows})}.')
+
+    blocks = sorted({r['Block'] for r in kept}, key=lambda b: int(b[:-1]))
+    return kept, blocks, len(rows) - len(kept)
+
+
+def build_f3():
+    kept, blocks, n_dropped = f3_values()
+
+    by = {(r['Model'], r['Block']): r for r in kept}
+    tuning = {r['Model']: r['Tuning_block'] for r in kept}
+
+    fig, axes = plt.subplots(1, 2, figsize=(11.0, 3.2))
+    for ax, col, title, fmt in [
+        (axes[0], 'RMSE_diff', 'ΔRMSE inflation (pp)', '.2f'),
+        (axes[1], 'Pct_inflation', 'RMSE inflation (%)', '.1f'),
+    ]:
+        grid = np.array([[float(by[(m, b)][col]) for b in blocks]
+                         for m in REPORTED_MODELS])
+        # Symmetric limits about zero: the finding is that the values sit at
+        # zero, and a sequential scale normalised to the data would paint a
+        # 0.1 pp spread as though it were a gradient.
+        lim = max(1.0, float(np.abs(grid).max()))
+        im = ax.imshow(grid, cmap='RdBu_r', aspect='auto',
+                       vmin=-lim, vmax=lim)
+        ax.set_xticks(range(len(blocks)))
+        ax.set_xticklabels(blocks)
+        ax.set_yticks(range(len(REPORTED_MODELS)))
+        ax.set_yticklabels(list(REPORTED_MODELS))
+        ax.tick_params(axis='both', length=0)
+        for i, m in enumerate(REPORTED_MODELS):
+            for j, b in enumerate(blocks):
+                ax.text(j, i, f'{grid[i, j]:{fmt}}', ha='center', va='center',
+                        fontsize=10.5,
+                        fontweight='bold' if b == tuning[m] else 'normal')
+        ax.set_title(title, fontweight='bold')
+        ax.set_xlabel('Spatial block size', fontsize=9)
+        fig.colorbar(im, ax=ax, fraction=0.046, pad=0.03)
+
+    fig.suptitle('Figure 3 · Spatial against random cross-validation RMSE, '
+                 'training set\n(bold = the block each model was tuned at)',
+                 fontsize=13, fontweight='bold', y=1.10)
+    fig.tight_layout()
+
+    os.makedirs(FIGS, exist_ok=True)
+    path = os.path.join(FIGS, 'fig_cv_inflation.png')
+    fig.savefig(path, dpi=DPI, bbox_inches='tight')
+    plt.close(fig)
+
+    # ── Plotted values, for checking against the CSV ────────────────────────
+    print('F3 · fig_cv_inflation — plotted values')
+    print(f'  source: {INFLATION_CSV}')
+    print(f'  {n_dropped} row(s) for estimators out of scope were filtered out '
+          'before plotting')
+    print('')
+    print(f'{"model":>6s} {"block":>7s} {"random":>8s} {"spatial":>8s} '
+          f'{"diff":>7s} {"pct":>7s}  tuned at')
+    print('-' * 64)
+    worst = 0.0
+    for m in REPORTED_MODELS:
+        for b in blocks:
+            r = by[(m, b)]
+            pct = float(r['Pct_inflation'])
+            worst = max(worst, abs(pct))
+            print(f'{m:>6s} {b:>7s} {float(r["Random_RMSE"]):8.2f} '
+                  f'{float(r["Spatial_RMSE"]):8.2f} '
+                  f'{float(r["RMSE_diff"]):+7.2f} {pct:+7.1f} '
+                  f' {r["Tuning_block"] if b == r["Tuning_block"] else ""}')
+    print('-' * 64)
+    print(f'largest absolute inflation over the reported estimators: '
+          f'{worst:.1f}%')
+    print('')
+    print(f'Saved {os.path.relpath(path, REPO)}')
+    return path
+
+
+FIGURES = {'F1': build_f1, 'F3': build_f3, 'F12': build_f12,
+           'F13': build_f13, 'F14': build_f14, 'F15': build_f15}
 
 
 def main():

@@ -58,7 +58,7 @@ re-run per `COMPOSITE_METHOD`. `outputs_v2` has no `figE` and no
 | `fig03_degradation.png` | RMSE/R² degradation with block size, vline at best block | DIAGNOSTIC | per-point values | KEEP |
 | `fig04_rmse_boxplots.png` | Per-fold RMSE boxplots per model across block sizes | DIAGNOSTIC | tuning block | KEEP |
 | `fig05_all_metrics.png` | 2×2 grouped bars, all four metrics × models × blocks | DIAGNOSTIC | — | KEEP |
-| `fig06_inflation_heatmap.png` | Spatial-vs-random CV RMSE inflation, model × block | **RESULT** | every cell | KEEP |
+| `fig06_inflation_heatmap.png` | Spatial-vs-random CV RMSE inflation, model × block | **RESULT** | every cell | NEEDS-EDIT — **not cited**, see below |
 | `fig07_holdout_scatter.png` | Observed vs predicted on the holdout, RF and SVR panels | **RESULT** | RMSE/MAE/R²/Bias | KEEP |
 | `figA_holdout_accuracy_GEE_RF.png` · `_GEE_SVR.png` | 3-panel accuracy: scatter by class, KDE density, abs-error boxplot | **RESULT** | RMSE/MAE/R²/Bias | KEEP |
 | `figB_model_cv_comparison.png` | Best-block CV RMSE per model, winner outlined | DIAGNOSTIC | CV RMSE + block | NEEDS-EDIT |
@@ -71,14 +71,31 @@ re-run per `COMPOSITE_METHOD`. `outputs_v2` has no `figE` and no
 2026-08-24 · `outputs_S2_median` 2026-08-27. `figE` in stack and percentile was
 regenerated 2026-08-25.
 
+**`fig06_inflation_heatmap.png` — NEEDS-EDIT, resolved for the report by F3.**
+Its plotted values are correct, but it renders one row per *tuned* model, so it
+displays the name of the third estimator that is out of scope for this report.
+It is therefore not cited. `report/figs/fig_cv_inflation.png` (F3, §3.2) is
+redrawn from `outputs_v2/inflation_analysis.csv` filtered to RF and SVR, per
+CLAUDE.md's rule that a labelling change is made from the CSV the notebook
+already wrote rather than by re-executing the notebook. The values are the
+notebook's; only the row filter and the labelling differ.
+
 **`figB_model_cv_comparison.png` — NEEDS-EDIT.** It shows the CV winner only. In
 `outputs_v2` that winner is SVR, but RF is the model carried forward to Vietnam
 and validation, and RF wins the holdout. Used alone the figure implies SVR was
 selected. See the estimator-selection section of `EXPERIMENT_MAP.md`.
 
-**`figE_raster_comparison_1.png` — NEEDS-EDIT.** Its suptitle is commented out in
-the producing code, so the three copies carry no label identifying which
-composite produced them and are indistinguishable outside their directory path.
+**`figE_raster_comparison_1.png` — NEEDS-EDIT, resolved for the percentile run
+by F15.** Its suptitle is commented out in the producing code, so the three
+copies carry no label identifying which composite produced them and are
+indistinguishable outside their directory path.
+
+The percentile copy is the one the report needs, and it is rebuilt with a
+suptitle as `report/figs/fig_milan_raster_comparison.png` (F15, §4.1) rather
+than edited in place. The rebuild reads the same two GeoTIFFs the notebook reads
+and copies its panel geometry, colormap, limits and decimation verbatim, so the
+pixels are the notebook's; only the label is added. The `median` and `stack`
+copies remain unlabelled and NEEDS-EDIT — neither is cited.
 
 ## Vietnam transfer — same-source validation (vs GHSL)
 
@@ -88,7 +105,7 @@ Identical figure code in both; only the raster suffix and one suptitle differ.
 | File | Shows | Kind | Numbers in title | Status |
 |---|---|---|---|---|
 | `fig00_spatial_split.png` | Train/test/buffer points over the 1 km grid, both cities | DIAGNOSTIC | train/test/removed n | KEEP |
-| `fig01_transfer_comparison.png` | 2×2 bars: Milan baseline vs A vs B, per city, all four metrics | **RESULT** | every bar | KEEP |
+| `fig01_transfer_comparison.png` | 2×2 bars: Milan baseline vs A vs B, per city, all four metrics | **RESULT** | every bar | KEEP — **both copies cited**: F7 (`outputs_transfer_v2`, embeddings) and F16 (`outputs_transfer_S2_median`, S2 median) |
 | `fig02_per_class_mae.png` | MAE per IMD class, transfer vs local retrain | **RESULT** | — | KEEP |
 | `fig_scatter_Hanoi.png` · `fig_scatter_HCMC.png` | Observed GHSL vs predicted, both scenarios | **RESULT** | RMSE/MAE/R²/Bias | KEEP |
 | `fig_obs_vs_pred_hanoi_hcmc.png` | GHSL / Milan transfer / local retrain rasters, 2×3 | MAP | per-panel RMSE/R²/Bias | KEEP |
@@ -106,6 +123,16 @@ reference: *"Same-source validation: scored against GHSL (Milan baseline
 against CLMS) · Agreement with the training target, not accuracy."*
 
 The plotted values were always correct; only the labelling was incomplete.
+
+**Both copies are cited in §5.1, as F7 and F16.** The section tabulates both
+predictor sets, so showing only the embeddings run would plot half of what the
+table reports. The two figures are directly comparable — the figure code is
+identical in notebooks 02 and 03, and only the raster suffix and one suptitle
+differ — which is exactly why they must be labelled apart in the report: on the
+page they are two similar 2×2 bar panels whose axes do not say which predictor
+set produced them. **Each caption names its predictor set and its reference**,
+and every citation carries its directory, since the filename alone does not
+identify the run.
 
 ## Independent validation — photo-interpreted plots
 
@@ -132,14 +159,22 @@ notebook figure covers; see `data/FIGURE_GAPS.md` for why each exists.
 | File | Shows | Kind | §  | Status |
 |---|---|---|---|---|
 | `fig_composite_depth.png` | Usable S2 acquisitions per city on a 2018 calendar, with counts and obs/pixel | **RESULT** | 2.3 | KEEP |
+| `fig_cv_inflation.png` | Spatial-vs-random CV RMSE, model × block — the notebook's `fig06` redrawn from `inflation_analysis.csv` with the out-of-scope estimator's row filtered out | DIAGNOSTIC | 3.2 | KEEP — **cited** |
 | `fig_samesource_vs_independent.png` | The four Milan predictor sets under both validations, shared 5–30 pp axis | **RESULT** | 7.1 | KEEP |
 | `fig_hcmc_prediction_histogram.png` | Predicted-IMD distributions for the four HCMC maps plus the reference, with a range/IQR/mean strip | **RESULT** | 7.2 | KEEP |
 | `fig_bias_recovery.png` | GHSL's bias against each local retrain's, per city, with the closed gap in pp | **RESULT** | 7.3 | KEEP |
+| `fig_milan_raster_comparison.png` | Observed CLMS / predicted / difference rasters, Milan, percentile run — `figE` relabelled with a run-identifying suptitle | MAP | 4.1 | KEEP — **cited** |
 
-**Every value is read from `data/FACTS.md`.** `facts_value()` raises on an absent
-row, an ambiguous match, or a `MISSING` cell rather than substituting a literal,
-so a figure cannot drift from the numbers it claims to show. Each build prints
-its plotted values for checking against the fact base.
+**Every plotted value is read from `data/FACTS.md`.** `facts_value()` raises on
+an absent row, an ambiguous match, or a `MISSING` cell rather than substituting
+a literal, so a figure cannot drift from the numbers it claims to show. Each
+build prints its plotted values for checking against the fact base.
+
+**F15 is the one exception**: it is a map, not a chart, and reads its two
+GeoTIFFs directly. It plots no metric and quotes no number, so there is nothing
+for it to drift from; its build prints a difference summary for checking, which
+is deliberately raster-wide and is **not** quoted in the report — the report's
+numbers are the 1014-point holdout in Table A.
 
 **These figures state readings, never conclusions.** No conclusion sentences, no
 interpretive annotations, no callouts — only axis labels, panel titles, and
