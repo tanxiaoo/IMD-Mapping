@@ -36,8 +36,17 @@ Companion to `reference/` — the AlphaEarth report by Matej Žgela.
 - Build the PDF with `cd report && latexmk`. It writes `report/report.pdf`
   beside the source and keeps the auxiliary files in `report/build/`.
   `latexmkrc` sets the engine (XeLaTeX) and both paths, so `latexmk` takes no
-  arguments. Run it twice-equivalent automatically; it reruns until the
-  cross-references settle.
+  arguments. It reruns until the cross-references settle and runs the BibTeX
+  pass the bibliography needs.
+- `report/` is a self-contained Overleaf project: it compiles from
+  `report.tex`, `refs.bib` and `figs/` alone, with no file outside it. Keep it
+  that way — never add a `../` path to `\graphicspath` or `\input`.
+- References are `\cite` keys against `report/refs.bib`, numbered by BibTeX
+  (natbib, `unsrtnat`). Never hardcode a `[3]`: BibTeX assigns the numbers and
+  a literal one goes stale exactly as a hardcoded figure number does.
+- After regenerating any cited figure, run `python code/sync_figs.py` to
+  refresh the copies under `report/figs/`. It is idempotent, and it exits 1
+  naming any cited figure it cannot find.
 - Cross-reference every float with `\cref{}` against the label bound to its own
   caption. Never write a literal "Figure 7" or "Table 3" in the prose: LaTeX
   numbers the floats, and a hardcoded number goes stale the moment one moves.
@@ -77,8 +86,8 @@ Never in the image:
   or estimator keys as description. A panel title of `GEE_RF` is fine; a
   suptitle of `Figure C · [S2] Per-Class Accuracy -- GEE_RF` is not.
 - Conclusions. Figures state readings; every claim belongs to the caption. This
-  is a deliberate departure from `make_presentation.py`, whose slide titles are
-  written as conclusions.
+  is a deliberate departure from `make_presentation.py` (repo root, not
+  `code/`), whose slide titles are written as conclusions.
 
 There is no separate figure-title file. Titles live in the report caption beside
 the prose that has to agree with them, and `data/FIGURES.md` remains the

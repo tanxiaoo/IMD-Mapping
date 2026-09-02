@@ -293,6 +293,66 @@ def _references_line(lines):
     return None
 
 
+def _bib_keys(report_path):
+    """Entry keys defined in every .bib the report \\bibliography's, or None.
+
+    None means the report does not use BibTeX, and the hand-numbered check
+    below applies instead.
+    """
+    try:
+        with open(report_path, encoding='utf-8') as fh:
+            text = fh.read()
+    except OSError:
+        return None
+    text = re.sub(r'(?<!\\)%[^\n]*', '', text)
+    names = []
+    for m in re.finditer(r'\\bibliography\{([^}]*)\}', text):
+        names += [n.strip() for n in m.group(1).split(',') if n.strip()]
+    if not names:
+        return None
+    keys = set()
+    for name in names:
+        path = os.path.join(os.path.dirname(report_path), name)
+        if not path.endswith('.bib'):
+            path += '.bib'
+        if not os.path.exists(path):
+            return ('MISSING', name)
+        with open(path, encoding='utf-8') as fh:
+            for m in re.finditer(r'@\w+\s*\{\s*([^,\s]+)\s*,', fh.read()):
+                keys.add(m.group(1))
+    return keys
+
+
+def check_bibtex_citations(report_path, keys):
+    """Every \\cite key is defined in the .bib, and every entry is cited.
+
+    The same two failure modes as the hand-numbered check -- a citation that
+    resolves to nothing, and an entry nothing cites -- but keyed rather than
+    numbered. BibTeX assigns the numbers, so a number can no longer be wrong;
+    a key can still be misspelt, and an entry can still be orphaned when the
+    text that needed it is cut.
+    """
+    out = []
+    if isinstance(keys, tuple):          # ('MISSING', name)
+        return [(1, f'\\bibliography{{{keys[1]}}} but {keys[1]}.bib '
+                    'does not exist beside the report')]
+    with open(report_path, encoding='utf-8') as fh:
+        lines = fh.read().split('\n')
+    cited = {}
+    for i, line in enumerate(lines, start=1):
+        line = re.sub(r'(?<!\\)%.*$', '', line)
+        for m in re.finditer(r'\\cite[a-zA-Z]*\s*(?:\[[^\]]*\]\s*)*'
+                             r'\{([^}]*)\}', line):
+            for key in m.group(1).split(','):
+                cited.setdefault(key.strip(), i)
+    for key, line_no in sorted(cited.items(), key=lambda kv: kv[1]):
+        if key not in keys:
+            out.append((line_no, f'\\cite{{{key}}} has no entry in the .bib'))
+    for key in sorted(keys - set(cited)):
+        out.append((1, f'bib entry `{key}` is never cited'))
+    return out
+
+
 def check_citations(lines):
     """Numbered citations resolve, and every reference entry is cited.
 
@@ -464,9 +524,22 @@ def main():
         notes.append('LABELS check applies to LaTeX; skipped for a markdown '
                      'report.')
 
-    # 6. CITATIONS — every [N] resolves, every entry is cited.
-    for line_no, msg in check_citations(lines):
-        failures.append(('CITATIONS', line_no, msg))
+    # 6. CITATIONS — every citation resolves, every entry is cited.
+    # Since 2026-09-02 the report cites with \cite against report/refs.bib and
+    # BibTeX assigns the numbers, so the hand-numbered [N] check no longer
+    # applies: there is no numbered list in the source to resolve against, and
+    # a stale number is now impossible by construction. The key-based check
+    # catches what remains -- a misspelt key and an orphaned entry.
+    bib = _bib_keys(args.report) if lines else None
+    if bib is not None:
+        for line_no, msg in check_bibtex_citations(args.report, bib):
+            failures.append(('CITATIONS', line_no, msg))
+        if not isinstance(bib, tuple):
+            notes.append(f'{len(bib)} bib entries in refs.bib; numbering is '
+                         'assigned by BibTeX.')
+    else:
+        for line_no, msg in check_citations(lines):
+            failures.append(('CITATIONS', line_no, msg))
 
     # 3. COVERAGE — every planned figure must be cited somewhere.
     outline_figs = _outline_figures()

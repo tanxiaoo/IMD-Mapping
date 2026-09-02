@@ -387,7 +387,40 @@ computes it — those would disagree if the split ever changed.
 
 ## Version control
 
-All `outputs_*`, `*.png` and `figs_ppt/` are gitignored, so no figure is under
-version control. Regeneration is safe but leaves no history. The fact base
-(`FACTS.md`, `EXPERIMENT_MAP.md`, `FIGURES.md`, `FIGURE_GAPS.md`) is exempted
-from the `data/` ignore rule and **is** tracked.
+All `outputs_*`, `*.png` and `figs_ppt/` are gitignored, so no figure **at its
+original path** is under version control. Regeneration is safe but leaves no
+history. The fact base (`FACTS.md`, `EXPERIMENT_MAP.md`, `FIGURES.md`,
+`FIGURE_GAPS.md`) is exempted from the `data/` ignore rule and **is** tracked.
+
+The exception is `report/figs/`, described below, which **is** tracked in full.
+
+## `report/figs/` holds copies
+
+`report/` is a self-contained Overleaf project: it must compile with no file
+outside it. So every figure the report cites lives under `report/figs/`, and
+two kinds sit there:
+
+| Path | Origin | Refreshed by |
+|---|---|---|
+| `report/figs/fig_*.png` | built directly there from `data/FACTS.md` | `python code/make_report_figs.py` |
+| `report/figs/outputs_*/**.png` | **copies** of the notebook figures | `python code/sync_figs.py` |
+
+**The copies are copies, not the originals.** The notebooks still write to
+`outputs_v2/`, `outputs_validation/`, `outputs_transfer_*/` and the rest exactly
+as before; nothing in the pipeline was re-pathed. `sync_figs.py` reads the
+`\includegraphics` paths out of `report/report.tex` and copies each cited file
+into `report/figs/`, **mirroring the run directory** — so
+`outputs_v2/fig01_spatial_split.png` becomes
+`report/figs/outputs_v2/fig01_spatial_split.png`.
+
+Mirroring rather than flattening is required, not tidiness:
+`fig01_transfer_comparison.png` exists in both `outputs_transfer_v2/` and
+`outputs_transfer_S2_median/` and the report cites **both**. A flat copy would
+silently drop one. Mirroring also keeps every `\includegraphics` path in the
+report unchanged, so `\graphicspath{{figs/}}` alone resolves them all.
+
+**After regenerating any cited figure, re-run `python code/sync_figs.py`** or
+the report will keep compiling against the previous copy. The script is
+idempotent and compares content rather than mtime, so running it when nothing
+changed copies nothing; it exits 1 and names the file if a cited figure cannot
+be found.
