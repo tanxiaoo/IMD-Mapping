@@ -57,6 +57,41 @@ Companion to `reference/` — the AlphaEarth report by Matej Žgela.
 - After each section, run: `python code/audit_numbers.py report/`
 - Figures are placed at their referenced positions with numbered captions below, matching reference/.
 
+## Full audit
+
+`code/audit_numbers.py` is the quick per-section check and defaults to
+`data/FACTS.md` alone. For a full audit of the finished report, use the
+generalised auditor from the `research-report` skill, which additionally checks
+bare integers and takes both fact bases:
+
+```
+python ~/.claude/skills/research-report/scripts/audit_numbers.py \
+    --facts data/FACTS.md --facts data/EXPERIMENT_MAP.md \
+    --report report/report.tex --outline report/OUTLINE.md \
+    --stale-term "Track A" --stale-term "Track B" \
+    --allow-number 99 --allow-number 1000
+```
+
+**Pass both fact bases.** Design parameters (64 embedding bands, 500 points per
+group, 250 m buffer, 2 449 train / 1 014 test) live in `EXPERIMENT_MAP.md`, not
+`FACTS.md`. Omitting it reports 18 false positives on numbers that are genuinely
+sourced.
+
+**What the two `--allow-number` values waive, and the risk.** Both are
+structural rather than measurements: `99` is a class boundary in the printed
+range "81 to 99", and `1000` is a block size written `1000\,m`. Neither is a
+result, so neither belongs in the fact base — but the allowance is by value, not
+by context. **If 99 or 1000 ever becomes a real claim, the allowance hides it**:
+the number would pass unchecked whether or not the fact base supports it. Before
+adding a number to this list, confirm it can never appear as a result; before
+quoting either value as a measurement, remove its allowance and re-run.
+
+The skill's auditor deliberately does **not** strip `in` as a unit, so
+"0.42 in the second run" is checked rather than silently dropped — a
+construction that occurs 18 times in `report.tex`. Run it with `--self-test`
+after any change to the report's numeric or figure conventions: it injects
+known-bad values and confirms the checks still fail on them.
+
 # Figures
 
 **Figure code generates the visualisation; the report generates the title and
