@@ -20,7 +20,7 @@ Matej (external) ──► outputs_sampling/ ─┬─► 00  ──► samples_
 
 | Directory | Notebook | City | Predictors | Model | Mode |
 |---|---|---|---|---|---|
-| `outputs_v2` | 01 | Milan | **AlphaEarth embeddings** — 64-d, `GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL` | RF + SVR (MLP tuned) | local train |
+| `outputs_v2` | 01 | Milan | **AlphaEarth embeddings** — 64-d, `GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL` | RF + SVR reported (a third estimator is tuned but out of scope) | local train |
 | `outputs_S2_stack` | 01b `'stack'` | Milan | **S2 stack** — 40 bands, 4 dates | RF + SVR | local train |
 | `outputs_S2_median` | 01b `'median'` | Milan | **S2 median** — 10 bands, 30 dates | RF + SVR | local train |
 | `outputs_S2_percentile_p10p25p50p75p90` | 01b `'percentile'` | Milan | **S2 percentile** — 50 bands, 30 dates | RF + SVR | local train |

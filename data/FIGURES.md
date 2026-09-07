@@ -58,9 +58,9 @@ re-run per `COMPOSITE_METHOD`. `outputs_v2` has no `figE` and no
 | `fig03_degradation.png` | RMSE/R² degradation with block size, vline at best block | DIAGNOSTIC | per-point values | KEEP |
 | `fig04_rmse_boxplots.png` | Per-fold RMSE boxplots per model across block sizes | DIAGNOSTIC | tuning block | KEEP |
 | `fig05_all_metrics.png` | 2×2 grouped bars, all four metrics × models × blocks | DIAGNOSTIC | — | KEEP |
-| `fig06_inflation_heatmap.png` | Spatial-vs-random CV RMSE inflation, model × block | **RESULT** | every cell | KEEP |
+| `fig06_inflation_heatmap.png` | Spatial-vs-random CV RMSE inflation, model × block | **RESULT** | every cell | NEEDS-EDIT — **not cited**, see below |
 | `fig07_holdout_scatter.png` | Observed vs predicted on the holdout, RF and SVR panels | **RESULT** | RMSE/MAE/R²/Bias | KEEP |
-| `figA_holdout_accuracy_GEE_RF.png` · `_GEE_SVR.png` | 3-panel accuracy: scatter by class, KDE density, abs-error boxplot | **RESULT** | RMSE/MAE/R²/Bias | KEEP |
+| `figA_holdout_accuracy_GEE_RF.png` · `_GEE_SVR.png` | 3-panel accuracy: scatter by class, KDE density, abs-error boxplot | **RESULT** | RMSE/MAE/R²/Bias | STALE-REGENERATE — **source fixed 2026-09-01**, images not yet rebuilt, see below |
 | `figB_model_cv_comparison.png` | Best-block CV RMSE per model, winner outlined | DIAGNOSTIC | CV RMSE + block | NEEDS-EDIT |
 | `figC_perclass_GEE_RF.png` · `_GEE_SVR.png` | RMSE/MAE/Bias per IMD class | **RESULT** | every bar | KEEP |
 | `figD_importance_RF.png` | RF impurity + permutation importance per band | DIAGNOSTIC | — | KEEP |
@@ -71,14 +71,137 @@ re-run per `COMPOSITE_METHOD`. `outputs_v2` has no `figE` and no
 2026-08-24 · `outputs_S2_median` 2026-08-27. `figE` in stack and percentile was
 regenerated 2026-08-25.
 
+**`figA_holdout_accuracy_*.png` — NEEDS-EDIT, not cited.** Its title reads
+`(tuning block=<X>)`, and the value is wrong for every copy but one. In
+notebooks 01/01b cell 22 `BEST_BLOCK_LABEL` is a **single global** holding the
+block of whichever model won CV *overall*; cell 40 then loops over both
+estimators and stamps that same label onto both figures. So the `GEE_RF` copies
+carry another model's block:
+
+| Run | `figA_GEE_RF` title says | FACTS.md has RF at | Label came from |
+|---|---|---|---|
+| `outputs_v2` | 500m | **1000m** | SVR |
+| `outputs_S2_percentile_p10p25p50p75p90` | 500m | **1000m** | the excluded third estimator |
+
+The percentile copy is the more serious case: its label is derived from the
+estimator that is out of scope for this report, so the figure is downstream of a
+model the report must not name. The plotted data are correct in all copies —
+only the title is wrong. `fig07_holdout_scatter.png` (F4, §4.1) carries the same
+holdout scatter and the same four metrics with a correct title.
+
+**Source fixed 2026-09-01; the images on disk are still the old ones.** Cell 40
+(nb 01) and cell 41 (nb 01b) now read `best_block_per_model[name.replace('GEE_',
+'')]` — the estimator's own tuning result — instead of the global
+`BEST_BLOCK_LABEL`, and the duplicating `Figure A · …` suptitle is reduced to the
+estimator name plus its block. `BEST_BLOCK_LABEL` remains defined in cell 22 and
+is still used for the overall-winner print and `model_metadata_*.json`; it no
+longer reaches any figure. The notebooks were **not** re-executed, per CLAUDE.md,
+so the PNGs still carry the old title until 01/01b next run deliberately. These
+figures remain uncited, so nothing in the report depends on the rebuild.
+
+**Largely duplicated by F4 in any case.** `figA`'s left panel plots the same
+1014 points with the same RMSE/MAE/R²/Bias box as `fig07`'s corresponding panel,
+differing only in point colouring; its right panel is per-class error, which is
+already F5 (`figC_perclass_GEE_RF`). Only the middle KDE panel is new.
+
+**`fig07_holdout_scatter.png` and `figC_perclass_GEE_RF.png` — suptitles removed
+2026-09-01, percentile run only.** Both are cited (F4 and F6, §4.1) and both
+carried a top-level suptitle that only repeated the report caption while exposing
+internal tags: `Figure 7 · [S2] Spatial Holdout Test Set -- Observed vs Predicted
+IMD (GEE raster)` and `Figure C · [S2] Per-Class Accuracy -- GEE_RF`. The
+in-image `Figure 7` / `Figure C` also disagreed with the report's own numbering,
+where they are Figures 4 and 6.
+
+Re-running notebook 01b for a labelling change is forbidden by CLAUDE.md, and it
+would overwrite every CSV `collect_metrics.py` builds `FACTS.md` from. So both
+are redrawn by `code/redraw_notebook_figs.py` **at their existing paths** from
+the CSVs the notebook already wrote — `holdout_residuals.csv` plus
+`holdout_test_metrics.csv` for F4, `perclass_metrics_GEE_RF.csv` for F6 — the
+same rule already used for F3 and F15. Panel geometry, colours, limits, marker
+sizes and annotation boxes are copied verbatim from cells 39 and 45; only the
+suptitle is dropped. Per-panel subplot titles are kept: they label the panels and
+are not duplication. The residuals CSV carries the out-of-scope third
+estimator's columns; only `pred_RF` and `pred_SVR` are read.
+
+The plotted values are unchanged — `FACTS.md` was rebuilt after the redraw and is
+byte-identical. Because these paths are gitignored notebook outputs, a future
+deliberate re-run of 01b will revert them; re-run the script afterwards.
+
+**Eight more cited figures — PNGs were STALE, rebuilt 2026-09-01.** The two
+figures above were fixed at source in commit `9b5c792` ("Separate figure code
+from figure titles"), which removed the numbered suptitles from notebooks 01,
+01b, 02, 03 and 04. **The notebook source has been correct ever since.** What was
+wrong was the images: they were never rebuilt after that commit, so eight cited
+PNGs still displayed a title from the pre-fix code:
+
+| File | Stale PNG displayed | Report figure |
+|---|---|---|
+| `outputs_v2/fig01_spatial_split.png` | `Figure 1 · Spatial Train/Test Split` | Figure 2 |
+| `outputs_S2_percentile_.../figD_importance_RF.png` | `Figure D · Feature Importance …` | Figure 8 |
+| `outputs_transfer_v2/fig01_transfer_comparison.png` | `Figure 1 · Same-source validation: … not accuracy` | Figure 9 |
+| `outputs_transfer_S2_median/fig01_transfer_comparison.png` | same | Figure 10 |
+| `outputs_transfer_v2/fig_obs_vs_pred_hanoi_hcmc.png` | `Observed vs Predicted IMD …` + `Hanoi & HCMC` | Figure 11 |
+| `outputs_transfer_v2/fig02_per_class_mae.png` | `Figure 2 · Per-Class MAE …` | Figure 12 |
+| `outputs_validation/fig02_forest_ci.png` | `Figure 2 · Map accuracy …` | Figure 13 |
+| `outputs_validation/fig01_scatter_grid.png` | `Figure 1 · Reference vs predicted IMD …` | Figure 14 |
+
+The LaTeX conversion is what exposed them: LaTeX prints its own figure number
+directly beneath an image already showing a different one. This is the blind spot
+CLAUDE.md names — `audit_numbers.py` checks caption-to-image agreement but cannot
+read a number *inside* a PNG, so a figure captioned "Figure 14" while displaying
+"Figure 1" passed every check. **A figure whose PNG predates a labelling fix is
+invisible to every automated check in this repo; only rebuilding catches it.**
+
+**The fix was to rebuild, not to post-process.** `code/redraw_cited_figs.py`
+redraws F2, F8, F9, F10, F11 and F12 from the CSVs, point files and rasters the
+notebooks already wrote, reproducing cells 12, 47, 13, 17 and 23 verbatim.
+F13 and F14 came from re-executing notebook 04, which is safe because it reads
+existing rasters, retrains nothing and makes no Earth Engine calls — its six CSVs
+and `FACTS.md` were verified byte-identical afterwards. Notebooks 01 and 02 were
+**not** re-executed: they re-tune models and export rasters to Earth Engine,
+which CLAUDE.md forbids for a labelling change.
+
+**What the rebuilt figures legitimately keep.** The rule is not "remove every
+suptitle" — CLAUDE.md permits run-identifying parameters where the same filename
+exists in several run directories and the plot cannot distinguish them. So these
+survive, and should:
+
+| Figure | Kept suptitle | Why |
+|---|---|---|
+| F2 | `Train: 2449 pts \| Test: 1014 pts \| Buffer: 250m` | run parameters |
+| F8 | `RF · Sentinel-2 (tuning block=1000m)` | same filename in 4 run dirs |
+| F9, F10 | `scored against GHSL (Milan baseline against CLMS)` | same filename in 2 run dirs; names the reference, not the finding |
+| F11 | `AlphaEarth embedding (64 dims)` | distinguishes from the S2 median run |
+| F12 | `spatial test set \| 1000m blocks, 250m buffer` | run parameters |
+| F13, F14 | none | notebook 04 emits none |
+
+None carries a figure number, a restatement of the caption, or a conclusion.
+
+**`fig06_inflation_heatmap.png` — NEEDS-EDIT, resolved for the report by F3.**
+Its plotted values are correct, but it renders one row per *tuned* model, so it
+displays the name of the third estimator that is out of scope for this report.
+It is therefore not cited. `report/figs/fig_cv_inflation.png` (F3, §3.2) is
+redrawn from `outputs_v2/inflation_analysis.csv` filtered to RF and SVR, per
+CLAUDE.md's rule that a labelling change is made from the CSV the notebook
+already wrote rather than by re-executing the notebook. The values are the
+notebook's; only the row filter and the labelling differ.
+
 **`figB_model_cv_comparison.png` — NEEDS-EDIT.** It shows the CV winner only. In
 `outputs_v2` that winner is SVR, but RF is the model carried forward to Vietnam
 and validation, and RF wins the holdout. Used alone the figure implies SVR was
 selected. See the estimator-selection section of `EXPERIMENT_MAP.md`.
 
-**`figE_raster_comparison_1.png` — NEEDS-EDIT.** Its suptitle is commented out in
-the producing code, so the three copies carry no label identifying which
-composite produced them and are indistinguishable outside their directory path.
+**`figE_raster_comparison_1.png` — NEEDS-EDIT, resolved for the percentile run
+by F15.** Its suptitle is commented out in the producing code, so the three
+copies carry no label identifying which composite produced them and are
+indistinguishable outside their directory path.
+
+The percentile copy is the one the report needs, and it is rebuilt with a
+suptitle as `report/figs/fig_milan_raster_comparison.png` (F15, §4.1) rather
+than edited in place. The rebuild reads the same two GeoTIFFs the notebook reads
+and copies its panel geometry, colormap, limits and decimation verbatim, so the
+pixels are the notebook's; only the label is added. The `median` and `stack`
+copies remain unlabelled and NEEDS-EDIT — neither is cited.
 
 ## Vietnam transfer — same-source validation (vs GHSL)
 
@@ -88,7 +211,7 @@ Identical figure code in both; only the raster suffix and one suptitle differ.
 | File | Shows | Kind | Numbers in title | Status |
 |---|---|---|---|---|
 | `fig00_spatial_split.png` | Train/test/buffer points over the 1 km grid, both cities | DIAGNOSTIC | train/test/removed n | KEEP |
-| `fig01_transfer_comparison.png` | 2×2 bars: Milan baseline vs A vs B, per city, all four metrics | **RESULT** | every bar | KEEP |
+| `fig01_transfer_comparison.png` | 2×2 bars: Milan baseline vs A vs B, per city, all four metrics | **RESULT** | every bar | KEEP — **both copies cited**: F7 (`outputs_transfer_v2`, embeddings) and F16 (`outputs_transfer_S2_median`, S2 median) |
 | `fig02_per_class_mae.png` | MAE per IMD class, transfer vs local retrain | **RESULT** | — | KEEP |
 | `fig_scatter_Hanoi.png` · `fig_scatter_HCMC.png` | Observed GHSL vs predicted, both scenarios | **RESULT** | RMSE/MAE/R²/Bias | KEEP |
 | `fig_obs_vs_pred_hanoi_hcmc.png` | GHSL / Milan transfer / local retrain rasters, 2×3 | MAP | per-panel RMSE/R²/Bias | KEEP |
@@ -106,6 +229,16 @@ reference: *"Same-source validation: scored against GHSL (Milan baseline
 against CLMS) · Agreement with the training target, not accuracy."*
 
 The plotted values were always correct; only the labelling was incomplete.
+
+**Both copies are cited in §5.1, as F7 and F16.** The section tabulates both
+predictor sets, so showing only the embeddings run would plot half of what the
+table reports. The two figures are directly comparable — the figure code is
+identical in notebooks 02 and 03, and only the raster suffix and one suptitle
+differ — which is exactly why they must be labelled apart in the report: on the
+page they are two similar 2×2 bar panels whose axes do not say which predictor
+set produced them. **Each caption names its predictor set and its reference**,
+and every citation carries its directory, since the filename alone does not
+identify the run.
 
 ## Independent validation — photo-interpreted plots
 
@@ -132,14 +265,33 @@ notebook figure covers; see `data/FIGURE_GAPS.md` for why each exists.
 | File | Shows | Kind | §  | Status |
 |---|---|---|---|---|
 | `fig_composite_depth.png` | Usable S2 acquisitions per city on a 2018 calendar, with counts and obs/pixel | **RESULT** | 2.3 | KEEP |
+| `fig_cv_inflation.png` | Spatial-vs-random CV RMSE, model × block — the notebook's `fig06` redrawn from `inflation_analysis.csv` with the out-of-scope estimator's row filtered out | DIAGNOSTIC | 3.2 | KEEP — **cited** |
+| `fig_milan_predictor_ranking.png` | The four Milan predictor sets on holdout RMSE, MAE and R², ranked, GEE RF | **RESULT** | 4.1 | KEEP — **cited** |
 | `fig_samesource_vs_independent.png` | The four Milan predictor sets under both validations, shared 5–30 pp axis | **RESULT** | 7.1 | KEEP |
 | `fig_hcmc_prediction_histogram.png` | Predicted-IMD distributions for the four HCMC maps plus the reference, with a range/IQR/mean strip | **RESULT** | 7.2 | KEEP |
 | `fig_bias_recovery.png` | GHSL's bias against each local retrain's, per city, with the closed gap in pp | **RESULT** | 7.3 | KEEP |
+| `fig_milan_raster_comparison.png` | Observed CLMS / predicted / difference rasters, Milan, percentile run — `figE` relabelled with a run-identifying suptitle | MAP | 4.1 | KEEP — **cited** |
 
-**Every value is read from `data/FACTS.md`.** `facts_value()` raises on an absent
-row, an ambiguous match, or a `MISSING` cell rather than substituting a literal,
-so a figure cannot drift from the numbers it claims to show. Each build prints
-its plotted values for checking against the fact base.
+**Figure numbers are no longer rendered into any image (2026-09-01).** They used
+to be, and the suptitle had to track the report's numbering — outline F-numbers
+are planning ids in outline order, while the report numbers figures by page
+order, so the two differ and a suptitle reading "Figure 12" beside a caption
+reading "Figure 15" was a defect a reader sees immediately. That made every
+renumbering of the report a matching edit to `code/make_report_figs.py`, policed
+by nothing: `code/audit_numbers.py` checks caption-to-image agreement but cannot
+read a number rendered inside a PNG. Removing the numbers removes the hazard —
+renumber the report freely; no figure needs rebuilding.
+
+**Every plotted value is read from `data/FACTS.md`.** `facts_value()` raises on
+an absent row, an ambiguous match, or a `MISSING` cell rather than substituting
+a literal, so a figure cannot drift from the numbers it claims to show. Each
+build prints its plotted values for checking against the fact base.
+
+**F15 is the one exception**: it is a map, not a chart, and reads its two
+GeoTIFFs directly. It plots no metric and quotes no number, so there is nothing
+for it to drift from; its build prints a difference summary for checking, which
+is deliberately raster-wide and is **not** quoted in the report — the report's
+numbers are the 1014-point holdout in Table A.
 
 **These figures state readings, never conclusions.** No conclusion sentences, no
 interpretive annotations, no callouts — only axis labels, panel titles, and
@@ -147,6 +299,22 @@ numeric values that are measurements. Every claim ("saturated, not shifted",
 "recovers 38–67 %", the ≥ 17-date percentile floor) belongs to the report
 caption. This is a deliberate departure from `make_presentation.py`, whose
 slide titles are written as conclusions.
+
+**No figure carries its own title or number (2026-09-01).** Figure code
+generates the visualisation; the report generates the title and caption
+(CLAUDE.md). Applied across `make_report_figs.py` and all five notebooks:
+describing suptitles removed, `Figure N ·` / `Figure A–E ·` prefixes and `[S2]`
+run tags dropped everywhere they were rendered. What stays is what the plot
+cannot say for itself — per-panel titles, axis labels, legends, measured
+annotations, and run parameters (buffer, folds, block size, composite depth).
+Three suptitles survive as run identification rather than caption: F15 and
+notebook 02/03 cell 23 name the predictor set behind otherwise identical raster
+panels, and 02/03 cell 13 keeps "scored against GHSL" so the Bias panel cannot
+be read as accuracy. Two conclusions were also removed: `figB`'s axes title
+named the CV winner, and `fig_samesource_vs_independent`'s stated the spread
+that Section 7.1 argues in prose.
+
+This retires the numbering hazard described below rather than managing it.
 
 **House style** follows the notebooks, not the deck: notebook `rcParams`
 verbatim, dpi 150, `Figure N · Description` suptitle at 13 pt bold, axes titles
@@ -219,7 +387,40 @@ computes it — those would disagree if the split ever changed.
 
 ## Version control
 
-All `outputs_*`, `*.png` and `figs_ppt/` are gitignored, so no figure is under
-version control. Regeneration is safe but leaves no history. The fact base
-(`FACTS.md`, `EXPERIMENT_MAP.md`, `FIGURES.md`, `FIGURE_GAPS.md`) is exempted
-from the `data/` ignore rule and **is** tracked.
+All `outputs_*`, `*.png` and `figs_ppt/` are gitignored, so no figure **at its
+original path** is under version control. Regeneration is safe but leaves no
+history. The fact base (`FACTS.md`, `EXPERIMENT_MAP.md`, `FIGURES.md`,
+`FIGURE_GAPS.md`) is exempted from the `data/` ignore rule and **is** tracked.
+
+The exception is `report/figs/`, described below, which **is** tracked in full.
+
+## `report/figs/` holds copies
+
+`report/` is a self-contained Overleaf project: it must compile with no file
+outside it. So every figure the report cites lives under `report/figs/`, and
+two kinds sit there:
+
+| Path | Origin | Refreshed by |
+|---|---|---|
+| `report/figs/fig_*.png` | built directly there from `data/FACTS.md` | `python code/make_report_figs.py` |
+| `report/figs/outputs_*/**.png` | **copies** of the notebook figures | `python code/sync_figs.py` |
+
+**The copies are copies, not the originals.** The notebooks still write to
+`outputs_v2/`, `outputs_validation/`, `outputs_transfer_*/` and the rest exactly
+as before; nothing in the pipeline was re-pathed. `sync_figs.py` reads the
+`\includegraphics` paths out of `report/report.tex` and copies each cited file
+into `report/figs/`, **mirroring the run directory** — so
+`outputs_v2/fig01_spatial_split.png` becomes
+`report/figs/outputs_v2/fig01_spatial_split.png`.
+
+Mirroring rather than flattening is required, not tidiness:
+`fig01_transfer_comparison.png` exists in both `outputs_transfer_v2/` and
+`outputs_transfer_S2_median/` and the report cites **both**. A flat copy would
+silently drop one. Mirroring also keeps every `\includegraphics` path in the
+report unchanged, so `\graphicspath{{figs/}}` alone resolves them all.
+
+**After regenerating any cited figure, re-run `python code/sync_figs.py`** or
+the report will keep compiling against the previous copy. The script is
+idempotent and compares content rather than mtime, so running it when nothing
+changed copies nothing; it exits 1 and names the file if a cited figure cannot
+be found.

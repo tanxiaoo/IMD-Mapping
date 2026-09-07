@@ -1,0 +1,18 @@
+# LaTeX build products. report.tex is the single source.
+#
+# Rebuild with:  cd report && latexmk
+# latexmkrc puts report.pdf here, next to report.tex, and the auxiliary
+# files in build/.
+build/
+report.pdf
+*.aux
+*.log
+*.out
+*.xdv
+*.fls
+*.fdb_latexmk
+*.toc
+*.synctex.gz
+# Retired export route (report.md -> .docx -> .pdf), removed 2026-09-01.
+*.docx
+~$*.docx

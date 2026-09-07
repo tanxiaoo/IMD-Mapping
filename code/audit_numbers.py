@@ -1,12 +1,34 @@
-"""Audit report/report.md against the fact base.
+"""Audit report/report.tex against the fact base.
 
-Five checks, each reported with the line number that failed:
+Six checks, each reported with the line number that failed:
 
   1. NUMBERS    every numeric value in the report appears in data/FACTS.md
   2. FIGURES    every figure filename mentioned exists on disk
   3. COVERAGE   every figure in OUTLINE.md's consolidated list is cited
   4. TERMS      no stale "Track A" / "Track B" terminology
-  5. (report absent or partial is not a failure -- see below)
+  5. LABELS     every \\label is defined exactly once, every \\ref resolves to a
+                defined label, and no label is left unused
+  6. CITATIONS  every [N] citation resolves to a References entry, and every
+                entry is cited at least once
+
+The report is LaTeX: `report/report.tex` is the single source. Markdown is still
+accepted via an explicit `--report x.md`, and the format is detected from the
+extension, so an older draft can be audited if one is ever recovered from git.
+
+Two LaTeX details drive the NUMBERS check and neither is optional:
+
+  ESCAPED PERCENT   LaTeX writes a literal percent sign as `\\%`, so every
+                    "33 %" in the markdown became "33\\,\\%" in the .tex. A
+                    percentage regex written for markdown still matches the
+                    digits but the backslash breaks the `\\s*%` tail, so every
+                    percentage claim silently stops being checked while the
+                    check still reports "ok". The percent pattern below
+                    therefore accepts an optional `\\,`/`~`/`\\;` spacer and a
+                    backslash before the sign.
+  MATHS MINUS       Signed values are set in maths mode as `$-0.070$`, and
+                    siunitx table cells carry a bare `-0.070`. Both must read
+                    as the negative number they print, so `$` and the maths
+                    delimiters are stripped before numbers are extracted.
 
 Runs cleanly against an empty, missing or partial report: a report that does
 not exist yet, or cites no figures yet, produces a clean pass with a note.
@@ -16,7 +38,8 @@ end -- an auditor that fails on an unfinished draft gets switched off.
 Exit code 0 if every check passes, 1 if any fails.
 
 Usage:  python code/audit_numbers.py
-        python code/audit_numbers.py --report path/to/other.md
+        python code/audit_numbers.py report/
+        python code/audit_numbers.py --report path/to/other.tex
 """
 
 import argparse
@@ -25,7 +48,7 @@ import re
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEFAULT_REPORT = os.path.join(REPO, 'report', 'report.md')
+DEFAULT_REPORT = os.path.join(REPO, 'report', 'report.tex')
 FACTS = os.path.join(REPO, 'data', 'FACTS.md')
 OUTLINE = os.path.join(REPO, 'report', 'OUTLINE.md')
 FIG_DIRS = ['report/figs'] + [d for d in sorted(os.listdir(REPO))
@@ -42,30 +65,56 @@ YEARS = {'2017', '2018', '2019', '2025', '2026'}
 COVERAGE_THRESHOLD = 0.60
 
 
+def _is_tex(path):
+    return str(path).lower().endswith('.tex')
+
+
 def _strip_noise(line):
     """Remove spans whose numbers are not claims about results.
 
-    Code spans, markdown links/images, figure and section references, and
+    Verbatim spans, markdown links/images, figure and section references, and
     citation page numbers all carry digits that have nothing to do with the
-    fact base.
+    fact base. The LaTeX cases are the additions: \\includegraphics paths carry
+    a run directory full of digits (p10p25p50p75p90), \\label/\\ref keys and
+    \\url targets carry digits that are identifiers rather than measurements,
+    and siunitx column specs (table-format=2.3) are layout.
     """
-    line = re.sub(r'`[^`]*`', ' ', line)              # code spans
+    line = re.sub(r'`[^`]*`', ' ', line)              # markdown code spans
+    line = re.sub(r'\\(?:texttt|url|href)\{[^}]*\}', ' ', line)
+    line = re.sub(r'\\includegraphics(?:\[[^\]]*\])?\{[^}]*\}', ' ', line)
+    line = re.sub(r'\\(?:label|ref|Cref|cref|autoref)\{[^}]*\}', ' ', line)
+    line = re.sub(r'\\begin\{tabular\}\{[^}]*\}', ' ', line)
+    line = re.sub(r'table-format\s*=\s*[-\d.]+', ' ', line)
     line = re.sub(r'!?\[[^\]]*\]\([^)]*\)', ' ', line)  # links and images
-    line = re.sub(r'\bp{1,2}\.\s*\d+(\s*[–-]\s*\d+)?', ' ', line)  # p. 5, pp. 3-4
-    line = re.sub(r'\b[Ff]ig(ure)?s?\.?\s*\d+[a-z]?', ' ', line)
+    line = re.sub(r'\bpp?\.\s*~?\d+(\s*[–ked-]*\s*\d+)?', ' ', line)  # p. 5, pp.~3--4
+    line = re.sub(r'\bpp?\.~?\d+', ' ', line)
+    line = re.sub(r'\b[Ff]ig(ure)?s?\.?~?\s*\d+[a-z]?', ' ', line)
     line = re.sub(r'\b[Ss]ec(tion)?s?\.?\s*\d+(\.\d+)*', ' ', line)
     line = re.sub(r'§\s*\d+(\.\d+)*', ' ', line)
     line = re.sub(r'\bTable\s+[A-Z0-9]+', ' ', line)
     return line
 
 
+# LaTeX writes a literal percent as `\%`, usually after a thin space: `33\,\%`.
+# Matching only `\d\s*%` would skip every one of them and report a clean pass
+# over a check that examined nothing, so the spacer and the backslash are part
+# of the pattern. The markdown form ("33 %") still matches the same regex.
+_PCT = re.compile(r'(?<![\w.])(\d{1,3})\s*(?:\\[,;:! ]|~)?\s*\\?%')
+
+# Signed values reach the .tex two ways: `$-0.070$` in prose, and a bare
+# `-0.070` inside an S column. Stripping the maths delimiters lets one number
+# pattern read both.
+_MATHS = re.compile(r'[$]|\\(?:mathrm|textbf|textit|text)\b')
+
+
 def _numbers(line):
     """Decimal and percentage values that read as measurements."""
     out = set()
-    for m in re.finditer(r'(?<![\w.])([+-]?\d+\.\d+)(?![\w])', _strip_noise(line)):
+    clean = _MATHS.sub(' ', _strip_noise(line))
+    for m in re.finditer(r'(?<![\w.])([+-]?\d+\.\d+)(?![\w])', clean):
         out.add(m.group(1))
-    # Whole-number percentages ("33 %", "38–67 %") are claims too.
-    for m in re.finditer(r'(?<![\w.])(\d{1,3})\s*%', _strip_noise(line)):
+    # Whole-number percentages ("33 %", "33\,\%", "38 to 67\,\%") are claims too.
+    for m in _PCT.finditer(clean):
         out.add(m.group(1))
     return out
 
@@ -111,7 +160,13 @@ def _known(value, facts):
                  f'{abs(f):.1f}', f'{abs(f):.2f}'):
         if form in facts or form.lstrip('+') in facts:
             return True
-    # Integer percentages: accept if any fact rounds to it.
+    # Integer percentages: accept if any fact rounds to it. This is a weak
+    # test and known to be one -- across ~2,400 fact forms most two-digit
+    # integers find some fact that rounds to them, so a wrong whole-number
+    # percentage can pass. It is kept as-is because tightening it would
+    # reject legitimate rounding ("a reduction of 33 %" for 33.0), but it
+    # means the NUMBERS check is strong on decimals and weak on bare
+    # integers. Decimal percentages ("33.0 %") get the full precision test.
     if f.is_integer():
         return any(abs(float(v) - f) < 0.5 for v in facts
                    if re.fullmatch(r'[+-]?\d+\.\d', v))
@@ -152,6 +207,231 @@ def _outline_figures():
     return figs
 
 
+def check_labels(lines):
+    """Every label defined once, every ref resolves, no label unused.
+
+    This replaces the sequential-numbering check the markdown report needed.
+    LaTeX assigns the numbers, so a figure can no longer be numbered wrongly;
+    what can go wrong instead is the binding between a label and the float it
+    names. Three failures matter and none is visible to the other checks:
+
+      DUPLICATE  the same \\label defined in two floats. LaTeX resolves every
+                 \\ref of it to whichever came last and only warns, so a
+                 reference silently points at the wrong table.
+      DANGLING   a \\ref naming a label nothing defines. It typesets as `??`,
+                 which is easy to miss in a 40-page PDF and impossible to miss
+                 here.
+      UNUSED     a label no \\ref names. Usually the residue of a cut
+                 reference, and the signal that a float has quietly stopped
+                 being discussed in the prose.
+
+    Every float is also required to carry both a caption and a label, since a
+    float missing either escapes the binding check entirely.
+
+    Returns a list of (line_no, message).
+    """
+    out = []
+    text = '\n'.join(lines)
+
+    # Line number of each character offset, for reporting.
+    def line_of(pos):
+        return text.count('\n', 0, pos) + 1
+
+    # ── Floats must carry a caption and a label ─────────────────────────────
+    defined = {}       # label -> [line_no, ...]
+    for env in ('figure', 'table', 'longtable'):
+        for m in re.finditer(r'\\begin\{' + env + r'\*?\}(.*?)\\end\{'
+                             + env + r'\*?\}', text, re.S):
+            body, at = m.group(1), line_of(m.start())
+            has_cap = re.search(r'\\caption\{', body)
+            lab = re.search(r'\\label\{([^}]+)\}', body)
+            if not has_cap:
+                out.append((at, f'{env} has no \\caption{{}}'))
+            if not lab:
+                out.append((at, f'{env} has no \\label{{}}, so nothing can '
+                                f'reference it'))
+
+    # ── Every label, wherever defined ───────────────────────────────────────
+    for m in re.finditer(r'\\label\{([^}]+)\}', text):
+        defined.setdefault(m.group(1).strip(), []).append(line_of(m.start()))
+
+    for lab, where in sorted(defined.items()):
+        if len(where) > 1:
+            out.append((where[1],
+                        f'label {lab!r} is defined {len(where)} times '
+                        f'(lines {", ".join(str(w) for w in where)}) — every '
+                        f'\\ref to it resolves to the last one'))
+
+    # ── Every reference ─────────────────────────────────────────────────────
+    # cleveref's \cref takes a comma-separated list, so each key is split out.
+    used = {}
+    for m in re.finditer(r'\\(?:auto|C|c)?ref\{([^}]+)\}', text):
+        for key in m.group(1).split(','):
+            used.setdefault(key.strip(), line_of(m.start()))
+
+    for lab, line_no in sorted(used.items()):
+        if lab not in defined:
+            out.append((line_no,
+                        f'\\ref to {lab!r}, which no \\label defines — this '
+                        f'typesets as "??"'))
+
+    for lab, where in sorted(defined.items()):
+        if lab not in used:
+            out.append((where[0], f'label {lab!r} is never referenced'))
+
+    return out
+
+
+def _references_line(lines):
+    """1-based line of the References heading, markdown or LaTeX."""
+    for i, ln in enumerate(lines, start=1):
+        s = ln.strip()
+        if re.match(r'^#{1,3}\s+References\s*$', s):
+            return i
+        if re.match(r'^\\(?:section|subsection)\*?\{References\}\s*$', s):
+            return i
+    return None
+
+
+def _bib_keys(report_path):
+    """Entry keys defined in every .bib the report \\bibliography's, or None.
+
+    None means the report does not use BibTeX, and the hand-numbered check
+    below applies instead.
+    """
+    try:
+        with open(report_path, encoding='utf-8') as fh:
+            text = fh.read()
+    except OSError:
+        return None
+    text = re.sub(r'(?<!\\)%[^\n]*', '', text)
+    names = []
+    for m in re.finditer(r'\\bibliography\{([^}]*)\}', text):
+        names += [n.strip() for n in m.group(1).split(',') if n.strip()]
+    if not names:
+        return None
+    keys = set()
+    for name in names:
+        path = os.path.join(os.path.dirname(report_path), name)
+        if not path.endswith('.bib'):
+            path += '.bib'
+        if not os.path.exists(path):
+            return ('MISSING', name)
+        with open(path, encoding='utf-8') as fh:
+            for m in re.finditer(r'@\w+\s*\{\s*([^,\s]+)\s*,', fh.read()):
+                keys.add(m.group(1))
+    return keys
+
+
+def check_bibtex_citations(report_path, keys):
+    """Every \\cite key is defined in the .bib, and every entry is cited.
+
+    The same two failure modes as the hand-numbered check -- a citation that
+    resolves to nothing, and an entry nothing cites -- but keyed rather than
+    numbered. BibTeX assigns the numbers, so a number can no longer be wrong;
+    a key can still be misspelt, and an entry can still be orphaned when the
+    text that needed it is cut.
+    """
+    out = []
+    if isinstance(keys, tuple):          # ('MISSING', name)
+        return [(1, f'\\bibliography{{{keys[1]}}} but {keys[1]}.bib '
+                    'does not exist beside the report')]
+    with open(report_path, encoding='utf-8') as fh:
+        lines = fh.read().split('\n')
+    cited = {}
+    for i, line in enumerate(lines, start=1):
+        line = re.sub(r'(?<!\\)%.*$', '', line)
+        for m in re.finditer(r'\\cite[a-zA-Z]*\s*(?:\[[^\]]*\]\s*)*'
+                             r'\{([^}]*)\}', line):
+            for key in m.group(1).split(','):
+                cited.setdefault(key.strip(), i)
+    for key, line_no in sorted(cited.items(), key=lambda kv: kv[1]):
+        if key not in keys:
+            out.append((line_no, f'\\cite{{{key}}} has no entry in the .bib'))
+    for key in sorted(keys - set(cited)):
+        out.append((1, f'bib entry `{key}` is never cited'))
+    return out
+
+
+def check_citations(lines):
+    """Numbered citations resolve, and every reference entry is cited.
+
+    The report cites in the style `[1]`, `[1, p. 5]`, `[1, pp. 3-5, Fig. 3]`,
+    against a numbered References section at the end. Two failure modes matter
+    and neither is visible to the other checks:
+
+      DANGLING  a citation whose number has no entry -- the reader follows it
+                to nothing.
+      ORPHAN    an entry nothing cites -- usually a reference left behind when
+                the text that needed it was cut.
+
+    Also reports a References section that is absent, or numbered with gaps or
+    out of order, since the numbering is what makes a citation resolvable.
+
+    Returns a list of (line_no, message).
+    """
+    out = []
+
+    start = _references_line(lines)
+    body = lines if start is None else lines[:start - 1]
+    refs = [] if start is None else lines[start - 1:]
+
+    # Citations in the body only: a bracketed number optionally followed by
+    # locators. `[1, p. 5]` and `[12]` both count; `[12] Benjamini...` inside
+    # the reference list does not, which is why the body is sliced off first.
+    cited = {}
+    for i, line in enumerate(body, start=1):
+        # Optional-argument brackets are not citations: \begin{figure}[htbp],
+        # \includegraphics[width=...], S[table-format=2.3]. Only a bracket
+        # holding a bare number plus optional locators counts.
+        scrubbed = re.sub(r'\\begin\{[^}]*\}\[[^\]]*\]', ' ', line)
+        scrubbed = re.sub(r'\\includegraphics\[[^\]]*\]', ' ', scrubbed)
+        scrubbed = re.sub(r'\bS\[[^\]]*\]', ' ', scrubbed)
+        scrubbed = re.sub(r'\\usepackage\[[^\]]*\]', ' ', scrubbed)
+        for m in re.finditer(r'\[(\d+)(?:,\s*(?:pp?\.|Figs?\.)[^\]]*)?\]',
+                             scrubbed):
+            cited.setdefault(int(m.group(1)), i)
+
+    if start is None:
+        if cited:
+            out.append((min(cited.values()),
+                        f'{len(cited)} numbered citation(s) but no '
+                        'References section to resolve them against'))
+        return out
+
+    # Markdown lists entries as "[1] Žgela...", LaTeX as "\item[{[1]}] Žgela...".
+    entries = {}
+    for off, line in enumerate(refs):
+        s = line.strip()
+        m = (re.match(r'^\[(\d+)\]', s)
+             or re.match(r'^\\item\s*\[\{?\[(\d+)\]\}?\]', s))
+        if m:
+            entries[int(m.group(1))] = start + off
+
+    if not entries:
+        out.append((start, 'References section has no `[N]` entries'))
+        return out
+
+    expected = list(range(1, len(entries) + 1))
+    if sorted(entries) != expected:
+        out.append((start,
+                    f'reference numbering is {sorted(entries)}, expected '
+                    f'{expected} — entries must run 1..N without gaps'))
+
+    for num, line_no in sorted(cited.items()):
+        if num not in entries:
+            out.append((line_no,
+                        f'citation [{num}] has no entry in the References '
+                        f'section'))
+
+    for num, line_no in sorted(entries.items()):
+        if num not in cited:
+            out.append((line_no,
+                        f'reference [{num}] is never cited in the report'))
+
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('path', nargs='?', default=None,
@@ -164,7 +444,10 @@ def main():
     # `audit_numbers.py report/report.md`.
     target = args.report or args.path or DEFAULT_REPORT
     if os.path.isdir(target):
-        target = os.path.join(target, 'report.md')
+        # report.tex is the single source since 2026-09-01. Markdown parsing is
+        # kept for an explicit `--report x.md`, so an older draft can still be
+        # audited, but a directory resolves to the .tex.
+        target = os.path.join(target, 'report.tex')
     args.report = target
 
     # relpath raises across Windows drive letters, so fall back to the path
@@ -196,6 +479,13 @@ def main():
     disk = _figure_index()
     cited = set()
 
+    # The References section is bibliography, not results. Its DOIs, arXiv ids,
+    # volume/page numbers and years are identifiers that cannot trace to the
+    # fact base and must not be checked against it -- 2507.22291 is an arXiv
+    # id, not a measurement. Everything before it is checked as normal, and the
+    # TERMS and FIGURES checks still run over the whole file.
+    refs_from = _references_line(lines)
+
     for i, line in enumerate(lines, start=1):
         # 4. TERMS — stale vocabulary.
         for term in ('Track A', 'Track B'):
@@ -206,13 +496,14 @@ def main():
                     f'validation" / "independent validation"'))
 
         # 1. NUMBERS — every measurement must trace to FACTS.md.
-        for value in sorted(_numbers(line)):
-            if value in YEARS:
-                continue
-            if not _known(value, facts):
-                failures.append((
-                    'NUMBERS', i,
-                    f'{value} not found in data/FACTS.md'))
+        if refs_from is None or i < refs_from:
+            for value in sorted(_numbers(line)):
+                if value in YEARS:
+                    continue
+                if not _known(value, facts):
+                    failures.append((
+                        'NUMBERS', i,
+                        f'{value} not found in data/FACTS.md'))
 
         # 2. FIGURES — every filename mentioned must exist.
         for m in re.finditer(r'([\w./-]*\bfig[\w.-]*\.(?:png|pdf|svg))',
@@ -224,6 +515,31 @@ def main():
                 failures.append((
                     'FIGURES', i,
                     f'{ref} does not exist in {" / ".join(FIG_DIRS[:3])}…'))
+
+    # 5. LABELS — every label defined once, every ref resolves, none unused.
+    if _is_tex(args.report):
+        for line_no, msg in check_labels(lines):
+            failures.append(('LABELS', line_no, msg))
+    elif lines:
+        notes.append('LABELS check applies to LaTeX; skipped for a markdown '
+                     'report.')
+
+    # 6. CITATIONS — every citation resolves, every entry is cited.
+    # Since 2026-09-02 the report cites with \cite against report/refs.bib and
+    # BibTeX assigns the numbers, so the hand-numbered [N] check no longer
+    # applies: there is no numbered list in the source to resolve against, and
+    # a stale number is now impossible by construction. The key-based check
+    # catches what remains -- a misspelt key and an orphaned entry.
+    bib = _bib_keys(args.report) if lines else None
+    if bib is not None:
+        for line_no, msg in check_bibtex_citations(args.report, bib):
+            failures.append(('CITATIONS', line_no, msg))
+        if not isinstance(bib, tuple):
+            notes.append(f'{len(bib)} bib entries in refs.bib; numbering is '
+                         'assigned by BibTeX.')
+    else:
+        for line_no, msg in check_citations(lines):
+            failures.append(('CITATIONS', line_no, msg))
 
     # 3. COVERAGE — every planned figure must be cited somewhere.
     outline_figs = _outline_figures()
@@ -278,7 +594,8 @@ def main():
         by_check = {}
         for check, line_no, msg in failures:
             by_check.setdefault(check, []).append((line_no, msg))
-        for check in ('SETUP', 'TERMS', 'NUMBERS', 'FIGURES', 'COVERAGE'):
+        for check in ('SETUP', 'TERMS', 'NUMBERS', 'FIGURES', 'LABELS',
+                      'CITATIONS', 'COVERAGE'):
             items = by_check.get(check)
             if not items:
                 continue
@@ -297,6 +614,8 @@ def main():
 
     print('  NUMBERS   ok')
     print('  FIGURES   ok')
+    print(f'  LABELS    {"ok" if _is_tex(args.report) else "n/a (markdown)"}')
+    print('  CITATIONS ok')
     print('  COVERAGE  ok')
     print('  TERMS     ok')
     print()

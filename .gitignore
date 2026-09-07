@@ -56,11 +56,23 @@ data/*
 !data/FIGURE_GAPS.md
 
 # ── Report figures ARE version-controlled ────────────────────────────────────
-# The four figures under report/figs/ are built by code/make_report_figs.py
-# from data/FACTS.md, so they are regenerable -- but the report cites them and
-# they are ~330 KB in total, far below the limit that makes *.png a problem
-# for the notebook outputs. Track them so the report is self-contained.
+# report/ is a self-contained Overleaf project: it must compile with no file
+# outside it, so every figure the report cites has to be committed alongside
+# report.tex. Two kinds live under report/figs/:
+#
+#   figs/*.png            built by code/make_report_figs.py from data/FACTS.md
+#   figs/outputs_*/*.png  COPIES of notebook figures, refreshed by
+#                         code/sync_figs.py, which mirrors each run directory
+#                         so filenames stay unchanged and the two runs that
+#                         share fig01_transfer_comparison.png do not collide
+#
+# The copies duplicate gitignored originals on purpose. They are small (a few
+# MB in total, each far below GitHub's limit) and they are what makes the
+# shared folder complete; the originals stay ignored where the notebooks write
+# them. Recursive globs, so the mirrored subdirectories are covered too.
 !report/figs/
+!report/figs/**/
+!report/figs/**/*.png
 !report/figs/*.png
 
 aoi_milan/
@@ -108,3 +120,12 @@ desktop.ini
 .idea/
 *.swp
 *~
+report/*.docx
+report/*.pdf
+# LaTeX build artefacts. latexmkrc sends most of these to report/build/, but
+# BibTeX writes .bbl and .blg beside report.tex regardless of $aux_dir, and
+# both are regenerated from refs.bib on every build. Overleaf rebuilds them
+# too, so they are not part of the shared project.
+report/build/
+report/*.bbl
+report/*.blg

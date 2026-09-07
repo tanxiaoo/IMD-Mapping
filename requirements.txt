@@ -26,3 +26,9 @@ seaborn
 jupyter
 ipykernel
 tqdm
+
+# Report export (code/export_docx.py)
+# Pillow is used to read figure dimensions so each image is placed at a
+# sensible width rather than its native size.
+python-docx
+pillow

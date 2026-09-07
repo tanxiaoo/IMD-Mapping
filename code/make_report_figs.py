@@ -29,11 +29,18 @@ FIGS = os.path.join(REPO, 'report', 'figs')
 # ── House style ──────────────────────────────────────────────────────────────
 # These figures sit in the REPORT beside the notebook figures, not in the deck,
 # so the conventions come from the notebooks (01/01b/02/03/04) rather than from
-# make_presentation.py. Matched against outputs_v2/figA_holdout_accuracy_GEE_RF:
-# notebook rcParams verbatim, dpi 150, 'Figure N · Description' suptitle at 13pt
-# bold, axes titles 11pt bold, axis labels 10pt, plain matplotlib defaults for
-# font family and tick colour. No kicker, no conclusion-as-title, no in-figure
-# caption -- the claim belongs to the report text.
+# make_presentation.py: notebook rcParams verbatim, dpi 150, axes titles 11pt
+# bold, axis labels 10pt, plain matplotlib defaults for font family and tick
+# colour. No kicker, no conclusion-as-title.
+#
+# Figure code generates the visualisation; the report generates the title and
+# caption (CLAUDE.md). So none of these carries a describing suptitle and none
+# renders a figure number -- the report numbers figures by page order and
+# renumbers as sections move, and audit_numbers.py cannot read a number baked
+# into a PNG. Two suptitles survive because they are not captions: F15 names the
+# run that produced its raster panels, which three identically-named copies
+# cannot otherwise be told apart by, and F3 carries a legend for its bold
+# marking.
 DPI = 150
 
 plt.rcParams.update({
@@ -214,10 +221,8 @@ def build_f12():
     ax.legend(loc='lower right', fontsize=8, framealpha=0.9,
               handlelength=2.2, borderpad=0.7, labelspacing=0.5)
 
-    ax.set_title(f'Spread {spread_a:.2f} pp same-source, {spread_b:.2f} pp '
-                 f'independent', fontweight='bold')
-    fig.suptitle('Figure 12 · Milan predictor sets under both validations',
-                 fontsize=13, fontweight='bold', y=0.99)
+    # No title. The spread figures this used to state are the section's
+    # argument, not a reading off the plot, and Section 7.1 makes it in prose.
 
     os.makedirs(FIGS, exist_ok=True)
     path = os.path.join(FIGS, 'fig_samesource_vs_independent.png')
@@ -383,10 +388,9 @@ def build_f1():
     for side in ('left', 'bottom'):
         ax.spines[side].set_visible(False)
 
-    ax.set_title('Usable Sentinel-2 acquisitions after cloud screening',
-                 fontweight='bold')
-    fig.suptitle('Figure 1 · Composite depth by city',
-                 fontsize=13, fontweight='bold', y=1.06)
+    # Single panel, so an axes title here would be a figure title by another
+    # name -- and the caption already carries it. The per-city counts and
+    # obs/pixel annotations at the right of each row are measurements and stay.
 
     os.makedirs(FIGS, exist_ok=True)
     path = os.path.join(FIGS, 'fig_composite_depth.png')
@@ -442,17 +446,56 @@ def _pct(cell):
 
 
 def f13_values():
-    """Bin table and summary stats for the HCMC maps, read from FACTS.md."""
+    """Bin table and summary stats for the HCMC maps, read from FACTS.md.
+
+    FACTS.md carries the SAME table shape for Hanoi and for HCMC, one after the
+    other, and neither carries a city column -- the city is named only in the
+    prose heading above each. Selecting by column shape alone therefore matches
+    both and silently takes whichever comes first, which is Hanoi. Every lookup
+    here is scoped to the HCMC half of the file by position, and the scoping is
+    asserted rather than assumed.
+    """
+    text = open(FACTS, encoding='utf-8').read()
+    marker = text.find('**HCMC.**')
+    if marker < 0:
+        raise LookupError(
+            "FACTS.md has no '**HCMC.**' range-diagnostics heading, which is "
+            'what scopes this figure to the right city. Re-run '
+            'code/collect_metrics.py.')
+    # The retention table that follows both cities' blocks repeats map_id with
+    # a different column set, so the HCMC window ends where it begins.
+    end = text.find('**Tail and spread retention', marker)
+    hcmc = text[marker:end if end > 0 else len(text)]
+
+    def hcmc_tables():
+        """Tables inside the HCMC window only."""
+        out, header, rows = [], None, []
+        for line in hcmc.split('\n'):
+            if line.startswith('|'):
+                cells = [c.strip() for c in line.strip('|').split('|')]
+                if all(set(c) <= set('-: ') and c for c in cells):
+                    continue
+                if header is None:
+                    header = cells
+                else:
+                    rows.append(dict(zip(header, cells)))
+            else:
+                if header and rows:
+                    out.append((header, rows))
+                header, rows = None, []
+        if header and rows:
+            out.append((header, rows))
+        return out
+
+    tables = hcmc_tables()
+
     # Bin table: identified by its 'bin' column plus the reference column.
-    rows = []
-    for header, table in _tables():
-        if 'bin' in header and REFERENCE_COL in header:
-            rows = table
-            break
+    rows = next((t for h, t in tables
+                 if 'bin' in h and REFERENCE_COL in h), [])
     if not rows:
         raise LookupError(
-            'FACTS.md has no HCMC bin-distribution table (a table with a '
-            "'bin' column and a '(reference)' column). Re-run "
+            'The HCMC section of FACTS.md has no bin-distribution table (a '
+            "table with a 'bin' column and a '(reference)' column). Re-run "
             'code/collect_metrics.py.')
 
     edges = [r['bin'] for r in rows]
@@ -462,18 +505,36 @@ def f13_values():
             raise LookupError(f'Bin table has no column {col!r}.')
         dist[col] = [_pct(r[col]) for r in rows]
 
-    # Summary stats: the row carrying an IQR column is the saturation table.
+    # Summary stats: the HCMC table carrying an IQR column.
+    stat_rows = next((t for h, t in tables if 'IQR' in h and 'map_id' in h), [])
+    if not stat_rows:
+        raise LookupError(
+            'The HCMC section of FACTS.md has no summary table with an IQR '
+            'column. Re-run code/collect_metrics.py.')
+
     stats = {}
     for col in [m for m, _ in HCMC_MAPS] + [REFERENCE_COL]:
-        hit = [r for r in facts_rows(map_id=col) if 'IQR' in r]
+        hit = [r for r in stat_rows if r.get('map_id') == col]
         if len(hit) != 1:
             raise LookupError(
-                f'Expected exactly one summary row with an IQR column for '
-                f'{col!r}, found {len(hit)}.')
+                f'Expected exactly one HCMC summary row for {col!r}, found '
+                f'{len(hit)}.')
         r = hit[0]
         stats[col] = {k: float(r[k].rstrip('%'))
                       for k in ('mean', 'sd', 'min', 'max', 'IQR',
                                 'pct_gt80', 'pct_lt20')}
+
+    # The city scoping is the whole point of the window above, so verify it
+    # landed rather than trusting the heading search: HCMC's reference mean is
+    # 51.06 and Hanoi's is 46.05, and taking the wrong table would be silent.
+    ref_mean = stats[REFERENCE_COL]['mean']
+    hcmc_ref = facts_value('mean_reference', city='HCMC', map_id='emb_zeroshot')
+    if abs(ref_mean - hcmc_ref) > 0.01:
+        raise LookupError(
+            f'Scoping check failed: the selected reference mean is {ref_mean}, '
+            f"but FACTS.md gives HCMC's as {hcmc_ref}. The window landed on "
+            'the wrong city.')
+
     return edges, dist, stats
 
 
@@ -587,8 +648,6 @@ def build_f13():
                  fontsize=7.5, color=REF_GREY, annotation_clip=False,
                  family='DejaVu Sans Mono')
 
-    fig.suptitle('Figure 13 · HCMC predicted IMD distributions '
-                 '(n = 450 plots)', fontsize=13, fontweight='bold', y=0.97)
 
     os.makedirs(FIGS, exist_ok=True)
     path = os.path.join(FIGS, 'fig_hcmc_prediction_histogram.png')
@@ -739,12 +798,12 @@ def build_f14():
                    ms=8, markeredgecolor='white', mew=1.2,
                    label='local retrain'),
     ]
-    axes[-1].legend(handles=handles, loc='upper right', fontsize=8.5,
-                    framealpha=0.9, handletextpad=0.5)
+    # Below the axes: with no suptitle above, 'upper right' overlaps the
+    # target marker's value label on the right-hand arrow.
+    axes[-1].legend(handles=handles, loc='upper center',
+                    bbox_to_anchor=(0.5, -0.06), ncol=2, fontsize=8.5,
+                    frameon=False, handletextpad=0.5)
 
-    fig.suptitle('Figure 14 · Bias against photo-interpretation, '
-                 'training target and local retrains',
-                 fontsize=13, fontweight='bold', y=1.01)
     fig.tight_layout()
 
     os.makedirs(FIGS, exist_ok=True)
@@ -769,8 +828,309 @@ def build_f14():
     return path
 
 
-FIGURES = {'F1': build_f1, 'F12': build_f12, 'F13': build_f13,
-           'F14': build_f14}
+# ── F15 · Milan raster comparison ────────────────────────────────────────────
+# The one figure here built from rasters rather than from FACTS.md. It is a
+# relabelling of the notebook's figE_raster_comparison_1.png, which FIGURES.md
+# records as NEEDS-EDIT: its suptitle is commented out in 01b, so the three
+# composite runs' copies are indistinguishable outside their directory path.
+#
+# Rebuilt rather than re-executed. Notebook 01b would re-tune models and
+# re-export rasters (CLAUDE.md), but this figure only READS two GeoTIFFs that
+# already exist, so redrawing them standalone is safe and changes no model.
+# The panel geometry, colours, scale and limits are copied from 01b verbatim;
+# the only change is a suptitle naming the run.
+RASTER_OBS = 'data/IMD_2018_CLMS_UTM32N.tif'
+RASTER_PRED = ('outputs_S2_percentile_p10p25p50p75p90/'
+               'IMD_predicted_RF_S2_Milan.tif')
+DISPLAY_SCALE = 2          # 01b's decimation factor, kept for comparability
+
+
+def build_f15():
+    import matplotlib.ticker as mticker
+    from matplotlib.colors import ListedColormap
+    import rioxarray as rxr
+
+    obs_path = os.path.join(REPO, RASTER_OBS)
+    pred_path = os.path.join(REPO, RASTER_PRED)
+    for p in (obs_path, pred_path):
+        if not os.path.exists(p):
+            raise SystemExit(f'F15 needs {os.path.relpath(p, REPO)}, '
+                             'which is not on disk.')
+
+    obs = rxr.open_rasterio(obs_path, masked=False).squeeze(
+        'band', drop=True)[::DISPLAY_SCALE, ::DISPLAY_SCALE]
+    pred = rxr.open_rasterio(pred_path, masked=False).squeeze(
+        'band', drop=True)[::DISPLAY_SCALE, ::DISPLAY_SCALE]
+    if pred.rio.crs != obs.rio.crs or pred.shape != obs.shape:
+        pred = pred.rio.reproject_match(obs)
+    diff = pred - obs
+
+    imd_cmap = ListedColormap(
+        ['#1a9641', '#a6d96a', '#ffffbf', '#fdae61', '#d7191c'])
+
+    def show(ax, da, **kw):
+        b = da.rio.bounds()
+        im = ax.imshow(da.values, extent=(b[0], b[2], b[1], b[3]), **kw)
+        ax.set_aspect('equal')
+        ax.xaxis.set_major_locator(mticker.MaxNLocator(nbins=4))
+        ax.yaxis.set_major_locator(mticker.MaxNLocator(nbins=4))
+        ax.tick_params(axis='both', labelsize=8)
+        ax.set_xlabel('Easting [m]', fontsize=9)
+        ax.set_ylabel('Northing [m]', fontsize=9)
+        return im
+
+    fig, ax = plt.subplots(2, 2, figsize=(15, 12),
+                           gridspec_kw={'wspace': 0.25, 'hspace': 0.04})
+    im1 = show(ax[0, 0], obs, cmap=imd_cmap, vmin=0, vmax=100)
+    ax[0, 0].set_title('Observed IMD (CLMS 2018)',
+                       fontweight='bold', fontsize=12)
+    show(ax[0, 1], pred, cmap=imd_cmap, vmin=0, vmax=100)
+    ax[0, 1].set_title('Predicted IMD (S2 percentile, RF)',
+                       fontweight='bold', fontsize=12)
+    im3 = show(ax[1, 0], diff, cmap='RdBu_r', vmin=-30, vmax=30)
+    ax[1, 0].set_title('Difference (Predicted - Observed)',
+                       fontweight='bold', fontsize=12)
+    ax[1, 1].axis('off')
+
+    fig.colorbar(im1, ax=ax[0, :], orientation='vertical',
+                 fraction=0.025, pad=0.02, label='IMD (%)')
+    fig.colorbar(im3, ax=ax[1, :], orientation='vertical',
+                 fraction=0.025, pad=0.02, label='Pred - Obs (%)')
+
+    # The label FIGURES.md asks for: a statement of what produced the panels,
+    # not a conclusion about them.
+    # Run identification, not a caption: figE exists in three composite run
+    # directories under the same filename and the panels cannot be told apart.
+    fig.suptitle('S2 percentile composite (p10/p25/p50/p75/p90) · '
+                 'random forest',
+                 fontsize=13, fontweight='bold', y=0.94)
+
+    os.makedirs(FIGS, exist_ok=True)
+    path = os.path.join(FIGS, 'fig_milan_raster_comparison.png')
+    fig.savefig(path, dpi=DPI, bbox_inches='tight')
+    plt.close(fig)
+
+    d = diff.values.astype('float64')
+    d = d[np.isfinite(d)]
+    print('F15 · fig_milan_raster_comparison — inputs and difference summary')
+    print(f'  observed  : {RASTER_OBS}')
+    print(f'  predicted : {RASTER_PRED}')
+    print(f'  decimation: every {DISPLAY_SCALE}nd pixel (display only)')
+    print(f'  difference: mean {d.mean():+.2f}, sd {d.std():.2f}, '
+          f'range {d.min():+.1f} to {d.max():+.1f} (pp, pred - obs)')
+    print('  NOTE: raster-wide and city-wide; not the 1014-point holdout in '
+          'Table A, and not quoted in the report.')
+    print('')
+    print(f'Saved {os.path.relpath(path, REPO)}')
+    return path
+
+
+# ── F3 · spatial-vs-random CV inflation ──────────────────────────────────────
+# A redraw of the notebook's fig06_inflation_heatmap.png, which FIGURES.md
+# records as usable but which carries one row per TUNED model -- including a
+# third estimator that is out of scope for this report and whose name the
+# figure would render. Filtering the estimator out is the whole reason this
+# rebuild exists.
+#
+# Redrawn from inflation_analysis.csv rather than by re-executing notebook 01,
+# per CLAUDE.md: re-running the notebook would re-tune models and re-export
+# rasters. The CSV is the tabular twin of the notebook figure, so the values
+# are the notebook's; only the row filter and the labelling change.
+INFLATION_CSV = 'outputs_v2/inflation_analysis.csv'
+REPORTED_MODELS = ('RF', 'SVR')
+
+
+def f3_values():
+    """Inflation rows for the reported estimators, read from the run's CSV."""
+    import csv
+
+    path = os.path.join(REPO, INFLATION_CSV)
+    if not os.path.exists(path):
+        raise LookupError(
+            f'{INFLATION_CSV} is missing; it is the tabular twin of the '
+            'notebook inflation heatmap. Re-run notebook 01 rather than '
+            'hardcoding the values.')
+    with open(path, encoding='utf-8', newline='') as fh:
+        rows = list(csv.DictReader(fh))
+
+    kept = [r for r in rows if r['Model'] in REPORTED_MODELS]
+    if {r['Model'] for r in kept} != set(REPORTED_MODELS):
+        raise LookupError(
+            f'{INFLATION_CSV} does not carry rows for every reported '
+            f'estimator {REPORTED_MODELS}; found '
+            f'{sorted({r["Model"] for r in rows})}.')
+
+    blocks = sorted({r['Block'] for r in kept}, key=lambda b: int(b[:-1]))
+    return kept, blocks, len(rows) - len(kept)
+
+
+def build_f3():
+    kept, blocks, n_dropped = f3_values()
+
+    by = {(r['Model'], r['Block']): r for r in kept}
+    tuning = {r['Model']: r['Tuning_block'] for r in kept}
+
+    fig, axes = plt.subplots(1, 2, figsize=(11.0, 3.2))
+    for ax, col, title, fmt in [
+        (axes[0], 'RMSE_diff', 'ΔRMSE inflation (pp)', '.2f'),
+        (axes[1], 'Pct_inflation', 'RMSE inflation (%)', '.1f'),
+    ]:
+        grid = np.array([[float(by[(m, b)][col]) for b in blocks]
+                         for m in REPORTED_MODELS])
+        # Symmetric limits about zero: the finding is that the values sit at
+        # zero, and a sequential scale normalised to the data would paint a
+        # 0.1 pp spread as though it were a gradient.
+        lim = max(1.0, float(np.abs(grid).max()))
+        im = ax.imshow(grid, cmap='RdBu_r', aspect='auto',
+                       vmin=-lim, vmax=lim)
+        ax.set_xticks(range(len(blocks)))
+        ax.set_xticklabels(blocks)
+        ax.set_yticks(range(len(REPORTED_MODELS)))
+        ax.set_yticklabels(list(REPORTED_MODELS))
+        ax.tick_params(axis='both', length=0)
+        for i, m in enumerate(REPORTED_MODELS):
+            for j, b in enumerate(blocks):
+                ax.text(j, i, f'{grid[i, j]:{fmt}}', ha='center', va='center',
+                        fontsize=10.5,
+                        fontweight='bold' if b == tuning[m] else 'normal')
+        ax.set_title(title, fontweight='bold')
+        ax.set_xlabel('Spatial block size', fontsize=9)
+        fig.colorbar(im, ax=ax, fraction=0.046, pad=0.03)
+
+    # A legend for the bold marking, not a caption. y was clearance for the
+    # two-line suptitle that used to sit here; sit it just above the panels.
+    fig.suptitle('bold = the block each model was tuned at',
+                 fontsize=10, y=1.00)
+    fig.tight_layout()
+
+    os.makedirs(FIGS, exist_ok=True)
+    path = os.path.join(FIGS, 'fig_cv_inflation.png')
+    fig.savefig(path, dpi=DPI, bbox_inches='tight')
+    plt.close(fig)
+
+    # ── Plotted values, for checking against the CSV ────────────────────────
+    print('F3 · fig_cv_inflation — plotted values')
+    print(f'  source: {INFLATION_CSV}')
+    print(f'  {n_dropped} row(s) for estimators out of scope were filtered out '
+          'before plotting')
+    print('')
+    print(f'{"model":>6s} {"block":>7s} {"random":>8s} {"spatial":>8s} '
+          f'{"diff":>7s} {"pct":>7s}  tuned at')
+    print('-' * 64)
+    worst = 0.0
+    for m in REPORTED_MODELS:
+        for b in blocks:
+            r = by[(m, b)]
+            pct = float(r['Pct_inflation'])
+            worst = max(worst, abs(pct))
+            print(f'{m:>6s} {b:>7s} {float(r["Random_RMSE"]):8.2f} '
+                  f'{float(r["Spatial_RMSE"]):8.2f} '
+                  f'{float(r["RMSE_diff"]):+7.2f} {pct:+7.1f} '
+                  f' {r["Tuning_block"] if b == r["Tuning_block"] else ""}')
+    print('-' * 64)
+    print(f'largest absolute inflation over the reported estimators: '
+          f'{worst:.1f}%')
+    print('')
+    print(f'Saved {os.path.relpath(path, REPO)}')
+    return path
+
+
+# ── F17 · Milan predictor-set ranking ────────────────────────────────────────
+# Table 1 tabulates the four predictor sets on RMSE, MAE and R2; this shows the
+# same four rows so the ranking is visible rather than only read off. The claim
+# it supports is that the ordering is IDENTICAL on all three metrics, which is
+# a statement about three columns at once and is exactly what a table makes the
+# reader verify by eye.
+#
+# Built rather than taken from a notebook. figA_holdout_accuracy_* would have
+# been the notebook candidate, but its left panel duplicates F4 and its right
+# panel duplicates F5, and its title carries the wrong tuning block (see
+# data/FIGURES.md).
+RANK_METRICS = [
+    ('RMSE', 'RMSE (IMD pp)',  'lower is better'),
+    ('MAE',  'MAE (IMD pp)',   'lower is better'),
+    ('R2',   'R²',        'higher is better'),
+]
+
+
+def f17_values():
+    """The four Milan predictor sets on three metrics, read from FACTS.md."""
+    rows = []
+    for a_name, _ in PREDICTORS:
+        rec = {'predictor': a_name}
+        for key, _, _ in RANK_METRICS:
+            rec[key] = facts_value(key, city='Milan', predictor_set=a_name,
+                                   model='GEE_RF')
+        rows.append(rec)
+    # Rank on RMSE, best first. Ordering the bars by the result rather than by
+    # band count is the point: the reader should see the ranking, not recover it.
+    return sorted(rows, key=lambda r: r['RMSE'])
+
+
+def build_f17():
+    rows = f17_values()
+    labels = [r['predictor'] for r in rows]
+    colours = [CMAP[r['predictor']] for r in rows]
+    y = np.arange(len(rows))[::-1]          # best at the top
+
+    fig, axes = plt.subplots(1, 3, figsize=(10.4, 3.4))
+
+    for ax, (key, xlabel, sense) in zip(axes, RANK_METRICS):
+        vals = [r[key] for r in rows]
+        ax.barh(y, vals, height=0.62, color=colours, linewidth=0, zorder=2)
+
+        # Headroom for the value labels, and a floor at zero so bar LENGTH is
+        # proportional to the value. A truncated axis would exaggerate the
+        # spread, which is the whole quantity under discussion in 7.1.
+        ax.set_xlim(0, max(vals) * 1.28)
+        for yi, v in zip(y, vals):
+            ax.annotate(f'{v:.3f}', xy=(v, yi), xytext=(4, 0),
+                        textcoords='offset points', va='center', ha='left',
+                        fontsize=8.5, fontweight='bold')
+
+        ax.set_yticks(y)
+        ax.set_yticklabels(labels if ax is axes[0] else [], fontsize=9)
+        ax.set_xlabel(f'{xlabel}  ({sense})', fontsize=9)
+        ax.tick_params(axis='both', labelsize=8, length=0)
+        ax.set_axisbelow(True)
+        ax.grid(axis='x', color='#ececec', zorder=0)
+        for side in ('left', 'bottom'):
+            ax.spines[side].set_color(REF_GREY)
+
+    axes[0].set_title('Ranked on RMSE, best at top', fontsize=9.5,
+                      fontweight='bold', loc='left')
+
+    fig.tight_layout()
+
+    os.makedirs(FIGS, exist_ok=True)
+    path = os.path.join(FIGS, 'fig_milan_predictor_ranking.png')
+    fig.savefig(path, dpi=DPI, bbox_inches='tight')
+    plt.close(fig)
+
+    # ── Plotted values, for checking against FACTS.md ───────────────────────
+    print('F17 · fig_milan_predictor_ranking — plotted values')
+    print(f'{"predictor":24s} {"RMSE":>9s} {"MAE":>9s} {"R2":>9s}')
+    print('-' * 54)
+    for r in rows:
+        print(f'{r["predictor"]:24s} {r["RMSE"]:9.3f} {r["MAE"]:9.3f} '
+              f'{r["R2"]:9.3f}')
+    print('-' * 54)
+    order = {k: [r['predictor'] for r in
+                 sorted(rows, key=lambda x: x[k], reverse=(k == 'R2'))]
+             for k, _, _ in RANK_METRICS}
+    same = len({tuple(v) for v in order.values()}) == 1
+    print(f'ordering identical on RMSE, MAE and R2: {same}')
+    if not same:
+        for k, v in order.items():
+            print(f'  {k}: {v}')
+    print('')
+    print(f'Saved {os.path.relpath(path, REPO)}')
+    return path
+
+
+FIGURES = {'F1': build_f1, 'F3': build_f3, 'F12': build_f12,
+           'F13': build_f13, 'F14': build_f14, 'F15': build_f15,
+           'F17': build_f17}
 
 
 def main():

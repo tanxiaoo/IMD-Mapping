@@ -29,6 +29,27 @@ MISSING = 'MISSING'
 
 PRIMARY_RULE = 'strict'          # notebook 04, validation_summary.json
 
+# Estimators the report covers. The Milan notebooks also tune a third model
+# whose rows appear in the CV CSVs; it is out of scope and is filtered out at
+# collection so it never reaches the fact base.
+#
+# The filter is on the model NAME, so the excluded estimator is never written
+# to FACTS.md even when it wins a run. That is a live case, not a hypothetical:
+# `best_model_name` in the percentile run's model_metadata_S2.json names the
+# excluded model. Anything reading a `best_model_*` field must pass it through
+# reported_model() before rendering.
+REPORTED_MODELS = ('RF', 'SVR')
+
+
+def reported_model(name):
+    """Model name if it is in scope, else a neutral placeholder.
+
+    Never returns the excluded estimator's name. Use for any value read from a
+    `best_model_*` metadata field, which records whichever model won CV
+    regardless of whether the report covers it.
+    """
+    return str(name) if str(name) in REPORTED_MODELS else 'out of scope'
+
 
 # ── Table A: run registry ────────────────────────────────────────────────────
 # provenance:
@@ -85,6 +106,14 @@ def _f(x, nd=3):
     if not np.isfinite(v):
         return MISSING
     return f'{v:.{nd}f}'
+
+
+def _ci(lo, hi, nd=3):
+    """Format a bootstrap interval as [lo, hi], or MISSING if either end is."""
+    lo_s, hi_s = _f(lo, nd), _f(hi, nd)
+    if lo_s == MISSING or hi_s == MISSING:
+        return MISSING
+    return f'[{lo_s}, {hi_s}]'
 
 
 def collect_table_a():
@@ -186,10 +215,14 @@ def collect_table_b():
     t1_rel = 'outputs_validation/table1_headline_ci.csv'
     t1_path = os.path.join(REPO, t1_rel)
     corr = {}
+    cis = {}
     if os.path.exists(t1_path):
         t1 = pd.read_csv(t1_path)
         for _, r in t1.iterrows():
             corr[(r['city'], r['map_id'])] = r.get('RMSE_corr')
+            cis[(r['city'], r['map_id'])] = (
+                r.get('RMSE_lo'), r.get('RMSE_hi'),
+                r.get('MAE_lo'), r.get('MAE_hi'))
 
     rows = []
     for (city, map_id, role, rule), g in long_df.groupby(
@@ -200,7 +233,8 @@ def collect_table_b():
 
         if len(yt) < 2:
             rows.append(dict(city=city, map_id=map_id, role=role, rule=rule,
-                             RMSE=MISSING, RMSE_corr=MISSING, MAE=MISSING,
+                             RMSE=MISSING, RMSE_corr=MISSING,
+                             RMSE_CI=MISSING, MAE=MISSING, MAE_CI=MISSING,
                              R2=MISSING, Bias=MISSING, n=str(len(yt)),
                              source_file=long_rel))
             continue
@@ -213,12 +247,17 @@ def collect_table_b():
         r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else np.nan
         bias = float(np.mean(resid))     # obs - pred, repo convention
 
-        # RMSE_corr exists only for the primary rule; never estimate it.
-        rc = corr.get((city, map_id)) if rule == PRIMARY_RULE else None
+        # RMSE_corr and the bootstrap CIs exist only for the primary rule;
+        # never estimate them for B or C.
+        primary = rule == PRIMARY_RULE
+        rc = corr.get((city, map_id)) if primary else None
+        rlo, rhi, mlo, mhi = (cis.get((city, map_id), (None,) * 4)
+                              if primary else (None,) * 4)
 
         rows.append(dict(
             city=city, map_id=map_id, role=role, rule=rule,
-            RMSE=_f(rmse), RMSE_corr=_f(rc), MAE=_f(mae),
+            RMSE=_f(rmse), RMSE_corr=_f(rc), RMSE_CI=_ci(rlo, rhi),
+            MAE=_f(mae), MAE_CI=_ci(mlo, mhi),
             R2=_f(r2), Bias=_f(bias), n=str(len(yt)),
             source_file=long_rel,
         ))
@@ -322,18 +361,128 @@ def collect_bias_recovery():
     return pd.DataFrame(rows)
 
 
-def collect_hcmc_range():
-    """Prediction-range diagnostics for the four HCMC maps.
+def collect_milan_error_shape():
+    """Per-plot absolute-error distribution for the five Milan maps.
+
+    MAE is the mean of this distribution and RMSE is driven by its upper tail,
+    so a map can hold the best MAE and the worst RMSE at once. The quantiles
+    and tail counts here are what makes that split a measurement rather than
+    an inference from the two summary metrics.
+    """
+    rel = 'outputs_validation/validation_per_plot_long.csv'
+    path = os.path.join(REPO, rel)
+    if not os.path.exists(path):
+        return pd.DataFrame(), rel
+    s = pd.read_csv(path)
+    s = s[(s['rule'] == PRIMARY_RULE) & (s['city'] == 'Milan')]
+
+    rows = []
+    for map_id, g in s.groupby('map_id', sort=False):
+        e = g['abs_error'].dropna().to_numpy(dtype=float)
+        if e.size == 0:
+            continue
+        n = e.size
+        rows.append(dict(
+            map_id=map_id,
+            role=g['role'].iloc[0],
+            MAE=_f(float(np.mean(e)), 2),
+            RMSE=_f(float(np.sqrt(np.mean(e ** 2))), 2),
+            median=_f(float(np.median(e)), 2),
+            p75=_f(float(np.percentile(e, 75)), 2),
+            p90=_f(float(np.percentile(e, 90)), 2),
+            max=_f(float(e.max()), 2),
+            pct_under5=f'{100 * float(np.mean(e < 5)):.1f}%',
+            pct_over50=f'{100 * float(np.mean(e > 50)):.1f}%',
+            n=str(n),
+            source_file=rel,
+        ))
+    return pd.DataFrame(rows), rel
+
+
+# Transfer rasters, for the whole-map view of the same diagnostic. The plot
+# stats below see 450 pixels per city; these see every predicted pixel, so a
+# floor that survives both is a property of the map and not of the sample.
+RANGE_RASTERS = {
+    ('Hanoi', 'emb_zeroshot'):       'outputs_transfer_v2/IMD_Hanoi_10m_zeroshot.tif',
+    ('Hanoi', 'emb_localrf'):        'outputs_transfer_v2/IMD_Hanoi_10m_localrf.tif',
+    ('HCMC', 'emb_zeroshot'):        'outputs_transfer_v2/IMD_HCMC_10m_zeroshot.tif',
+    ('HCMC', 'emb_localrf'):         'outputs_transfer_v2/IMD_HCMC_10m_localrf.tif',
+    # The S2 median run suffixes its rasters with the composite name; the
+    # embeddings run does not. Same notebook code, different export tag.
+    ('Hanoi', 'S2_median_zeroshot'): 'outputs_transfer_S2_median/IMD_Hanoi_10m_zeroshot_S2median.tif',
+    ('Hanoi', 'S2_median_localrf'):  'outputs_transfer_S2_median/IMD_Hanoi_10m_localrf_S2median.tif',
+    ('HCMC', 'S2_median_zeroshot'):  'outputs_transfer_S2_median/IMD_HCMC_10m_zeroshot_S2median.tif',
+    ('HCMC', 'S2_median_localrf'):   'outputs_transfer_S2_median/IMD_HCMC_10m_localrf_S2median.tif',
+}
+
+
+def check_range_rasters():
+    """Fail loudly if the transfer rasters do not resolve as expected.
+
+    The paths in RANGE_RASTERS are constructed, and the two runs do not use
+    the same filename pattern: the S2 median run suffixes its exports with
+    the composite name, the embeddings run does not. A pattern mismatch
+    resolves a SUBSET rather than nothing, so the tables still render and the
+    numbers are still plausible -- they are simply computed from four maps
+    instead of eight. That is the worst kind of failure for a fact base, so
+    it is made fatal here rather than left to be noticed downstream.
+    """
+    missing = [rel for rel in RANGE_RASTERS.values()
+               if not os.path.exists(os.path.join(REPO, rel))]
+    assert not missing, (
+        f'{len(missing)} of {len(RANGE_RASTERS)} transfer rasters did not '
+        f'resolve: {missing}. Check the export filename pattern in notebooks '
+        f'02/03 -- the S2 median run suffixes "_S2median", the embeddings run '
+        f'does not. A partial match silently computes the range diagnostics '
+        f'from a subset of the maps.')
+    return len(RANGE_RASTERS)
+
+
+def collect_raster_range(city, map_id):
+    """Whole-raster min and sub-20% share for one predicted map.
+
+    The rasters carry no nodata tag and pad the export grid with NaN, so
+    validity is finiteness -- which is what recovers HCMC's 8.2 M figure from
+    a 3001x3001 grid. Returns MISSING if the file or rasterio is absent;
+    never estimated from the plot sample, which is a different population.
+    """
+    rel = RANGE_RASTERS.get((city, map_id))
+    if rel is None:
+        return {}
+    path = os.path.join(REPO, rel)
+    if not os.path.exists(path):
+        return {}
+    try:
+        import rasterio
+        with rasterio.open(path) as ds:
+            a = ds.read(1).astype(float)
+    except Exception:
+        return {}
+    v = a[np.isfinite(a)]
+    if v.size == 0:
+        return {}
+    return {
+        'ras_n': f'{v.size / 1e6:.1f} M',
+        'ras_min': f'{v.min():.2f}',
+        'ras_pct_lt20': f'{100 * float((v < 20).mean()):.4f}%',
+        'ras_source': rel,
+    }
+
+
+def collect_city_range(city):
+    """Prediction-range diagnostics for one city's four maps.
 
     Distinguishes a map whose range has collapsed from one that is merely
     shifted: a shifted map keeps its spread, a saturated one loses the tails.
+    Run for both Vietnam cities -- the contrast between them is the result,
+    so neither city can be the only one measured.
     """
     rel = 'outputs_validation/validation_per_plot_long.csv'
     path = os.path.join(REPO, rel)
     if not os.path.exists(path):
         return pd.DataFrame(), pd.DataFrame()
     s = pd.read_csv(path)
-    s = s[(s['rule'] == PRIMARY_RULE) & (s['city'] == 'HCMC')]
+    s = s[(s['rule'] == PRIMARY_RULE) & (s['city'] == city)]
 
     maps = ['emb_zeroshot', 'S2_median_zeroshot',
             'emb_localrf', 'S2_median_localrf']
@@ -345,12 +494,18 @@ def collect_hcmc_range():
              else s[s['map_id'] == m]['pred_imd'].dropna().to_numpy())
         if len(v) == 0:
             continue
-        stats_rows.append(dict(
+        row = dict(
             map_id=m, mean=f'{v.mean():.2f}', sd=f'{v.std():.2f}',
             min=f'{v.min():.1f}', max=f'{v.max():.1f}',
             IQR=f'{np.percentile(v, 75) - np.percentile(v, 25):.1f}',
             pct_gt80=f'{100 * (v > 80).mean():.1f}%',
-            pct_lt20=f'{100 * (v < 20).mean():.1f}%'))
+            pct_lt20=f'{100 * (v < 20).mean():.1f}%')
+        # Whole-raster counterpart, where one exists. The reference is plots
+        # only -- there is no interpreted raster -- so it stays MISSING there.
+        ras = collect_raster_range(city, m) if m != '(reference)' else {}
+        row.update({k: ras.get(k, MISSING)
+                    for k in ('ras_n', 'ras_min', 'ras_pct_lt20')})
+        stats_rows.append(row)
 
     edges = list(range(0, 101, 10))
     hist_rows = []
@@ -368,7 +523,20 @@ def collect_hcmc_range():
             row[m] = f'{sel.sum()} ({100 * sel.mean():.1f}%)'
         hist_rows.append(row)
 
-    return pd.DataFrame(stats_rows), pd.DataFrame(hist_rows)
+    # The reference's two modes, and the width each map has available to span
+    # them. A map cannot represent a bimodal reference from inside a narrow
+    # band however well its mean is placed.
+    facts = {}
+    if len(ref):
+        facts = {
+            'ref_lt10': f'{100 * float((ref < 10).mean()):.1f}%',
+            'ref_gt90': f'{100 * float((ref > 90).mean()):.1f}%',
+            'ref_lt20': f'{100 * float((ref < 20).mean()):.1f}%',
+            'ref_iqr': f'{np.percentile(ref, 75) - np.percentile(ref, 25):.1f}',
+            'ref_sd': f'{ref.std():.2f}',
+        }
+
+    return pd.DataFrame(stats_rows), pd.DataFrame(hist_rows), facts
 
 
 def collect_vietnam_per_class():
@@ -407,6 +575,79 @@ def collect_vietnam_per_class():
                 R2_not_for_quoting=(_f(r2, 3) if pd.notna(r2)
                                     else 'undefined (no variance)'),
                 source_file=rel,
+            ))
+    return pd.DataFrame(rows)
+
+
+def collect_milan_cv():
+    """Tuning CV RMSE per Milan run x model x block, with the block selected.
+
+    Two files carry CV numbers and they answer different questions:
+
+      hyperparameter_tuning.csv  CV RMSE of the randomised search at each block
+                                 size. This is what the notebooks minimise --
+                                 `best_block_per_model[name]` in 01/01b cell 22
+                                 takes the argmin of this column -- so it is the
+                                 authority for which block was selected.
+      spatial_cv_summary.csv     CV RMSE of the already-tuned model re-evaluated
+                                 under each CV strategy, including a Random rung
+                                 the tuning file has no counterpart for.
+
+    They do not agree, and are not meant to: on the embeddings run the tuning
+    file selects RF @ 1000m (13.162) while the evaluation file is flattest at
+    2000m (13.20). Both are carried, in separate columns, and the `selected`
+    flag follows the tuning file because that is what the code does.
+
+    MLP rows are dropped at source: the estimator is out of scope for this
+    report, so it must not reach the fact base. `selected` is therefore the
+    minimum over RF and SVR, not over every model the notebook tuned -- stated
+    in the rendered note so the flag is not misread as the notebook's own
+    overall winner (which is MLP on the percentile run).
+    """
+    rows = []
+    for d, predictor in MILAN_RUNS:
+        tune_rel = f'{d}/hyperparameter_tuning.csv'
+        eval_rel = f'{d}/spatial_cv_summary.csv'
+        tune_path = os.path.join(REPO, tune_rel)
+        eval_path = os.path.join(REPO, eval_rel)
+
+        if not os.path.exists(tune_path):
+            rows.append(dict(predictor_set=predictor, model=MISSING,
+                             block=MISSING, cv_rmse_tuning=MISSING,
+                             cv_std=MISSING, cv_rmse_eval=MISSING,
+                             selected=MISSING, source_file=tune_rel))
+            continue
+
+        tune = pd.read_csv(tune_path)
+        tune = tune[tune['Model'].isin(REPORTED_MODELS)]
+
+        # Evaluation RMSE, keyed by (model, block). Absent -> MISSING, never
+        # substituted from the tuning column: they are different quantities.
+        ev = {}
+        if os.path.exists(eval_path):
+            edf = pd.read_csv(eval_path)
+            for _, r in edf.iterrows():
+                ev[(str(r['Model']), str(r['CV_method']))] = r.get('RMSE_mean')
+
+        # Selected block per model = argmin of the tuning CV RMSE, matching
+        # best_block_per_model in notebooks 01 and 01b.
+        best = {}
+        for model, g in tune.groupby('Model'):
+            g = g.dropna(subset=['CV_RMSE'])
+            if not g.empty:
+                best[model] = str(g.loc[g['CV_RMSE'].idxmin(), 'Block'])
+
+        for _, r in tune.iterrows():
+            model, block = str(r['Model']), str(r['Block'])
+            rows.append(dict(
+                predictor_set=predictor,
+                model=model,
+                block=block,
+                cv_rmse_tuning=_f(r.get('CV_RMSE')),
+                cv_std=_f(r.get('CV_std')),
+                cv_rmse_eval=_f(ev.get((model, block))),
+                selected='**yes**' if best.get(model) == block else '',
+                source_file=tune_rel,
             ))
     return pd.DataFrame(rows)
 
@@ -509,6 +750,107 @@ def collect_milan_rule_ranking():
     return out, facts
 
 
+# ── Composite depth: what the archive holds against what percentiles need ────
+# The screened date counts are already in EXPERIMENT_MAP.md, but the CEILING
+# counts -- how many dates exist when every screening threshold is disabled --
+# live only in the extraction metadata's free-text `method_rationale`. Without
+# them the report can say "no relaxation of the thresholds recovers the dates"
+# but cannot say by how much each city falls short, which is the difference
+# between an archive limitation and a screening choice.
+#
+# Milan is not listed: it clears the requirement, so it has no shortfall to
+# record and its metadata carries no rationale field.
+CEILING_RUNS = [
+    ('Hanoi', 'samples_S2_median_Hanoi/s2_extraction_metadata.json'),
+    ('HCMC',  'samples_S2_median_HCMC/s2_extraction_metadata.json'),
+]
+
+# The percentile set whose date floor the report quotes. s2_utils.PERCENTILES
+# still defaults to the retired 3-percentile set, so the set in USE is read
+# from the run directory rather than taken from the module default.
+PERCENTILE_RUN = ('samples_S2_percentile_p10p25p50p75p90/'
+                  's2_extraction_metadata.json')
+
+
+def _required_dates():
+    """Minimum stack depth for the percentile set actually in use.
+
+    Derived from s2_utils rather than parsed from prose, so the requirement in
+    the fact base is the one the code enforces. Returns (n_dates, n_pctl).
+    """
+    path = os.path.join(REPO, PERCENTILE_RUN)
+    if not os.path.exists(path):
+        return None, None
+    with open(path, encoding='utf-8') as fh:
+        pctl = json.load(fh).get('percentiles')
+    if not pctl:
+        return None, None
+    import sys
+    sys.path.insert(0, REPO)
+    from s2_utils import min_dates_for
+    return int(min_dates_for(pctl)), len(pctl)
+
+
+def collect_composite_ceiling():
+    """Per-city percentile shortfall: screened, ceiling and required counts.
+
+    `method_rationale` is free text written by notebook 00b, of the form
+      "percentile(...) needs 17 dates; <collection> holds only 10 over this
+       AOI in 2018."
+    Both numbers are parsed out and the REQUIREMENT is cross-checked against
+    s2_utils.min_dates_for -- if the prose and the code disagree, the value is
+    written MISSING rather than trusting the sentence. A number that reaches
+    the report must be one the code can still vouch for.
+    """
+    import re
+
+    required, n_pctl = _required_dates()
+
+    rows = []
+    for city, rel in CEILING_RUNS:
+        path = os.path.join(REPO, rel)
+        if not os.path.exists(path):
+            rows.append(dict(city=city, n_screened=MISSING, n_ceiling=MISSING,
+                             n_required=MISSING, shortfall=MISSING,
+                             source_file=rel))
+            continue
+        with open(path, encoding='utf-8') as fh:
+            meta = json.load(fh)
+
+        n_screened = len(meta.get('selected_dates') or []) or None
+        prose = str(meta.get('method_rationale', ''))
+
+        m_need = re.search(r'needs\s+(\d+)\s+dates', prose)
+        m_have = re.search(r'holds\s+only\s+(\d+)\b', prose)
+        prose_need = int(m_need.group(1)) if m_need else None
+        n_ceiling = int(m_have.group(1)) if m_have else None
+
+        # The requirement is the code's, not the sentence's. Disagreement means
+        # the rationale was written against a different percentile set, so
+        # neither number is safe to quote.
+        if required is not None and prose_need is not None \
+                and prose_need != required:
+            n_ceiling = None
+            n_need = MISSING
+        else:
+            n_need = str(required) if required is not None else (
+                str(prose_need) if prose_need is not None else MISSING)
+
+        short = (str(required - n_ceiling)
+                 if required is not None and n_ceiling is not None
+                 else MISSING)
+
+        rows.append(dict(
+            city=city,
+            n_screened=str(n_screened) if n_screened else MISSING,
+            n_ceiling=str(n_ceiling) if n_ceiling is not None else MISSING,
+            n_required=n_need,
+            shortfall=short,
+            source_file=rel,
+        ))
+    return pd.DataFrame(rows), required, n_pctl
+
+
 CITY_CSV = {
     'Milan': 'data/milan_imd_2018_results_cells.csv',
     'Hanoi': 'data/hanoi_imd_2018_results_cells.csv',
@@ -570,16 +912,20 @@ def main():
     rc = collect_rule_code_counts()
     pt = collect_paired_tests()
     br = collect_bias_recovery()
-    hs, hh = collect_hcmc_range()
+    mes, mes_src = collect_milan_error_shape()
+    n_rasters = check_range_rasters()
+    ranges = {c: collect_city_range(c) for c in ('Hanoi', 'HCMC')}
     mr, mrf = collect_milan_rule_ranking()
+    cc, cc_required, cc_npctl = collect_composite_ceiling()
     vpc = collect_vietnam_per_class()
+    cv = collect_milan_cv()
     fi, fi_src = collect_feature_importance()
     lm = collect_level_matching()
 
     a_cols = ['city', 'predictor_set', 'model', 'mode', 'RMSE', 'MAE', 'R2',
               'Bias', 'n', 'source_file', 'provenance']
-    b_cols = ['city', 'map_id', 'role', 'rule', 'RMSE', 'RMSE_corr', 'MAE',
-              'R2', 'Bias', 'n', 'source_file']
+    b_cols = ['city', 'map_id', 'role', 'rule', 'RMSE', 'RMSE_corr', 'RMSE_CI',
+              'MAE', 'MAE_CI', 'R2', 'Bias', 'n', 'source_file']
 
     if not b.empty:
         b = b.copy()
@@ -597,7 +943,9 @@ def main():
               'one beside a number from the other. Tables A and C share the '
               'same-source reference (Table C is Table A broken out by IMD '
               'class); Table B stands alone against photo-interpretation. '
-              'Table D is a model diagnostic, not an accuracy measure.\n')
+              'Tables D and E are model diagnostics, not accuracy measures — '
+              'Table E holds cross-validation scores, which must never be '
+              'quoted as holdout performance.\n')
     md.append('**Bias = observed − predicted (reference − map)** in both '
               'validations, verified identical across notebooks 01, 01b, 02, 03 '
               'and 04. Positive bias means the map **under-predicts**; negative '
@@ -638,6 +986,20 @@ def main():
               f'`RMSE_corr` (binomial reference-noise correction) is stored for '
               f'the primary rule only and is an **upper bound** on map error — '
               f'it is left {MISSING} for rules B and C rather than estimated.\n')
+    md.append(f'\n`RMSE_CI` and `MAE_CI` are **95 % percentile bootstrap** '
+              f'intervals read from '
+              f'`outputs_validation/table1_headline_ci.csv`: '
+              f'10,000 resamples, seed 42, '
+              f'resampling **plots** as the independent unit, with one shared '
+              f'resample index across maps within a city. Like `RMSE_corr` '
+              f'they are stored for the primary rule only and are left '
+              f'{MISSING} for rules B and C.\n')
+    md.append('\nAn interval here describes the uncertainty of **one map\'s** '
+              'metric taken on its own. It is not a test of the difference '
+              'between two maps: the paired tests below remove the plot-level '
+              'variance common to both maps and therefore have more power, so '
+              'overlapping intervals and a significant paired difference are '
+              'consistent rather than contradictory.\n')
 
     md.append('\n### Why rules `strict` and `B` are identical in Vietnam\n')
     md.append('_Occurrences of the two codes that separate the rules from '
@@ -651,6 +1013,36 @@ def main():
               'rows are identical to `strict` by construction. Code 12 occurs '
               'in all three cities, so rule `C` differs everywhere. In Milan '
               'both codes occur and all three rules differ.\n')
+
+    # ── Composite depth: the percentile shortfall in Vietnam ────────────────
+    md.append('\n### Why percentiles were not computable in Vietnam\n')
+    md.append('_Usable dates after screening, against the ceiling case in '
+              'which every screening threshold is disabled, against the number '
+              'a percentile composite requires. `n_ceiling` is the count the '
+              '2018 archive holds over the AOI when nothing is filtered out at '
+              'all, so a city short of `n_required` there is short of dates '
+              'that do not exist — not of dates a looser threshold would '
+              'admit._\n')
+    md.append(to_md(cc, ['city', 'n_screened', 'n_ceiling', 'n_required',
+                         'shortfall', 'source_file']))
+    if cc_required is not None:
+        md.append(f'\n`n_required` is derived from `s2_utils.min_dates_for`, '
+                  f'not read from the metadata prose: {cc_npctl} percentiles '
+                  f'require **{cc_required} dates**. The prose value is '
+                  'cross-checked against it and the row is written MISSING '
+                  'if the two disagree, since a rationale written against a '
+                  'different percentile set cannot vouch for either number.\n')
+    if not cc.empty and (cc['n_ceiling'] != MISSING).all():
+        worst = cc.loc[cc['shortfall'].astype(int).idxmin()]
+        md.append(f'\n**Neither city reaches the requirement even unscreened.** '
+                  f'The shortfall is smallest in {worst["city"]}, which holds '
+                  f'{worst["n_ceiling"]} dates against the {worst["n_required"]} '
+                  f'required — short by {worst["shortfall"]}. That the closest '
+                  'case still misses is what makes this an archive limitation '
+                  'rather than a screening choice: no relaxation of the '
+                  'thresholds can produce dates the 2018 archive does not '
+                  'hold. Median has no minimum date count and was therefore '
+                  'the only method computable in either city.\n')
 
     # ── Milan ranking under the alternative rules ───────────────────────────
     md.append('\n### Does the impervious coding change the Milan ranking?\n')
@@ -693,6 +1085,26 @@ def main():
               'that they are equivalent — absence of a detected difference is '
               'not a demonstration of no difference.\n')
 
+    # ── Milan error shape ───────────────────────────────────────────────────
+    md.append('\n### Milan per-plot absolute-error distribution (primary '
+              'rule)\n')
+    md.append('_MAE is the mean of this distribution; RMSE squares the errors '
+              'first and is therefore driven by its upper tail. A map can hold '
+              'the best MAE and the worst RMSE at once, and these columns are '
+              'where that shows._\n')
+    md.append(to_md(mes, ['map_id', 'role', 'MAE', 'RMSE', 'median', 'p75',
+                          'p90', 'max', 'pct_under5', 'pct_over50', 'n',
+                          'source_file']))
+    md.append('\n**`CLMS` has the best MAE and the worst RMSE of the five '
+              'Milan maps.** The distribution accounts for the split: it is '
+              'right more often than any model — the largest `pct_under5` and '
+              'the lowest median absolute error — and wrong by more when it is '
+              'wrong, carrying the largest `pct_over50`. The models fitted to '
+              'it hedge, which costs them on the plots `CLMS` gets nearly '
+              'exact and saves them on the plots it gets badly wrong. The two '
+              'metrics measure the two halves of that trade and are not in '
+              'conflict.\n')
+
     # ── Bias recovery ───────────────────────────────────────────────────────
     md.append('\n### How much of the reference deficit the local retrains '
               'recover\n')
@@ -707,28 +1119,140 @@ def main():
               'systematic deficit — 38–67 % of it, and more in Hanoi than in '
               'HCMC. The models do not simply reproduce their labels\' offset.\n')
 
-    # ── HCMC range diagnostics ──────────────────────────────────────────────
-    md.append('\n### Is HCMC `emb_zeroshot` saturated or merely shifted?\n')
-    md.append('_Per-plot predicted IMD, HCMC, primary rule (n = 450)._\n')
-    md.append(to_md(hs, ['map_id', 'mean', 'sd', 'min', 'max', 'IQR',
-                         'pct_gt80', 'pct_lt20']))
-    md.append('\n_Distribution over the same 450 plots:_\n')
+    # ── Range diagnostics, both Vietnam cities ──────────────────────────────
+    md.append('\n### Prediction range: tail and spread, both Vietnam cities\n')
+    md.append('_Per-plot predicted IMD against the interpreted reference, '
+              'primary rule (n = 450 per city), with the whole-raster minimum '
+              'and sub-20 % share alongside. Two failures are separable here '
+              'and are kept apart: a map may lose the low **tail** the '
+              'reference carries, and it may compress its **spread**. Both '
+              'cities are measured on both axes, neither standing in for the '
+              'other._\n')
+    stat_cols = ['map_id', 'mean', 'sd', 'min', 'max', 'IQR', 'pct_gt80',
+                 'pct_lt20', 'ras_n', 'ras_min', 'ras_pct_lt20']
     hist_cols = ['bin', 'emb_zeroshot', 'S2_median_zeroshot',
                  'emb_localrf', 'S2_median_localrf', '(reference)']
-    md.append(to_md(hh, [c for c in hist_cols if c in hh.columns]))
-    md.append('\n**Saturated, not merely shifted.** `emb_zeroshot` never '
-              'predicts below **31.9 %** at any plot, and across the full '
-              'raster **0.00 % of 8.2 M valid pixels** fall below 20 % — '
-              'against a reference in which **39.3 %** of plots are below '
-              '20 %. Its IQR is 26.0 against the reference\'s 100.0, and its '
-              'sd is 15.95 against 44.81. The low tail is absent, not '
-              'displaced: a shifted map would keep its spread and lose only '
-              'its centre. The other three HCMC maps all reach 0 and retain '
-              'a substantial low tail (`pct_lt20` 24.0–34.4 %).\n')
-    md.append('\nThis is why `emb_zeroshot` scores worst in HCMC despite a '
-              'plausible mean: the reference is strongly bimodal (37.3 % of '
-              'plots below 10 %, 35.8 % above 90 %) and a map spanning only '
-              '31.9–91.4 cannot represent either mode.\n')
+    for city in ('Hanoi', 'HCMC'):
+        st, hi, fx = ranges[city]
+        md.append(f'\n**{city}.** Per-plot predicted IMD:\n')
+        md.append(to_md(st, stat_cols))
+        md.append(f'\n_{city}, distribution over the same 450 plots:_\n')
+        md.append(to_md(hi, [c for c in hist_cols if c in hi.columns]))
+        if fx:
+            md.append(f'\n{city}\'s reference is bimodal: **{fx["ref_lt10"]}** '
+                      f'of plots below 10 % and **{fx["ref_gt90"]}** above '
+                      f'90 %, giving an IQR of {fx["ref_iqr"]} and an sd of '
+                      f'{fx["ref_sd"]}. **{fx["ref_lt20"]}** of plots are '
+                      'below 20 %.\n')
+
+    # Every map with a registered raster must have produced raster columns.
+    # check_range_rasters() catches a path that does not exist; this catches
+    # one that exists but failed to open, which would otherwise leave a
+    # MISSING cell in a table whose whole point is the raster evidence.
+    loaded = sum(
+        1 for city in ('Hanoi', 'HCMC')
+        for _, r in ranges[city][0].iterrows()
+        if (city, r['map_id']) in RANGE_RASTERS and r['ras_min'] != MISSING)
+    assert loaded == n_rasters, (
+        f'{loaded} of {n_rasters} transfer rasters produced range statistics. '
+        f'A registered raster exists on disk but did not read -- check '
+        f'rasterio and the file contents before trusting these tables.')
+
+    # Saturation is measured on two axes, not collapsed into one verdict.
+    #
+    # An early version of this used a single threshold on low-tail retention.
+    # It decided the answer by where the cut fell -- Hanoi lands at 3.1%, so a
+    # 5% rule called it saturated and a 2% rule would not have. That is the
+    # threshold talking, not the data, so both axes are now reported:
+    #
+    #   TAIL   share of the reference's sub-20% mass the map retains.
+    #   SPREAD map IQR against the reference IQR.
+    #
+    # A map can lose the tail while keeping its spread (Hanoi) or lose both
+    # (HCMC). Retention is reported at 10% as well as 20%, because the 20%
+    # figure alone understates how complete the loss is in both cities.
+    # Measured for every map, not only the zero-shots: whether the local
+    # retrains keep their low tails is what turns a two-city observation into
+    # a statement about the scenario rather than about a city.
+    verdicts = []
+    for city in ('Hanoi', 'HCMC'):
+        st, _, fx = ranges[city]
+        ref_row = st[st['map_id'] == '(reference)']
+        if ref_row.empty or not fx:
+            continue
+        ref_row = ref_row.iloc[0]
+        ref_share = float(str(fx['ref_lt20']).rstrip('%'))
+        ref_iqr = float(ref_row['IQR'])
+        for _, r in st.iterrows():
+            if r['map_id'] == '(reference)' or r['ras_pct_lt20'] == MISSING:
+                continue
+            share = float(str(r['ras_pct_lt20']).rstrip('%'))
+            tail_ret = share / ref_share if ref_share > 0 else float('nan')
+            spread_ret = (float(r['IQR']) / ref_iqr if ref_iqr > 0
+                          else float('nan'))
+            verdicts.append(dict(
+                city=city, map_id=r['map_id'],
+                scenario=('zero-shot' if 'zeroshot' in r['map_id']
+                          else 'local retrain'),
+                ras_min=r['ras_min'], ras_share=r['ras_pct_lt20'],
+                ras_n=r['ras_n'], plot_min=r['min'], iqr=r['IQR'], sd=r['sd'],
+                ref_share=fx['ref_lt20'], ref_iqr=ref_row['IQR'],
+                ref_sd=ref_row['sd'],
+                tail_ret=f'{100 * tail_ret:.1f}%',
+                spread_ret=f'{100 * spread_ret:.0f}%'))
+
+    if verdicts:
+        md.append('\n**Tail and spread retention, every map.** Two failures '
+                  'are separable and are kept apart. `tail_retained` is the '
+                  'share of the reference\'s sub-20 % mass the raster keeps; '
+                  '`spread_retained` is the map IQR over the reference IQR. '
+                  'Neither is thresholded into a yes/no — a single cut on '
+                  'tail retention would decide the borderline case by where '
+                  'the cut was put rather than by the data. Tail retention '
+                  'compares a raster-wide share against a 450-plot share, so '
+                  'read it as an order of magnitude, not to the percentage '
+                  'point; values near or above 100 % mean the tail is fully '
+                  'present, not that it is oversized.\n')
+        vt = pd.DataFrame([dict(
+            city=v['city'], map_id=v['map_id'], scenario=v['scenario'],
+            raster_floor=v['ras_min'], pct_lt20=v['ras_share'],
+            ref_pct_lt20=v['ref_share'], tail_retained=v['tail_ret'],
+            IQR=v['iqr'], ref_IQR=v['ref_iqr'],
+            spread_retained=v['spread_ret']) for v in verdicts])
+        md.append(to_md(vt, list(vt.columns)))
+
+        emb_zs = [v for v in verdicts if v['map_id'] == 'emb_zeroshot']
+        loc = [v for v in verdicts if v['scenario'] == 'local retrain']
+        if len(emb_zs) == 2:
+            lo, hi = sorted(emb_zs, key=lambda v: float(v['spread_ret'].rstrip('%')))
+            md.append(f'\n**Both `emb_zeroshot` maps have lost the low '
+                      f'tail.** {hi["city"]} retains **{hi["tail_ret"]}** of '
+                      f'the sub-20 % mass its reference carries and '
+                      f'{lo["city"]} **{lo["tail_ret"]}**; below 10 % both '
+                      'are empty to four decimal places. On the tail axis '
+                      'the two cities agree, so the loss is a property of '
+                      'the transferred embedding map and not of one city.\n')
+            md.append(f'\n**They differ in how far the spread collapses with '
+                      f'it.** {lo["city"]} holds **{lo["spread_ret"]}** of '
+                      f'the reference IQR against {hi["city"]}\'s '
+                      f'**{hi["spread_ret"]}**, on {lo["iqr"]} and '
+                      f'{hi["iqr"]} against a reference IQR of '
+                      f'{lo["ref_iqr"]}. The shared mechanism is the missing '
+                      f'tail; {lo["city"]} is the severe case, where the '
+                      'range has narrowed around it as well.\n')
+        if len(loc) == 4:
+            worst = min(loc, key=lambda v: float(v['tail_ret'].rstrip('%')))
+            md.append(f'\n**Every local retrain keeps its low tail, in both '
+                      f'cities.** All four reach a raster floor of 0.00 and '
+                      f'retain between **{worst["tail_ret"]}** and '
+                      f'**{max(float(v["tail_ret"].rstrip("%")) for v in loc):.0f} %** '
+                      'of the reference\'s sub-20 % mass — full recovery of '
+                      'the low end within the precision this comparison '
+                      'supports. Taken with the row above, that is the '
+                      'cleanest statement of the failure: **zero-shot '
+                      'transfer destroys the low end of the distribution and '
+                      'local retraining restores it**, in both cities and '
+                      'for both predictor sets.\n')
 
     # ── Level matching, both Vietnam cities ─────────────────────────────────
     md.append('\n### Prediction level against reference level\n')
@@ -781,6 +1305,41 @@ def main():
                   'over three times the permutation importance of the next '
                   'band.\n')
 
+    # ── Table E: Milan cross-validation ─────────────────────────────────────
+    md.append('\n## Table E — Milan cross-validation, tuning and evaluation\n')
+    md.append('_CV RMSE per run × model × block. `cv_rmse_tuning` is the '
+              'randomised search score from `hyperparameter_tuning.csv`; '
+              '`cv_rmse_eval` is the tuned model re-scored under spatial CV '
+              'from `spatial_cv_summary.csv`. **These are different '
+              'quantities and will not agree.** `selected` marks the block '
+              'each model was tuned at._\n')
+    md.append(to_md(cv, ['predictor_set', 'model', 'block', 'cv_rmse_tuning',
+                         'cv_std', 'cv_rmse_eval', 'selected', 'source_file']))
+    md.append('\n**These are cross-validation numbers, not holdout numbers, '
+              'and they are not comparable with Table A.** Table A scores '
+              'rasters built in Earth Engine on the held-out 1014 points; the '
+              'values here score scikit-learn models on training-set folds. '
+              'The gap between them is the subject of the CV-versus-holdout '
+              'reversal, not an inconsistency.\n')
+    md.append(f'\n**`selected` is the argmin of `cv_rmse_tuning` over '
+              f'{" and ".join(REPORTED_MODELS)} only**, matching '
+              '`best_block_per_model` in notebooks 01 and 01b. The notebooks '
+              'also tune a third estimator that is out of scope for this '
+              'report; its rows are filtered out at collection, so `selected` '
+              'here is not necessarily the overall winner recorded in a run\'s '
+              '`model_metadata_*.json`.\n')
+    if not cv.empty:
+        sel = cv[cv['selected'] == '**yes**']
+        emb = sel[sel['predictor_set'] == 'AlphaEarth embeddings']
+        pairs = {r['model']: (r['cv_rmse_tuning'], r['block'])
+                 for _, r in emb.iterrows()}
+        if 'RF' in pairs and 'SVR' in pairs:
+            md.append(f'\nOn the embeddings run SVR is tuned to '
+                      f'**{pairs["SVR"][0]} @ {pairs["SVR"][1]}** against RF\'s '
+                      f'**{pairs["RF"][0]} @ {pairs["RF"][1]}** — SVR ahead on '
+                      'cross-validation, before losing every holdout metric in '
+                      'Table A.\n')
+
     with open(OUT_PATH, 'w', encoding='utf-8') as fh:
         fh.write('\n'.join(md))
 
@@ -791,7 +1350,8 @@ def main():
         return int(sum((df[c] == MISSING).sum() for c in cols if c in df))
 
     a_metric_cols = ['RMSE', 'MAE', 'R2', 'Bias', 'n']
-    b_metric_cols = ['RMSE', 'RMSE_corr', 'MAE', 'R2', 'Bias', 'n']
+    b_metric_cols = ['RMSE', 'RMSE_corr', 'RMSE_CI', 'MAE', 'MAE_CI',
+                     'R2', 'Bias', 'n']
 
     print('=' * 62)
     print('  collect_metrics.py')
@@ -809,8 +1369,8 @@ def main():
     print()
     print(f'Table B rows (independent validation)   : {len(b)}')
     print(f'  MISSING cells                         : {n_missing(b, b_metric_cols)}')
-    print(f'    of which expected (RMSE_corr, B/C)    : '
-          f'{n_missing(b, ["RMSE_corr"])}')
+    print(f'    of which expected (primary-only, B/C) : '
+          f'{n_missing(b, ["RMSE_corr", "RMSE_CI", "MAE_CI"])}')
     print(f'    unexpected (metric gaps)              : '
           f'{n_missing(b, ["RMSE", "MAE", "R2", "Bias", "n"])}')
     if not b.empty:
@@ -830,7 +1390,24 @@ def main():
         print(f'  distinguishable at FDR 5%             : '
               f'{int((pt["distinguishable"] == "yes").sum())} / {len(pt)}')
     print(f'Bias-recovery rows                      : {len(br)}')
-    print(f'HCMC range-diagnostic rows              : {len(hs)}')
+    for _c in ('Hanoi', 'HCMC'):
+        _st = ranges[_c][0]
+        _rn = 0 if _st.empty else int((_st['ras_min'] != MISSING).sum())
+        print(f'{_c} range-diagnostic rows{" " * (17 - len(_c))}: '
+              f'{len(_st)}  (raster-backed: {_rn})')
+    print(f'  transfer rasters resolved             : '
+          f'{loaded} / {n_rasters}')
+    for _v in verdicts:
+        print(f'    {_v["city"]:<5} {_v["map_id"]:<19} tail/spread : '
+              f'{_v["tail_ret"]:>6} / {_v["spread_ret"]:>4}')
+    print(f'Composite-ceiling rows                  : {len(cc)}')
+    if not cc.empty:
+        print(f'  percentiles require                   : '
+              f'{cc_required} dates ({cc_npctl} percentiles)')
+        for _, _r in cc.iterrows():
+            print(f'    {_r["city"]:<5} screened {_r["n_screened"]:>3}  '
+                  f'ceiling {_r["n_ceiling"]:>3}  short by '
+                  f'{_r["shortfall"]:>3}')
     print(f'Milan rule-ranking rows                 : {len(mr)}')
     if mrf:
         print(f'  ranking unchanged under B / C         : '
@@ -845,6 +1422,14 @@ def main():
     print(f'Table D rows (feature importance)       : {len(fi)}')
     if fi.empty:
         print(f'  {MISSING}: {fi_src}')
+    print(f'Table E rows (Milan CV)                 : {len(cv)}')
+    if not cv.empty:
+        print(f'  models carried                        : '
+              f'{sorted(set(cv["model"]))}')
+        print(f'  blocks selected                       : '
+              f'{int((cv["selected"] == "**yes**").sum())}')
+        print(f'  eval RMSE MISSING                     : '
+              f'{n_missing(cv, ["cv_rmse_eval"])}')
     print()
     print(f'Written: {os.path.relpath(OUT_PATH, REPO)}')
     print('=' * 62)
