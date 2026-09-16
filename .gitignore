@@ -122,6 +122,19 @@ desktop.ini
 *~
 report/*.docx
 report/*.pdf
+# Draft slide decks. Tens of MB of binary that diffs to nothing useful, and the
+# same code-only reasoning that excludes the rasters and the built PDF applies:
+# the deck is a rendering of the report, not a source.
+#
+# Scoped to report/presentation/ rather than a blanket `*.pptx`, because
+# IMD_S2_composite_comparison.pptx and IMD_internal_review.pptx are tracked at
+# the repo root. Ignoring a tracked file does not untrack it -- it keeps the
+# committed copy while hiding every later edit from `git status`, so the blanket
+# rule would silently strand those two.
+report/presentation/
+# PowerPoint lock files, written while a deck is open and meaningless once it is
+# closed. Anchored to the repo root would miss them; they sit beside the deck.
+~$*
 # LaTeX build artefacts. latexmkrc sends most of these to report/build/, but
 # BibTeX writes .bbl and .blg beside report.tex regardless of $aux_dir, and
 # both are regenerated from refs.bib on every build. Overleaf rebuilds them
