@@ -1,37 +1,41 @@
 # IMD-Mapping
 
-Mapping **impervious surface density** — the share of a pixel covered by
-artificial, water-impermeable material — from satellite imagery, for Milan,
-Hanoi and Ho Chi Minh City in 2018.
+**Can AlphaEarth replace locally composed Sentinel-2 for 10 m imperviousness
+mapping, and does it transfer across cities?**
 
-Impervious surface drives urban runoff, flood risk and surface heat. Europe has
-a good map of it: the Copernicus CLMS Imperviousness Density layer, at 10 m.
-Much of the world does not. This project asks whether a model trained where such
-a map exists can produce one where it does not.
+Impervious surface — the share of a pixel covered by artificial,
+water-impermeable material — drives urban runoff, flood risk and surface heat.
+Mapping it at 10 m for Milan, Hanoi and Ho Chi Minh City in 2018.
 
 ## The question
 
-Two things are tested, one after the other.
+AlphaEarth embeddings are attractive because they are ready to use: 64 learned
+bands, one global annual product, no compositing to get right. The alternative
+is more work — searching Sentinel-2 scenes, screening cloud, building a
+composite for each city. Whether that work pays for itself is the first
+question, and whether either choice survives being carried to a new city is the
+second.
 
-**Which predictor works best?** Four predictor sets are compared on Milan under
-identical conditions — same sample points, same train/test split, same models —
-so the only thing that varies is the input:
+**Can AlphaEarth replace locally composed Sentinel-2?** Four predictor sets are
+compared on Milan under identical conditions — same sample points, same
+train/test split, same models — so the only thing that varies is the input:
 
 | Predictor | What it is |
 |---|---|
-| AlphaEarth embeddings | 64 learned bands from [Google Satellite Embedding V1](https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_SATELLITE_EMBEDDING_V1_ANNUAL) |
+| AlphaEarth embeddings | 64 learned bands from [Google Satellite Embedding V1](https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_SATELLITE_EMBEDDING_V1_ANNUAL), used as supplied |
 | Sentinel-2 median | 10 reflectance bands, per-pixel median of cloud-free 2018 dates |
 | Sentinel-2 stack | the same dates kept as separate bands |
 | Sentinel-2 percentile | five percentiles per band, capturing within-year variation |
 
-**Does it travel?** The best Milan model is applied to Hanoi and HCMC two ways:
-*zero-shot*, with no local data at all, and *locally retrained*, using a sample
-of local labels. The gap between them is what a city gains by collecting its own
-training data.
+**Does it transfer across cities?** The Milan models are applied to Hanoi and
+HCMC two ways: *zero-shot*, with no local data at all, and *locally retrained*,
+using a sample of local labels. The gap between them is what a city gains by
+collecting its own training data.
 
-Everything is then checked twice: against the same reference the models were
+Both answers are then checked twice: against the same reference the models were
 trained on, and against an independent set of 450 photo-interpreted plots per
-city, which no model ever saw.
+city, which no model ever saw. The two are never merged — a model can beat its
+own training reference and still be wrong about the ground.
 
 ## What is here
 
