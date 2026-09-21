@@ -4,18 +4,43 @@ Report and presentation on impervious surface density (IMD) mapping from
 Sentinel-2 composites and AlphaEarth embeddings. Milan, Hanoi, HCMC, 2018.
 Companion to `reference/` — the AlphaEarth report by Matej Žgela.
 
+# Layout
+
+Three directories, each with one job. Nothing is written outside them.
+
+```
+data/     original inputs only, never written by a notebook:
+          the CLMS and GHSL reference rasters, the Vietnam IMD rasters,
+          the sample point sets, the photo-interpreted CSVs, aoi_milan/
+output/   every run, as city / dataset / predictor:
+            milan/{clms,ghsl}/{embedding,median,stack,percentile}/
+            {hanoi,hcmc}/{embedding,median}/   per-city rasters and samples
+            transfer/{embedding,median}/       the two-city comparison files
+            milan/validation/                  photo-interpreted validation
+report/    report.tex, report.pdf and IMD_Mapping.pptx at its root -- the
+           three deliverables -- with facts/, figs/, presentation/ and build/
+```
+
+The split between `output/<city>/` and `output/transfer/` is deliberate: a
+file describing one city goes to that city, a file comparing the two goes to
+`transfer/`. Never move a two-city file under one city — it hides the other
+city's results inside it.
+
+`data/` and `output/` are gitignored in full. Only `report/facts/*.md`,
+`report/figs/`, and the three deliverables are version-controlled.
+
 # Fact base — read before writing anything
 
-- `data/FACTS.md` — all metrics
-- `data/EXPERIMENT_MAP.md` — provenance and design decisions
-- `data/FIGURES.md` — figure inventory
-- `report/OUTLINE.md` — section plan, claims, figure assignments
+- `report/facts/FACTS.md` — all metrics
+- `report/facts/EXPERIMENT_MAP.md` — provenance and design decisions
+- `report/facts/FIGURES.md` — figure inventory
+- `report/facts/OUTLINE.md` — section plan, claims, figure assignments
 
 # HARD RULES
 
-- **IMPORTANT: never write a numeric result not in `data/FACTS.md`.**
+- **IMPORTANT: never write a numeric result not in `report/facts/FACTS.md`.**
   If one is needed and missing, write `[TBC]` and list it at the end.
-- Never reference a figure not in `data/FIGURES.md` or `report/figs/`.
+- Never reference a figure not in `report/facts/FIGURES.md` or `report/figs/`.
 - Say "same-source validation" and "independent validation".
   Never "Track A" or "Track B".
 - Bias is observed minus predicted. Positive means the map under-predicts.
@@ -60,14 +85,14 @@ Companion to `reference/` — the AlphaEarth report by Matej Žgela.
 ## Full audit
 
 `code/audit_numbers.py` is the quick per-section check and defaults to
-`data/FACTS.md` alone. For a full audit of the finished report, use the
+`report/facts/FACTS.md` alone. For a full audit of the finished report, use the
 generalised auditor from the `research-report` skill, which additionally checks
 bare integers and takes both fact bases:
 
 ```
 python ~/.claude/skills/research-report/scripts/audit_numbers.py \
-    --facts data/FACTS.md --facts data/EXPERIMENT_MAP.md \
-    --report report/report.tex --outline report/OUTLINE.md \
+    --facts report/facts/FACTS.md --facts report/facts/EXPERIMENT_MAP.md \
+    --report report/report.tex --outline report/facts/OUTLINE.md \
     --stale-term "Track A" --stale-term "Track B" \
     --allow-number 99 --allow-number 1000
 ```
@@ -121,16 +146,16 @@ Never in the image:
   or estimator keys as description. A panel title of `GEE_RF` is fine; a
   suptitle of `Figure C · [S2] Per-Class Accuracy -- GEE_RF` is not.
 - Conclusions. Figures state readings; every claim belongs to the caption. This
-  is a deliberate departure from `make_presentation.py` (repo root, not
+  is a deliberate departure from `make_presentation.py` (`report/presentation/`, not
   `code/`), whose slide titles are written as conclusions.
 
 There is no separate figure-title file. Titles live in the report caption beside
-the prose that has to agree with them, and `data/FIGURES.md` remains the
+the prose that has to agree with them, and `report/facts/FIGURES.md` remains the
 inventory of what each figure shows.
 
 # Regenerating
 
-- `python code/collect_metrics.py` rebuilds `data/FACTS.md` from the run
+- `python code/collect_metrics.py` rebuilds `report/facts/FACTS.md` from the run
   directories. `python code/make_report_figs.py` rebuilds the four figures in
   `report/figs/` from FACTS.md.
 - To change a notebook figure's labelling, redraw it from the CSV the notebook

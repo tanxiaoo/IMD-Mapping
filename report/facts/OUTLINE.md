@@ -22,8 +22,8 @@ compressed to a short account with a citation, not re-derived.
   Zgela report open to follow them.
 - **SVR appears in §4 only.** Vietnam is RF throughout. Stated once in §3.2.
 
-Sources: `data/FACTS.md` (all metrics), `data/EXPERIMENT_MAP.md` (provenance),
-`data/FIGURES.md` (inventory and status), `data/FIGURE_GAPS.md` (what must be
+Sources: `report/facts/FACTS.md` (all metrics), `data/EXPERIMENT_MAP.md` (provenance),
+`report/facts/FIGURES.md` (inventory and status), `data/FIGURE_GAPS.md` (what must be
 built).
 
 ---
@@ -253,7 +253,7 @@ behaviour; **F15** `fig_milan_raster_comparison.png` (`report/figs`) —
 ⚠ **`figA_holdout_accuracy_*` is NOT cited.** Its left panel duplicates F4 (same
 1014 points, same four metrics) and its right panel duplicates F5 (per-class
 error); only its middle KDE panel is new. Its title also carries the wrong
-tuning block — see the `BEST_BLOCK_LABEL` note in `data/FIGURES.md`. F17 is
+tuning block — see the `BEST_BLOCK_LABEL` note in `report/facts/FIGURES.md`. F17 is
 built instead.
 FACTS.md: Table A, all eight Milan rows.
 
@@ -275,7 +275,7 @@ translation fidelity. Note that `outputs_v2` metadata records
 ⚠ **Do not claim SVR cannot be rastered in GEE.** Žgela's stated reason for
 dropping a third estimator is that it is unsupported in GEE's Python API; SVR
 itself *is* supported (`ee.Classifier.libsvm`, `svmType='EPSILON_SVR'`) and is
-used here — `outputs_v2/IMD_predicted_SVR_spatialCV2_Milan.tif` exists. The
+used here — `output/milan/clms/embedding/IMD_predicted_SVR_spatialCV2_Milan.tif` exists. The
 operative reason RF is carried forward is that notebook 02's transfer design
 requires an RF (§3.2).
 
@@ -311,7 +311,7 @@ answer to *why* they work, and the embeddings do not.
 
 Figures: **F6** `figD_importance_RF.png` (percentile) — **EXISTS/KEEP**,
 regenerated 2026-09-01.
-Data: `outputs_S2_percentile_p10p25p50p75p90/feature_importance_RF.csv`.
+Data: `output/milan/clms/percentile/feature_importance_RF.csv`.
 Cite: Žgela p. 6, Fig. 7 for the embedding comparison.
 
 ---
@@ -772,7 +772,7 @@ was regenerated on 2026-09-01, so the figures the deck embeds from it
    following the `make_presentation.py` house style recorded in FIGURES.md
    (accent `#0B6E4F`, DejaVu Sans, dpi 200).
 
-2. **`data/FACTS.md` is unchanged and still correct**, but does not yet carry the
+2. **`report/facts/FACTS.md` is unchanged and still correct**, but does not yet carry the
    new per-class R² or the feature importances. Re-running
    `code/collect_metrics.py` would not pick them up either — the collector reads
    `transferability_comparison.csv` and `holdout_test_metrics.csv`, not the

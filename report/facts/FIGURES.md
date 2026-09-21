@@ -14,7 +14,7 @@ by opening the image.
 Notebook `04_Validation_PhotoInterpreted.ipynb` was re-executed at
 **2026-08-30 01:37** to apply the `role='ceiling'` → `role='reference'` rename.
 
-**That re-run wrote only `outputs_validation/`.** Notebook 04 reads existing
+**That re-run wrote only `output/milan/validation/`.** Notebook 04 reads existing
 rasters and retrains nothing, so it cannot and did not touch the Milan
 directories (`outputs_v2`, `outputs_S2_*`) or the Vietnam transfer directories
 (`outputs_transfer_*`). Those figures are **unaffected by the rename** — their
@@ -28,7 +28,7 @@ finding. It only matters whether it is older than its own inputs.
 
 | Status | Meaning |
 |---|---|
-| **KEEP** | Current and consistent with `data/FACTS.md`; usable as-is |
+| **KEEP** | Current and consistent with `report/facts/FACTS.md`; usable as-is |
 | **STALE-REGENERATE** | Inputs changed after the figure was written; re-run its producer |
 | **NEEDS-EDIT** | Correct but incomplete or mislabelled for how it is being used |
 
@@ -136,14 +136,14 @@ PNGs still displayed a title from the pre-fix code:
 
 | File | Stale PNG displayed | Report figure |
 |---|---|---|
-| `outputs_v2/fig01_spatial_split.png` | `Figure 1 · Spatial Train/Test Split` | Figure 2 |
+| `output/milan/clms/embedding/fig01_spatial_split.png` | `Figure 1 · Spatial Train/Test Split` | Figure 2 |
 | `outputs_S2_percentile_.../figD_importance_RF.png` | `Figure D · Feature Importance …` | Figure 8 |
-| `outputs_transfer_v2/fig01_transfer_comparison.png` | `Figure 1 · Same-source validation: … not accuracy` | Figure 9 |
-| `outputs_transfer_S2_median/fig01_transfer_comparison.png` | same | Figure 10 |
-| `outputs_transfer_v2/fig_obs_vs_pred_hanoi_hcmc.png` | `Observed vs Predicted IMD …` + `Hanoi & HCMC` | Figure 11 |
-| `outputs_transfer_v2/fig02_per_class_mae.png` | `Figure 2 · Per-Class MAE …` | Figure 12 |
-| `outputs_validation/fig02_forest_ci.png` | `Figure 2 · Map accuracy …` | Figure 13 |
-| `outputs_validation/fig01_scatter_grid.png` | `Figure 1 · Reference vs predicted IMD …` | Figure 14 |
+| `output/transfer/embedding/fig01_transfer_comparison.png` | `Figure 1 · Same-source validation: … not accuracy` | Figure 9 |
+| `output/transfer/median/fig01_transfer_comparison.png` | same | Figure 10 |
+| `output/transfer/embedding/fig_obs_vs_pred_hanoi_hcmc.png` | `Observed vs Predicted IMD …` + `Hanoi & HCMC` | Figure 11 |
+| `output/transfer/embedding/fig02_per_class_mae.png` | `Figure 2 · Per-Class MAE …` | Figure 12 |
+| `output/milan/validation/fig02_forest_ci.png` | `Figure 2 · Map accuracy …` | Figure 13 |
+| `output/milan/validation/fig01_scatter_grid.png` | `Figure 1 · Reference vs predicted IMD …` | Figure 14 |
 
 The LaTeX conversion is what exposed them: LaTeX prints its own figure number
 directly beneath an image already showing a different one. This is the blind spot
@@ -181,7 +181,7 @@ None carries a figure number, a restatement of the caption, or a conclusion.
 Its plotted values are correct, but it renders one row per *tuned* model, so it
 displays the name of the third estimator that is out of scope for this report.
 It is therefore not cited. `report/figs/fig_cv_inflation.png` (F3, §3.2) is
-redrawn from `outputs_v2/inflation_analysis.csv` filtered to RF and SVR, per
+redrawn from `output/milan/clms/embedding/inflation_analysis.csv` filtered to RF and SVR, per
 CLAUDE.md's rule that a labelling change is made from the CSV the notebook
 already wrote rather than by re-executing the notebook. The values are the
 notebook's; only the row filter and the labelling differ.
@@ -282,7 +282,7 @@ by nothing: `code/audit_numbers.py` checks caption-to-image agreement but cannot
 read a number rendered inside a PNG. Removing the numbers removes the hazard —
 renumber the report freely; no figure needs rebuilding.
 
-**Every plotted value is read from `data/FACTS.md`.** `facts_value()` raises on
+**Every plotted value is read from `report/facts/FACTS.md`.** `facts_value()` raises on
 an absent row, an ambiguous match, or a `MISSING` cell rather than substituting
 a literal, so a figure cannot drift from the numbers it claims to show. Each
 build prints its plotted values for checking against the fact base.
@@ -329,10 +329,10 @@ repo, these **are** version-controlled — see the negation in `.gitignore`.
 
 | File | Content | Status |
 |---|---|---|
-| `outputs_validation/table1_headline_ci.csv` | Per (city, map): role, N, RMSE, RefNoise, RMSE_corr, MAE, Bias, r, R² + pre-formatted CI strings | KEEP — publication-ready |
-| `outputs_validation/table2_wilcoxon_pairs.csv` | Pairwise Wilcoxon per city with `q_bh` and `sig` | KEEP — carries the Milan two-tier result |
-| `outputs_validation/table3_rule_sensitivity.csv` | MAE/RMSE under strict/B/C with ranks and `rank_changed` | KEEP — carries the rule-C rank swap |
-| `outputs_validation/table4_perlevel_metrics.csv` · `table4b_perclass7_metrics.csv` | Per-level and per-class metrics | KEEP — long; subset before use |
+| `output/milan/validation/table1_headline_ci.csv` | Per (city, map): role, N, RMSE, RefNoise, RMSE_corr, MAE, Bias, r, R² + pre-formatted CI strings | KEEP — publication-ready |
+| `output/milan/validation/table2_wilcoxon_pairs.csv` | Pairwise Wilcoxon per city with `q_bh` and `sig` | KEEP — carries the Milan two-tier result |
+| `output/milan/validation/table3_rule_sensitivity.csv` | MAE/RMSE under strict/B/C with ranks and `rank_changed` | KEEP — carries the rule-C rank swap |
+| `output/milan/validation/table4_perlevel_metrics.csv` · `table4b_perclass7_metrics.csv` | Per-level and per-class metrics | KEEP — long; subset before use |
 | `outputs_*/holdout_test_metrics.csv` (×4) | `Model,RMSE,MAE,R2,Bias` for GEE_RF and GEE_SVR | KEEP — the same-source validation headline table |
 | `outputs_*/spatial_cv_summary.csv` (×4) | Model × CV method, all metrics mean+std | KEEP — wide; prune columns |
 | `outputs_*/inflation_analysis.csv` (×4) | Tabular twin of `fig06` | KEEP |
@@ -340,7 +340,7 @@ repo, these **are** version-controlled — see the negation in `.gitignore`.
 | `outputs_transfer_*/transferability_comparison.csv` | 5 rows: baseline + A/B × city | KEEP |
 | `outputs_transfer_*/per_class_metrics.csv` | Per class × scenario × city | KEEP — appendix |
 | `outputs_*/hyperparameter_tuning.csv` | Tuning results; `Best_params` is a raw dict string | NEEDS-EDIT — appendix only |
-| `outputs_validation/validation_per_plot_long.csv` · `outputs_*/holdout_residuals.csv` | Raw per-point data | Not a table — inputs to `code/collect_metrics.py` |
+| `output/milan/validation/validation_per_plot_long.csv` · `outputs_*/holdout_residuals.csv` | Raw per-point data | Not a table — inputs to `code/collect_metrics.py` |
 
 ## The presentation deck
 
@@ -402,20 +402,20 @@ two kinds sit there:
 
 | Path | Origin | Refreshed by |
 |---|---|---|
-| `report/figs/fig_*.png` | built directly there from `data/FACTS.md` | `python code/make_report_figs.py` |
+| `report/figs/fig_*.png` | built directly there from `report/facts/FACTS.md` | `python code/make_report_figs.py` |
 | `report/figs/outputs_*/**.png` | **copies** of the notebook figures | `python code/sync_figs.py` |
 
 **The copies are copies, not the originals.** The notebooks still write to
-`outputs_v2/`, `outputs_validation/`, `outputs_transfer_*/` and the rest exactly
+`output/milan/clms/embedding/`, `output/milan/validation/`, `outputs_transfer_*/` and the rest exactly
 as before; nothing in the pipeline was re-pathed. `sync_figs.py` reads the
 `\includegraphics` paths out of `report/report.tex` and copies each cited file
 into `report/figs/`, **mirroring the run directory** — so
-`outputs_v2/fig01_spatial_split.png` becomes
-`report/figs/outputs_v2/fig01_spatial_split.png`.
+`output/milan/clms/embedding/fig01_spatial_split.png` becomes
+`report/figs/output/milan/clms/embedding/fig01_spatial_split.png`.
 
 Mirroring rather than flattening is required, not tidiness:
-`fig01_transfer_comparison.png` exists in both `outputs_transfer_v2/` and
-`outputs_transfer_S2_median/` and the report cites **both**. A flat copy would
+`fig01_transfer_comparison.png` exists in both `output/transfer/embedding/` and
+`output/transfer/median/` and the report cites **both**. A flat copy would
 silently drop one. Mirroring also keeps every `\includegraphics` path in the
 report unchanged, so `\graphicspath{{figs/}}` alone resolves them all.
 

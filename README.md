@@ -33,18 +33,58 @@ a controlled comparison, reusing that pipeline's structure unchanged.
 
 ## Repository contents
 
+### Notebooks
+
+Run in order. `00`/`00b` extract predictors, `01*` model Milan, `02`/`03`
+transfer to Vietnam, `04`/`05` validate against photo-interpreted plots.
+
 ```
-00_S2_Extraction_Milan_2018.ipynb        Sentinel-2 scene selection + extraction
-01_IMD_Prediction_Milan_blockCV_embedding.ipynb Embedding pipeline  (Matej Žgela)
-01b_IMD_Prediction_Milan_blockCV_S2.ipynb Sentinel-2 baseline (copy of 01)
-02_Transferability_Vietnam_v2.ipynb      Hanoi / HCMC transfer (Matej Žgela)
-s2_utils.py                              Shared S2 masks + composite builder
-requirements.txt
+00_S2_Extraction_Milan_2018.ipynb               S2 scene selection + extraction
+00b_S2_Extraction_Vietnam_2018.ipynb            the same for Hanoi and HCMC
+ghsl_data_preparation.ipynb                     GHSL clipped, reclassified, resampled
+01_IMD_Prediction_Milan_blockCV_embedding.ipynb embedding pipeline   (Matej Žgela)
+01b_IMD_Prediction_Milan_blockCV_S2.ipynb       Sentinel-2 baseline  (copy of 01)
+01c_IMD_Prediction_Milan_blockCV_GHSL.ipynb     embedding, GHSL-labelled
+01d_IMD_Prediction_Milan_blockCV_S2_GHSL.ipynb  Sentinel-2, GHSL-labelled
+02_Transferability_Vietnam_v2.ipynb             Hanoi / HCMC transfer (Matej Žgela)
+03_Transferability_Vietnam_S2_median.ipynb      the same on the S2 predictor
+04_Validation_PhotoInterpreted.ipynb            independent validation, 450 plots/city
+05_imd_Groundtruth_validation.ipynb             confusion matrices per raster
+s2_utils.py                                     shared S2 masks + composite builder
+code/                                           fact base, figures, audit, decks
 ```
 
-> **Code only.** Rasters (~1 GB), trained models, sample points, figures and
-> metrics are gitignored — they are regenerable by running the notebooks, and
-> the GeoTIFFs exceed GitHub's 100 MB limit. See [Reproducing](#reproducing).
+### Directories
+
+Three, each with one job.
+
+```
+data/     original inputs ONLY -- nothing here is written by a notebook.
+          CLMS and GHSL reference rasters, the Vietnam IMD rasters,
+          the sample point sets, the photo-interpreted CSVs, aoi_milan/
+
+output/   every run, as city / dataset / predictor:
+            milan/clms/{embedding,median,stack,percentile}/
+            milan/ghsl/{embedding,median,stack,percentile}/
+            hanoi/{embedding,median}/     per-city rasters, samples, scatter
+            hcmc/{embedding,median}/
+            transfer/{embedding,median}/  the two-city comparison files
+            milan/validation/             photo-interpreted validation
+
+report/   report.tex, report.pdf and IMD_Mapping.pptx at the root -- the three
+          deliverables -- with facts/ (the written record), figs/ (every cited
+          figure), presentation/ (deck sources) and build/ (LaTeX auxiliaries)
+```
+
+A file describing one city goes to that city; a file comparing the two goes to
+`transfer/`. Putting a two-city comparison under one city would hide the
+other's results inside it.
+
+> **Code only.** `data/` and `output/` are gitignored in full — around 5 GB of
+> rasters, models and sample points, regenerable by running the notebooks, and
+> the GeoTIFFs exceed GitHub's 100 MB limit. What *is* committed is the code,
+> `report/facts/*.md`, `report/figs/`, and the three deliverables.
+> See [Reproducing](#reproducing).
 
 ---
 
@@ -130,8 +170,10 @@ upload your AOI polygon as a GEE asset (`projects/<you>/assets/milano_aoi`).
 ### Sentinel-2 baseline
 
 1. **`00_S2_Extraction_Milan_2018.ipynb`** — run cells 1–5, read the ranked
-   scene table, set `SELECTED_DATES` in cell 6, then run to the end.
-   Writes `samples_S2/sample_points_all_S2.gpkg` (3500 points × 10 bands).
+   scene table, set `SELECTED_DATES` in cell 6, then run to the end. Writes
+   `output/milan/clms/<method>/sample_points_all_S2.gpkg` (3500 points × 10
+   bands) beside the run that will consume it, together with the
+   `s2_extraction_metadata.json` that records the dates and percentiles.
 
    The notebook **asserts all 3500 points resolve**. A shortfall is never
    random — masked pixels cluster on water and cloud, which would bias the
@@ -140,8 +182,9 @@ upload your AOI polygon as a GEE asset (`projects/<you>/assets/milano_aoi`).
 
 2. **`01b_IMD_Prediction_Milan_blockCV_S2.ipynb`** — run top to bottom, pausing
    after the GEE export cell to download the two GeoTIFFs from Drive into
-   `outputs_S2/`, then continue. Requires `outputs_v2/spatial_{train,test}_pts.gpkg`
-   from the embedding run to import the split.
+   `output/milan/clms/<method>/`, then continue. Requires
+   `output/milan/clms/embedding/spatial_{train,test}_pts.gpkg` from the
+   embedding run to import the split.
 
 ### Notes
 
