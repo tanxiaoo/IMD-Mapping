@@ -47,40 +47,63 @@ output/
 # None of it is ours to redistribute and none of it fits in the repository.
 data/
 
-# ── Report figures ARE version-controlled ────────────────────────────────────
-# report/ is a self-contained Overleaf project: it must compile with no file
-# outside it, so every figure the report cites has to be committed alongside
-# report.tex. Two kinds live under report/figs/:
+# ── report/ : only the three deliverables ────────────────────────────────────
+# The repository carries what gets handed over and nothing that builds it.
+# Three files, and they are the ONLY things tracked under report/:
 #
-#   figs/*.png            built by code/make_report_figs.py from the fact base
-#   figs/<run>/*.png      COPIES of notebook figures, refreshed by
-#                         code/sync_figs.py, which mirrors each run directory
-#                         under a name that says which run it is
-#                         (milan_clms_percentile/, transfer_embedding/, ...)
-#                         so the two runs that share
-#                         fig01_transfer_comparison.png do not collide
+#   report/report.tex        the source
+#   report/report.pdf        the built report
+#   report/IMD_Mapping.pptx  the presentation
 #
-# The copies duplicate gitignored originals on purpose. They are small (a few
-# MB in total, each far below GitHub's limit) and they are what makes the
-# shared folder complete; the originals stay ignored where the notebooks write
-# them. Recursive globs, so the mirrored subdirectories are covered too.
-!report/figs/
-!report/figs/**/
-!report/figs/**/*.png
-!report/figs/*.png
-# The GitHub QR code on the title page. Vector rather than raster, so the *.png
-# negations above miss it, and without it the shared project is incomplete.
-!report/figs/*.svg
-
-# ── The fact base IS version-controlled ──────────────────────────────────────
-# report/facts/ is the project's written record: the settled findings, the
-# experiment map, the figure inventory, the figure gap list and the section
-# plan. It moved out of data/ when data/ became inputs-only -- it is report
-# prose, not data. Small, and the thing most worth having history for.
-!report/facts/
-!report/facts/*.md
+# Everything else under report/ stays on disk and keeps working -- it is
+# ignored, not deleted:
+#
+#   facts/         FACTS.md, EXPERIMENT_MAP.md, FIGURES.md, FIGURE_GAPS.md,
+#                  OUTLINE.md -- the written record
+#   code/          the scripts that build the fact base, the figures and the
+#                  decks, and the auditor
+#   figs/          every cited figure
+#   presentation/  deck sources
+#   build/         LaTeX auxiliaries
+#   refs.bib       the bibliography
+#
+# WHAT THIS COSTS, stated plainly so nobody rediscovers it the hard way.
+# FACTS.md and the figures are regenerable -- collect_metrics.py and
+# make_report_figs.py rebuild them from output/. These are NOT:
+#
+#   EXPERIMENT_MAP.md  hand-written provenance and design decisions
+#   OUTLINE.md         hand-written section plan and figure assignments
+#   report/code/*.py   the only way to rebuild FACTS.md and the figures
+#   refs.bib           hand-maintained bibliography
+#
+# None of those can be recovered from anything else in the repository. They
+# exist on this disk alone, and a fresh clone will not have them. They ARE in
+# git history up to the commit that untracked them -- recover with
+# `git show <commit>:report/facts/EXPERIMENT_MAP.md` -- but nothing after that
+# point is recorded. Back them up outside git, or track them again.
+#
+# Also note: report.tex alone does not compile. It needs refs.bib and figs/,
+# both ignored here, so the repository no longer holds a buildable report.
+#
+# Written as `report/*` rather than `report/`: git does not descend into an
+# excluded DIRECTORY, so a bare `report/` would make the three negations below
+# unreachable and nothing under report/ would be tracked at all. The `*` form
+# excludes the entries instead, which leaves the negations able to re-include
+# their three files.
+report/*
+!report/report.tex
+!report/report.pdf
+!report/IMD_Mapping.pptx
 
 docs/
+
+# ── CLAUDE.md ────────────────────────────────────────────────────────────────
+# Project instructions for Claude Code. Ignored at the user's request: it is
+# working notes rather than a deliverable. Same caveat as report/facts/ -- it
+# is hand-written, nothing regenerates it, and a fresh clone will not have it.
+# Earlier versions are recoverable from git history up to the commit that
+# untracked it.
+CLAUDE.md
 
 # ── Secrets & credentials ─────────────────────────────────────────────────────
 # Earth Engine / Google Cloud service-account keys must never be committed.
@@ -124,36 +147,11 @@ desktop.ini
 .idea/
 *.swp
 *~
-report/*.docx
-
-# ── The three deliverables ARE version-controlled ────────────────────────────
-# report/ holds exactly three finished artefacts at its root, and they are what
-# anyone outside the project is given:
-#
-#   report.tex        the source
-#   report.pdf        the built report
-#   IMD_Mapping.pptx  the presentation
-#
-# The PDF and the deck are builds rather than sources, which elsewhere in this
-# file is reason to ignore something. They are tracked anyway: they are the
-# deliverables, and a reader who cannot run XeLaTeX still needs them. Both
-# override the blanket `*.pdf` and the presentation rule below.
-!report/report.pdf
-!report/IMD_Mapping.pptx
-
-# Deck sources and drafts. Tens of MB of binary that diffs to nothing useful,
-# and the same reasoning that excludes the rasters applies: these build the
-# deck, they are not the deck. Everything that supports IMD_Mapping.pptx lives
-# here -- the slide code, its figures, the builder notebooks -- and none of it
-# is shared.
-report/presentation/
-# PowerPoint lock files, written while a deck is open and meaningless once it is
-# closed. Anchored to the repo root would miss them; they sit beside the deck.
+# PowerPoint lock files, written while a deck is open and meaningless once it
+# is closed. Anchored to the repo root would miss them; they sit beside the
+# deck.
 ~$*
-# LaTeX build artefacts. latexmkrc sends most of these to report/build/, but
-# BibTeX writes .bbl and .blg beside report.tex regardless of $aux_dir, and
-# both are regenerated from refs.bib on every build. Overleaf rebuilds them
-# too, so they are not part of the shared project.
-report/build/
-report/*.bbl
-report/*.blg
+
+# Everything under report/ -- the deck sources, the LaTeX auxiliaries, the
+# .bbl and .blg BibTeX writes beside report.tex -- is already covered by the
+# `report/` rule above, which keeps only the three deliverables.
