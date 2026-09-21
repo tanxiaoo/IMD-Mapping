@@ -71,8 +71,8 @@ ghsl_data_preparation.ipynb                     GHSL clipped, reclassified, resa
 02_Transferability_Vietnam_v2.ipynb             Hanoi / HCMC transfer, embeddings
 03_Transferability_Vietnam_S2_median.ipynb      the same, Sentinel-2
 
-04_Validation_PhotoInterpreted.ipynb            independent validation, 450 plots/city
-05_imd_Groundtruth_validation.ipynb             confusion matrices per map
+04_SameSource_Validation.ipynb                  vs the training target, 16 runs
+05_Independent_Validation.ipynb                 vs EarthLabel plots, 20 rasters
 
 s2_utils.py                                     shared cloud masks + composite builder
 ```
@@ -85,18 +85,18 @@ Run them in order: extract, model, transfer, validate.
 data/     inputs only — nothing a notebook writes ever lands here.
             CLMS_2018_Milan_{LAEA,UTM32N}.tif   training target, Milan
             GHSL_2018_{Milan_UTM32N,Hanoi_UTM48N,HCMC_UTM48N}.tif
-            sample_points_all_CLMS_Milan.gpkg
-            sample_points_all_GHSL_{Milan,Hanoi,HCMC}.gpkg
+            sample_points/   the four sampled point sets
             earthlabel/   the 450 photo-interpreted plots per city
             aoi_milan/    the Milan study-area polygon
 
 output/   every run, as city / label source / predictor:
             milan/{clms,ghsl}/{embedding,median,stack,percentile}/
-            hanoi/{embedding,median}/  hcmc/{embedding,median}/
-            transfer/{embedding,median}/   two-city comparison files
+            transfer_vietnam/{hanoi,hcmc}/{embedding,median}/
+            transfer_vietnam/hanoi_and_hcmc/   two-city comparison files
+            validation_samesource/  vs the training target
+            validation_independent/ vs the EarthLabel plots
 
 report/   report.tex, report.pdf, IMD_Mapping.pptx
-            validation/   EarthLabel validation tables and figures
 ```
 
 Raster names say source, year, city and projection. The Vietnam references are
@@ -124,9 +124,17 @@ to a training point. The locked train/test split is scored exactly once.
 under those spatial folds, then retrained server-side in Earth Engine and
 exported as a 10 m raster.
 
-**Validation.** Three measures against the EarthLabel plots: R², Cohen's κ, and
-quadratic weighted κ. Each plot is one 10 m pixel subdivided into nine
-photo-interpreted sub-cells.
+**Validation, twice over.** *Same-source* (notebook 04) scores each map against
+the product it trained on, at that run's own held-out points — it measures
+agreement with the training target, not correctness. *Independent* (notebook
+05) scores every map against the 450 EarthLabel plots per city, which no model
+saw; each plot is one 10 m pixel subdivided into nine photo-interpreted
+sub-cells.
+
+Both apply the same three techniques: **A** continuous (RMSE, MAE, bias, R²),
+**B** hard confusion at a 50 % cut-off (overall accuracy, Cohen's κ), and
+**C** 10-level confusion (quadratic weighted κ). The two validations are
+reported side by side and never merged.
 
 Run in Google Earth Engine via its Python API, with tuning in scikit-learn.
 
