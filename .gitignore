@@ -29,42 +29,36 @@
 *.jpg
 *.pdf
 
-# Output directories
-outputs_v2/
-outputs_S2/
-outputs_sampling/
-outputs_transfer_v2/
-samples_IMD/
-samples_S2/
+# ── Run outputs ───────────────────────────────────────────────────────────────
+# Every notebook writes under output/, laid out city / dataset / predictor:
+#
+#   output/milan/{clms,ghsl}/{embedding,median,stack,percentile}/
+#   output/{hanoi,hcmc}/{embedding,median}/   per-city rasters and samples
+#   output/transfer/{embedding,median}/       the two-city comparison files
+#   output/milan/validation/                  photo-interpreted validation
+#
+# All of it is regenerable by re-running the notebooks against Earth Engine,
+# and the predicted rasters exceed GitHub's 100 MB limit on their own.
+output/
 
-# Per-composite-method runs (samples_S2_stack/, outputs_S2_percentile/, ...)
-samples_S2_*/
-outputs_S2_*/
-
-# data/ holds large rasters and the photo-interpreted CSVs -- not committed.
-# Written as data/* rather than data/ so the negations below can apply: git
-# does not descend into an excluded DIRECTORY, so a bare `data/` would make
-# `!data/FACTS.md` unreachable.
-data/*
-# ── The fact base IS version-controlled ──────────────────────────────────────
-# These four are the project's written record: the settled findings, the
-# experiment map, the figure inventory, and the figure gap list. They are
-# prose, small, and the thing most worth having history for.
-!data/FACTS.md
-!data/EXPERIMENT_MAP.md
-!data/FIGURES.md
-!data/FIGURE_GAPS.md
+# ── Input data ────────────────────────────────────────────────────────────────
+# data/ holds only original inputs now: the CLMS and GHSL reference rasters,
+# the Vietnam IMD rasters, the sample points and the photo-interpreted CSVs.
+# None of it is ours to redistribute and none of it fits in the repository.
+data/
 
 # ── Report figures ARE version-controlled ────────────────────────────────────
 # report/ is a self-contained Overleaf project: it must compile with no file
 # outside it, so every figure the report cites has to be committed alongside
 # report.tex. Two kinds live under report/figs/:
 #
-#   figs/*.png            built by code/make_report_figs.py from data/FACTS.md
-#   figs/outputs_*/*.png  COPIES of notebook figures, refreshed by
+#   figs/*.png            built by code/make_report_figs.py from the fact base
+#   figs/<run>/*.png      COPIES of notebook figures, refreshed by
 #                         code/sync_figs.py, which mirrors each run directory
-#                         so filenames stay unchanged and the two runs that
-#                         share fig01_transfer_comparison.png do not collide
+#                         under a name that says which run it is
+#                         (milan_clms_percentile/, transfer_embedding/, ...)
+#                         so the two runs that share
+#                         fig01_transfer_comparison.png do not collide
 #
 # The copies duplicate gitignored originals on purpose. They are small (a few
 # MB in total, each far below GitHub's limit) and they are what makes the
@@ -74,8 +68,18 @@ data/*
 !report/figs/**/
 !report/figs/**/*.png
 !report/figs/*.png
+# The GitHub QR code on the title page. Vector rather than raster, so the *.png
+# negations above miss it, and without it the shared project is incomplete.
+!report/figs/*.svg
 
-aoi_milan/
+# ── The fact base IS version-controlled ──────────────────────────────────────
+# report/facts/ is the project's written record: the settled findings, the
+# experiment map, the figure inventory, the figure gap list and the section
+# plan. It moved out of data/ when data/ became inputs-only -- it is report
+# prose, not data. Small, and the thing most worth having history for.
+!report/facts/
+!report/facts/*.md
+
 docs/
 
 # ── Secrets & credentials ─────────────────────────────────────────────────────
@@ -121,16 +125,27 @@ desktop.ini
 *.swp
 *~
 report/*.docx
-report/*.pdf
-# Draft slide decks. Tens of MB of binary that diffs to nothing useful, and the
-# same code-only reasoning that excludes the rasters and the built PDF applies:
-# the deck is a rendering of the report, not a source.
+
+# ── The three deliverables ARE version-controlled ────────────────────────────
+# report/ holds exactly three finished artefacts at its root, and they are what
+# anyone outside the project is given:
 #
-# Scoped to report/presentation/ rather than a blanket `*.pptx`, because
-# IMD_S2_composite_comparison.pptx and IMD_internal_review.pptx are tracked at
-# the repo root. Ignoring a tracked file does not untrack it -- it keeps the
-# committed copy while hiding every later edit from `git status`, so the blanket
-# rule would silently strand those two.
+#   report.tex        the source
+#   report.pdf        the built report
+#   IMD_Mapping.pptx  the presentation
+#
+# The PDF and the deck are builds rather than sources, which elsewhere in this
+# file is reason to ignore something. They are tracked anyway: they are the
+# deliverables, and a reader who cannot run XeLaTeX still needs them. Both
+# override the blanket `*.pdf` and the presentation rule below.
+!report/report.pdf
+!report/IMD_Mapping.pptx
+
+# Deck sources and drafts. Tens of MB of binary that diffs to nothing useful,
+# and the same reasoning that excludes the rasters applies: these build the
+# deck, they are not the deck. Everything that supports IMD_Mapping.pptx lives
+# here -- the slide code, its figures, the builder notebooks -- and none of it
+# is shared.
 report/presentation/
 # PowerPoint lock files, written while a deck is open and meaningless once it is
 # closed. Anchored to the repo root would miss them; they sit beside the deck.

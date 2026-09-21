@@ -47,7 +47,7 @@
 \usepackage[capitalise,nameinlink]{cleveref}
 
 % Every figure resolves inside report/. figs/ mirrors the run directories
-% (figs/outputs_v2/, figs/outputs_validation/, ...) so the paths below are
+% (figs/milan_clms_embedding/, figs/milan_validation/, ...) so the paths below are
 % unchanged from the pipeline's own; `python code/sync_figs.py` refreshes the
 % copies. No ../ entry: report/ must compile with no file outside it.
 \graphicspath{{figs/}}
@@ -446,7 +446,7 @@ baseline was correctly reconstructed. \Cref{fig:spatial-split} shows the resulti
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{outputs_v2/fig01_spatial_split.png}
+  \includegraphics[width=\textwidth]{milan_clms_embedding/fig01_spatial_split.png}
   \caption{Training points, test points and buffer-removed points over the 1\,km
   block grid, Milan, with the class counts alongside. Blocks are assigned whole to
   training or testing and test points within 250\,m of a training point are
@@ -708,7 +708,7 @@ down by IMD class.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.85\textwidth]{outputs_S2_percentile_p10p25p50p75p90/fig07_holdout_scatter.png}
+  \includegraphics[width=0.85\textwidth]{milan_clms_percentile/fig07_holdout_scatter.png}
   \caption{Observed CLMS against predicted IMD on the 1\,014-point holdout, S2
   percentile composite, random forest and SVR panels.}
   \label{fig:holdout-scatter}
@@ -728,7 +728,7 @@ down by IMD class.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{outputs_S2_percentile_p10p25p50p75p90/figC_perclass_GEE_RF.png}
+  \includegraphics[width=\textwidth]{milan_clms_percentile/figC_perclass_GEE_RF.png}
   \caption{RMSE, MAE and bias per IMD class, S2 percentile composite, GEE random
   forest, scored against CLMS.}
   \label{fig:perclass-milan}
@@ -834,7 +834,7 @@ composites give an interpretable answer to why they work; the embeddings do not.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{outputs_S2_percentile_p10p25p50p75p90/figD_importance_RF.png}
+  \includegraphics[width=\textwidth]{milan_clms_percentile/figD_importance_RF.png}
   \caption{Impurity and permutation importance per band, random forest, S2
   percentile composite.}
   \label{fig:band-importance}
@@ -920,7 +920,7 @@ both, which is the point of Section 5.1.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.82\textwidth]{outputs_transfer_v2/fig01_transfer_comparison.png}
+  \includegraphics[width=0.82\textwidth]{transfer_embedding/fig01_transfer_comparison.png}
   \caption{\textbf{AlphaEarth embeddings.} Milan baseline, zero-shot transfer and
   local retrain across all four metrics, Hanoi and HCMC. Every bar is scored
   against the training target, GHS-BUILT-S in Hanoi and HCMC and CLMS for the
@@ -932,7 +932,7 @@ both, which is the point of Section 5.1.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.82\textwidth]{outputs_transfer_S2_median/fig01_transfer_comparison.png}
+  \includegraphics[width=0.82\textwidth]{transfer_median/fig01_transfer_comparison.png}
   \caption{\textbf{S2 median composite.} The same four metrics and the same two
   scenarios as \cref{fig:transfer-emb}, for the Sentinel-2 median predictor set
   rather than the embeddings, and scored against the same targets: GHS-BUILT-S in
@@ -946,7 +946,7 @@ shift the metrics report is visible directly.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{outputs_transfer_v2/fig_obs_vs_pred_hanoi_hcmc.png}
+  \includegraphics[width=\textwidth]{transfer_embedding/fig_obs_vs_pred_hanoi_hcmc.png}
   \caption{GHS-BUILT-S, the Milan zero-shot transfer and the local retrain as
   rasters, Hanoi and HCMC, \textbf{AlphaEarth embeddings}, scored against
   GHS-BUILT-S.}
@@ -990,7 +990,7 @@ measures, and \Rsq{} is reserved for the global comparison in Section 5.1.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{outputs_transfer_v2/fig02_per_class_mae.png}
+  \includegraphics[width=\textwidth]{transfer_embedding/fig02_per_class_mae.png}
   \caption{MAE per IMD class, zero-shot transfer against local retrain, Hanoi and
   HCMC, \textbf{AlphaEarth embeddings}, scored against GHS-BUILT-S. The S2 median
   figures quoted in this subsection are read from that run's per-class table
@@ -1074,7 +1074,7 @@ substantially, and the Milan models' intervals overlap CLMS's.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{outputs_validation/fig02_forest_ci.png}
+  \includegraphics[width=\textwidth]{milan_validation/fig02_forest_ci.png}
   \caption{RMSE and MAE with 95\,\% percentile bootstrap \cite{efron1993bootstrap} confidence intervals
   for all fifteen maps, three cities, strict rule. Intervals are over 10\,000
   resamples of the 450 plots, the plot being the independent unit. Diamonds mark
@@ -1148,7 +1148,7 @@ values, is the distributional failure Section 7.2 measures.
   % clamps to \textwidth. Scaling by \textwidth keeps the 45-panel grid on one
   % ordinary A4 page -- the page stays A4 and only its content is rotated.
   \includegraphics[width=\textwidth,keepaspectratio]%
-    {outputs_validation/fig01_scatter_grid.png}
+    {milan_validation/fig01_scatter_grid.png}
   \caption{Photo-interpreted reference against predicted IMD, every registered
   map in the three cities, strict rule.}
   \label{fig:scatter-grid}
