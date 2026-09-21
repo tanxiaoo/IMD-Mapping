@@ -82,17 +82,25 @@ Run them in order: extract, model, transfer, validate.
 ### Where things live
 
 ```
-data/     inputs only — reference rasters, sample points, the AOI.
-          Nothing a notebook writes ever lands here.
+data/     inputs only — nothing a notebook writes ever lands here.
+            CLMS_2018_Milan_{LAEA,UTM32N}.tif   training target, Milan
+            GHSL_2018_{Milan_UTM32N,Hanoi_UTM48N,HCMC_UTM48N}.tif
+            sample_points_{all,train}_CLMS_Milan.gpkg
+            sample_points_all_GHSL_{Milan,Hanoi,HCMC}.gpkg
+            earthlabel/   the 450 photo-interpreted plots per city
+            aoi_milan/    the Milan study-area polygon
 
 output/   every run, as city / label source / predictor:
             milan/{clms,ghsl}/{embedding,median,stack,percentile}/
             hanoi/{embedding,median}/  hcmc/{embedding,median}/
             transfer/{embedding,median}/   two-city comparison files
-            milan/validation/              photo-interpreted validation
 
 report/   report.tex, report.pdf, IMD_Mapping.pptx
+            validation/   EarthLabel validation tables and figures
 ```
+
+Raster names say source, year, city and projection. The Vietnam references are
+GHSL, not CLMS — CLMS covers Europe only.
 
 > **Code only.** `data/` and `output/` are around 5 GB of rasters, models and
 > sample points — regenerable by re-running the notebooks, and the GeoTIFFs
