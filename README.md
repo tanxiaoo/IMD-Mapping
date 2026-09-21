@@ -85,7 +85,7 @@ Run them in order: extract, model, transfer, validate.
 data/     inputs only — nothing a notebook writes ever lands here.
             CLMS_2018_Milan_{LAEA,UTM32N}.tif   training target, Milan
             GHSL_2018_{Milan_UTM32N,Hanoi_UTM48N,HCMC_UTM48N}.tif
-            sample_points_{all,train}_CLMS_Milan.gpkg
+            sample_points_all_CLMS_Milan.gpkg
             sample_points_all_GHSL_{Milan,Hanoi,HCMC}.gpkg
             earthlabel/   the 450 photo-interpreted plots per city
             aoi_milan/    the Milan study-area polygon
