@@ -693,7 +693,7 @@ computed.
         'Train and test are separated spatially, not at random',
         'Milan: 1 km blocks assigned whole to training or testing, plus a '
         '250 m buffer removing test points near any training point.',
-        fig('outputs_v2', 'fig01_spatial_split.png'), max_h=Inches(4.0),
+        fig('output/milan/clms/embedding', 'fig01_spatial_split.png'), max_h=Inches(4.0),
         note='2 449 training and 1 014 test points, roughly 70/30. The design '
              'is Žgela\'s and is used unchanged.',
         say="""
@@ -812,7 +812,7 @@ retained.
         'Observed against predicted on the holdout, both estimators',
         'S2 percentile composite, 1 014-point spatial holdout, scored against '
         'CLMS.',
-        fig('outputs_S2_percentile_p10p25p50p75p90',
+        fig('output/milan/clms/percentile',
             'fig07_holdout_scatter.png'), max_h=Inches(4.2),
         say="""
 This is the plot-level view behind the ranking table. Both estimator panels
@@ -827,7 +827,7 @@ cross-validation and lost here.
         prs, 'Milan · same-source',
         'RMSE, MAE and bias per IMD class, percentile composite',
         'GEE random forest, scored against CLMS on the 1 014-point holdout.',
-        fig('outputs_S2_percentile_p10p25p50p75p90',
+        fig('output/milan/clms/percentile',
             'figC_perclass_GEE_RF.png'), max_h=Inches(4.3),
         say="""
 Breaking the holdout down by class, for anyone who wants to know where the
@@ -875,7 +875,7 @@ sealed features are resolved, in both directions, not a definitional gap.
                'Four of the top five bands are low percentiles of red or high '
                'percentiles of near infrared. B4_p25 alone carries more than '
                'three times the permutation importance of the next band.')
-    add_picture(s, fig('outputs_S2_percentile_p10p25p50p75p90',
+    add_picture(s, fig('output/milan/clms/percentile',
                        'figD_importance_RF.png'),
                 y + Inches(0.22), Inches(2.55))
     table(s, BAND_IMPORTANCE, X0 + Inches(2.4), Inches(5.12), Inches(7.1),
@@ -907,7 +907,7 @@ whether the embeddings admit one.
         'AlphaEarth embeddings. R² is at or below zero in three of the four '
         'city and predictor combinations, which is no more informative than '
         'predicting the mean everywhere.',
-        fig('outputs_transfer_v2', 'fig01_transfer_comparison.png'),
+        fig('output/transfer/embedding', 'fig01_transfer_comparison.png'),
         max_h=Inches(4.05),
         note='Every bar is scored against the training target, so a bias bar '
              'near zero means agreement with GHSL, not a correct map.',
@@ -938,7 +938,7 @@ showing directly rather than as a metric.
         'S2 median composite: the same four metrics and the same two '
         'scenarios. Read the two slides as a pair — the shape of the result is '
         'the same in both.',
-        fig('outputs_transfer_S2_median', 'fig01_transfer_comparison.png'),
+        fig('output/transfer/median', 'fig01_transfer_comparison.png'),
         max_h=Inches(4.05),
         note='Caveat: composite depth is confounded with predictor type here, '
              'so the ordering between the two arms is not controlled.',
@@ -986,7 +986,7 @@ That is the level mismatch the discussion section takes up as mechanism one.
                'it is worse',
                'Large gains in the low and middle classes, a clear reversal in '
                'the top class, in both cities and for both predictor sets.')
-    add_picture(s, fig('outputs_transfer_v2', 'fig02_per_class_mae.png'),
+    add_picture(s, fig('output/transfer/embedding', 'fig02_per_class_mae.png'),
                 y + Inches(0.22), Inches(2.28))
     table(s, PERCLASS_C6, X0 + Inches(1.9), Inches(4.78), Inches(8.1),
           Inches(1.82), size=9.5)
@@ -1116,7 +1116,7 @@ that pair.
         'Every registered map in all three cities, at plot level',
         'Photo-interpreted reference against predicted IMD, strict rule. The '
         'one place the scatter is shown rather than reduced to a metric.',
-        fig('outputs_validation', 'fig01_scatter_grid.png'),
+        fig('output/milan/validation', 'fig01_scatter_grid.png'),
         max_h=Inches(4.5),
         say="""
 The shape to point at: in the Vietnamese zero-shot panels the mass is held away
@@ -1131,7 +1131,7 @@ next section measures — the lost low tail.
         'The diamonds mark CLMS and GHS-BUILT-S, scored here as maps under '
         'test rather than as targets, on the same 450 plots and the same terms '
         'as every model.',
-        fig('outputs_validation', 'fig02_forest_ci.png'), max_h=Inches(3.95),
+        fig('output/milan/validation', 'fig02_forest_ci.png'), max_h=Inches(3.95),
         note='What this measures is label quality, not a ceiling on achievable '
              'accuracy.',
         say="""

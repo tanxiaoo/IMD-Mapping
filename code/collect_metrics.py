@@ -1,4 +1,4 @@
-"""Collect every metric in the repo into data/FACTS.md.
+"""Collect every metric in the repo into report/facts/FACTS.md.
 
 Two tables, deliberately kept separate:
 
@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT_PATH = os.path.join(REPO, 'data', 'FACTS.md')
+OUT_PATH = os.path.join(REPO, 'report', 'facts', 'FACTS.md')
 MISSING = 'MISSING'
 
 PRIMARY_RULE = 'strict'          # notebook 04, validation_summary.json
@@ -59,15 +59,15 @@ def reported_model(name):
 # of holdout_* are backfilled. We cite the CSVs, so provenance is 'live' unless
 # a value can only be had from the JSON.
 MILAN_RUNS = [
-    ('outputs_v2',                             'AlphaEarth embeddings'),
-    ('outputs_S2_median',                      'S2 median'),
-    ('outputs_S2_stack',                       'S2 stack'),
-    ('outputs_S2_percentile_p10p25p50p75p90',  'S2 percentile'),
+    ('output/milan/clms/embedding',                             'AlphaEarth embeddings'),
+    ('output/milan/clms/median',                      'S2 median'),
+    ('output/milan/clms/stack',                       'S2 stack'),
+    ('output/milan/clms/percentile',  'S2 percentile'),
 ]
 
 VIETNAM_RUNS = [
-    ('outputs_transfer_v2',        'AlphaEarth embeddings'),
-    ('outputs_transfer_S2_median', 'S2 median'),
+    ('output/transfer/embedding', 'AlphaEarth embeddings'),
+    ('output/transfer/median',    'S2 median'),
 ]
 
 
@@ -204,7 +204,7 @@ def collect_table_b():
     are recomputed from validation_per_plot_long.csv -- the same groupby the
     notebook performs, on the same saved rows.
     """
-    long_rel = 'outputs_validation/validation_per_plot_long.csv'
+    long_rel = 'output/milan/validation/validation_per_plot_long.csv'
     long_path = os.path.join(REPO, long_rel)
     if not os.path.exists(long_path):
         return pd.DataFrame(), long_rel
@@ -212,7 +212,7 @@ def collect_table_b():
     long_df = pd.read_csv(long_path)
 
     # RefNoise / RMSE_corr are only stored for the strict rule, in table1.
-    t1_rel = 'outputs_validation/table1_headline_ci.csv'
+    t1_rel = 'output/milan/validation/table1_headline_ci.csv'
     t1_path = os.path.join(REPO, t1_rel)
     corr = {}
     cis = {}
@@ -275,7 +275,7 @@ def collect_paired_tests():
     import itertools
     from scipy import stats
 
-    rel = 'outputs_validation/validation_per_plot_long.csv'
+    rel = 'output/milan/validation/validation_per_plot_long.csv'
     path = os.path.join(REPO, rel)
     if not os.path.exists(path):
         return pd.DataFrame()
@@ -329,7 +329,7 @@ def collect_paired_tests():
 def collect_bias_recovery():
     """How much of the reference product's systematic deficit each local
     retrain recovers, per city. Measured, not assumed."""
-    rel = 'outputs_validation/validation_per_plot_long.csv'
+    rel = 'output/milan/validation/validation_per_plot_long.csv'
     path = os.path.join(REPO, rel)
     if not os.path.exists(path):
         return pd.DataFrame()
@@ -369,7 +369,7 @@ def collect_milan_error_shape():
     and tail counts here are what makes that split a measurement rather than
     an inference from the two summary metrics.
     """
-    rel = 'outputs_validation/validation_per_plot_long.csv'
+    rel = 'output/milan/validation/validation_per_plot_long.csv'
     path = os.path.join(REPO, rel)
     if not os.path.exists(path):
         return pd.DataFrame(), rel
@@ -403,16 +403,16 @@ def collect_milan_error_shape():
 # stats below see 450 pixels per city; these see every predicted pixel, so a
 # floor that survives both is a property of the map and not of the sample.
 RANGE_RASTERS = {
-    ('Hanoi', 'emb_zeroshot'):       'outputs_transfer_v2/IMD_Hanoi_10m_zeroshot.tif',
-    ('Hanoi', 'emb_localrf'):        'outputs_transfer_v2/IMD_Hanoi_10m_localrf.tif',
-    ('HCMC', 'emb_zeroshot'):        'outputs_transfer_v2/IMD_HCMC_10m_zeroshot.tif',
-    ('HCMC', 'emb_localrf'):         'outputs_transfer_v2/IMD_HCMC_10m_localrf.tif',
+    ('Hanoi', 'emb_zeroshot'):       'output/hanoi/embedding/IMD_Hanoi_10m_zeroshot.tif',
+    ('Hanoi', 'emb_localrf'):        'output/hanoi/embedding/IMD_Hanoi_10m_localrf.tif',
+    ('HCMC', 'emb_zeroshot'):        'output/hcmc/embedding/IMD_HCMC_10m_zeroshot.tif',
+    ('HCMC', 'emb_localrf'):         'output/hcmc/embedding/IMD_HCMC_10m_localrf.tif',
     # The S2 median run suffixes its rasters with the composite name; the
     # embeddings run does not. Same notebook code, different export tag.
-    ('Hanoi', 'S2_median_zeroshot'): 'outputs_transfer_S2_median/IMD_Hanoi_10m_zeroshot_S2median.tif',
-    ('Hanoi', 'S2_median_localrf'):  'outputs_transfer_S2_median/IMD_Hanoi_10m_localrf_S2median.tif',
-    ('HCMC', 'S2_median_zeroshot'):  'outputs_transfer_S2_median/IMD_HCMC_10m_zeroshot_S2median.tif',
-    ('HCMC', 'S2_median_localrf'):   'outputs_transfer_S2_median/IMD_HCMC_10m_localrf_S2median.tif',
+    ('Hanoi', 'S2_median_zeroshot'): 'output/hanoi/median/IMD_Hanoi_10m_zeroshot_S2median.tif',
+    ('Hanoi', 'S2_median_localrf'):  'output/hanoi/median/IMD_Hanoi_10m_localrf_S2median.tif',
+    ('HCMC', 'S2_median_zeroshot'):  'output/hcmc/median/IMD_HCMC_10m_zeroshot_S2median.tif',
+    ('HCMC', 'S2_median_localrf'):   'output/hcmc/median/IMD_HCMC_10m_localrf_S2median.tif',
 }
 
 
@@ -478,7 +478,7 @@ def collect_city_range(city):
     Run for both Vietnam cities -- the contrast between them is the result,
     so neither city can be the only one measured.
     """
-    rel = 'outputs_validation/validation_per_plot_long.csv'
+    rel = 'output/milan/validation/validation_per_plot_long.csv'
     path = os.path.join(REPO, rel)
     if not os.path.exists(path):
         return pd.DataFrame(), pd.DataFrame()
@@ -654,7 +654,7 @@ def collect_milan_cv():
     return pd.DataFrame(rows)
 
 
-def collect_feature_importance(run_dir='outputs_S2_percentile_p10p25p50p75p90',
+def collect_feature_importance(run_dir='output/milan/clms/percentile',
                                top_n=12):
     """RF feature importance for one Milan run.
 
@@ -686,7 +686,7 @@ def collect_level_matching():
     saturation diagnostic: which scenario 'wins' a city depends on how close its
     prediction level sits to that city's reference level.
     """
-    rel = 'outputs_validation/validation_per_plot_long.csv'
+    rel = 'output/milan/validation/validation_per_plot_long.csv'
     path = os.path.join(REPO, rel)
     if not os.path.exists(path):
         return pd.DataFrame()
@@ -721,7 +721,7 @@ def collect_level_matching():
 
 def collect_milan_rule_ranking():
     """Milan RMSE and rank under each rule -- does the coding change the order?"""
-    rel = 'outputs_validation/validation_per_plot_long.csv'
+    rel = 'output/milan/validation/validation_per_plot_long.csv'
     path = os.path.join(REPO, rel)
     if not os.path.exists(path):
         return pd.DataFrame(), {}
@@ -763,14 +763,14 @@ def collect_milan_rule_ranking():
 # Milan is not listed: it clears the requirement, so it has no shortfall to
 # record and its metadata carries no rationale field.
 CEILING_RUNS = [
-    ('Hanoi', 'samples_S2_median_Hanoi/s2_extraction_metadata.json'),
-    ('HCMC',  'samples_S2_median_HCMC/s2_extraction_metadata.json'),
+    ('Hanoi', 'output/hanoi/median/s2_extraction_metadata.json'),
+    ('HCMC',  'output/hcmc/median/s2_extraction_metadata.json'),
 ]
 
 # The percentile set whose date floor the report quotes. s2_utils.PERCENTILES
 # still defaults to the retired 3-percentile set, so the set in USE is read
 # from the run directory rather than taken from the module default.
-PERCENTILE_RUN = ('samples_S2_percentile_p10p25p50p75p90/'
+PERCENTILE_RUN = ('output/milan/clms/percentile/'
                   's2_extraction_metadata.json')
 
 
@@ -973,7 +973,7 @@ def main():
               'directory holds 1014 held-out points, cross-checked against '
               '`holdout_residuals.csv` (1014 rows). It is identical across all '
               'four Milan runs because notebook 01b imports the split from '
-              '`outputs_v2` rather than recomputing it. Vietnam `n` is '
+              '`output/milan/clms/embedding` rather than recomputing it. Vietnam `n` is '
               '`n_samples_test` from `transfer_summary.json` (Hanoi 895, '
               'HCMC 887).\n')
 
@@ -990,7 +990,7 @@ def main():
               f'it is left {MISSING} for rules B and C rather than estimated.\n')
     md.append(f'\n`RMSE_CI` and `MAE_CI` are **95 % percentile bootstrap** '
               f'intervals read from '
-              f'`outputs_validation/table1_headline_ci.csv`: '
+              f'`output/milan/validation/table1_headline_ci.csv`: '
               f'10,000 resamples, seed 42, '
               f'resampling **plots** as the independent unit, with one shared '
               f'resample index across maps within a city. Like `RMSE_corr` '

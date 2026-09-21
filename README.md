@@ -17,7 +17,7 @@ difference is the predictor.
 
 ## Attribution
 
-The original embedding-based pipeline — `01_IMD_Prediction_Milan_blockCV_v2.ipynb`
+The original embedding-based pipeline — `01_IMD_Prediction_Milan_blockCV_embedding.ipynb`
 and `02_Transferability_Vietnam_v2.ipynb`, including the spatial block
 cross-validation design, the hyperparameter tuning framework and the GEE export
 workflow — was created by:
@@ -35,7 +35,7 @@ a controlled comparison, reusing that pipeline's structure unchanged.
 
 ```
 00_S2_Extraction_Milan_2018.ipynb        Sentinel-2 scene selection + extraction
-01_IMD_Prediction_Milan_blockCV_v2.ipynb Embedding pipeline  (Matej Žgela)
+01_IMD_Prediction_Milan_blockCV_embedding.ipynb Embedding pipeline  (Matej Žgela)
 01b_IMD_Prediction_Milan_blockCV_S2.ipynb Sentinel-2 baseline (copy of 01)
 02_Transferability_Vietnam_v2.ipynb      Hanoi / HCMC transfer (Matej Žgela)
 s2_utils.py                              Shared S2 masks + composite builder

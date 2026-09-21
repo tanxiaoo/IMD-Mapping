@@ -1,11 +1,11 @@
 """Build the report figures that no notebook produces.
 
-Every value is parsed from data/FACTS.md. Nothing is hardcoded: if a number the
+Every value is parsed from report/facts/FACTS.md. Nothing is hardcoded: if a number the
 figure needs is absent from the fact base, the script raises rather than
 substituting a literal, so a figure can never drift from the numbers it claims
 to show.
 
-House style follows make_presentation.py, as recorded in data/FIGURES.md.
+House style follows make_presentation.py, as recorded in report/facts/FIGURES.md.
 
 Usage:  python code/make_report_figs.py            # all built figures
         python code/make_report_figs.py F12        # one figure
@@ -23,7 +23,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FACTS = os.path.join(REPO, 'data', 'FACTS.md')
+FACTS = os.path.join(REPO, 'report', 'facts', 'FACTS.md')
 FIGS = os.path.join(REPO, 'report', 'figs')
 
 # ── House style ──────────────────────────────────────────────────────────────
@@ -254,13 +254,13 @@ def build_f12():
 
 # ── F1 · composite depth ─────────────────────────────────────────────────────
 # The usable-date lists live in each run's extraction metadata, which is the
-# same source data/EXPERIMENT_MAP.md's composite-date table was built from.
+# same source report/facts/EXPERIMENT_MAP.md's composite-date table was built from.
 # EXPERIMENT_MAP.md abbreviates Milan's 30 dates as a range, so the metadata is
 # read directly and the counts are cross-checked against the table below.
 DEPTH_RUNS = [
-    ('Milan', 'samples_S2_median/s2_extraction_metadata.json'),
-    ('Hanoi', 'samples_S2_median_Hanoi/s2_extraction_metadata.json'),
-    ('HCMC',  'samples_S2_median_HCMC/s2_extraction_metadata.json'),
+    ('Milan', 'output/milan/clms/median/s2_extraction_metadata.json'),
+    ('Hanoi', 'output/hanoi/median/s2_extraction_metadata.json'),
+    ('HCMC',  'output/hcmc/median/s2_extraction_metadata.json'),
 ]
 
 # Two acquisitions closer than this are the same scene state, not two seasons.
@@ -306,7 +306,7 @@ def f1_values():
     # 3-percentile set (floor 10), so taking the default would understate the
     # threshold this project actually faced. Read the set from the percentile
     # run that is in use, and derive the floor from it.
-    pctl_rel = ('samples_S2_percentile_p10p25p50p75p90/'
+    pctl_rel = ('output/milan/clms/percentile/'
                 's2_extraction_metadata.json')
     pctl_path = os.path.join(REPO, pctl_rel)
     if not os.path.exists(pctl_path):
@@ -840,7 +840,7 @@ def build_f14():
 # The panel geometry, colours, scale and limits are copied from 01b verbatim;
 # the only change is a suptitle naming the run.
 RASTER_OBS = 'data/IMD_2018_CLMS_UTM32N.tif'
-RASTER_PRED = ('outputs_S2_percentile_p10p25p50p75p90/'
+RASTER_PRED = ('output/milan/clms/percentile/'
                'IMD_predicted_RF_S2_Milan.tif')
 DISPLAY_SCALE = 2          # 01b's decimation factor, kept for comparability
 
@@ -936,7 +936,7 @@ def build_f15():
 # per CLAUDE.md: re-running the notebook would re-tune models and re-export
 # rasters. The CSV is the tabular twin of the notebook figure, so the values
 # are the notebook's; only the row filter and the labelling change.
-INFLATION_CSV = 'outputs_v2/inflation_analysis.csv'
+INFLATION_CSV = 'output/milan/clms/embedding/inflation_analysis.csv'
 REPORTED_MODELS = ('RF', 'SVR')
 
 
@@ -1045,7 +1045,7 @@ def build_f3():
 # Built rather than taken from a notebook. figA_holdout_accuracy_* would have
 # been the notebook candidate, but its left panel duplicates F4 and its right
 # panel duplicates F5, and its title carries the wrong tuning block (see
-# data/FIGURES.md).
+# report/facts/FIGURES.md).
 RANK_METRICS = [
     ('RMSE', 'RMSE (IMD pp)',  'lower is better'),
     ('MAE',  'MAE (IMD pp)',   'lower is better'),

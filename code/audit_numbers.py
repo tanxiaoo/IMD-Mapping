@@ -2,7 +2,7 @@
 
 Six checks, each reported with the line number that failed:
 
-  1. NUMBERS    every numeric value in the report appears in data/FACTS.md
+  1. NUMBERS    every numeric value in the report appears in report/facts/FACTS.md
   2. FIGURES    every figure filename mentioned exists on disk
   3. COVERAGE   every figure in OUTLINE.md's consolidated list is cited
   4. TERMS      no stale "Track A" / "Track B" terminology
@@ -49,11 +49,15 @@ import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_REPORT = os.path.join(REPO, 'report', 'report.tex')
-FACTS = os.path.join(REPO, 'data', 'FACTS.md')
-OUTLINE = os.path.join(REPO, 'report', 'OUTLINE.md')
-FIG_DIRS = ['report/figs'] + [d for d in sorted(os.listdir(REPO))
-                              if d.startswith('outputs_') and
-                              os.path.isdir(os.path.join(REPO, d))]
+FACTS = os.path.join(REPO, 'report', 'facts', 'FACTS.md')
+OUTLINE = os.path.join(REPO, 'report', 'facts', 'OUTLINE.md')
+
+# Where a cited figure may live. report/figs/ is the one that matters: report/
+# has to compile with no file outside it, so a figure the report cites but that
+# sync_figs.py has not copied in is a real failure, not a lookup miss. The run
+# directories under output/ are searched too, so a figure that exists but has
+# not been synced is reported as such rather than as missing outright.
+FIG_DIRS = ['report/figs', 'output']
 
 # Numbers that are structural rather than measurements: section numbers, years,
 # figure numbers, page counts. Checking these against FACTS.md would be noise.
@@ -174,15 +178,30 @@ def _known(value, facts):
 
 
 def _figure_index():
-    """Every figure filename on disk -> the directory holding it."""
+    """Every figure on disk -> the directories holding it.
+
+    Indexed twice: by bare filename, and by the path relative to its search
+    root. The report cites `milan_clms_percentile/figD_importance_RF.png`, one
+    directory deep, and several run directories hold a `figD_importance_RF.png`
+    of their own -- so matching on the filename alone would accept a citation
+    that resolves to the wrong run, or to nothing at all once \graphicspath
+    looks for it. The relative form is what the citation is checked against;
+    the bare name is kept so a near miss can still be reported usefully.
+    """
     index = {}
     for d in FIG_DIRS:
         full = os.path.join(REPO, d)
         if not os.path.isdir(full):
             continue
-        for name in os.listdir(full):
-            if name.lower().endswith(('.png', '.pdf', '.svg')):
+        for root, _, names in os.walk(full):
+            for name in names:
+                if not name.lower().endswith(('.png', '.pdf', '.svg')):
+                    continue
+                abs_path = os.path.join(root, name)
+                rel = os.path.relpath(abs_path, full).replace(os.sep, '/')
                 index.setdefault(name, []).append(d)
+                if rel != name:
+                    index.setdefault(rel, []).append(d)
     return index
 
 
@@ -472,7 +491,7 @@ def main():
     facts = _facts_numbers()
     if facts is None:
         failures.append(('SETUP', 0,
-                         'data/FACTS.md not found — run '
+                         'report/facts/FACTS.md not found — run '
                          'code/collect_metrics.py first.'))
         facts = set()
 
@@ -503,7 +522,7 @@ def main():
                 if not _known(value, facts):
                     failures.append((
                         'NUMBERS', i,
-                        f'{value} not found in data/FACTS.md'))
+                        f'{value} not found in report/facts/FACTS.md'))
 
         # 2. FIGURES — every filename mentioned must exist.
         for m in re.finditer(r'([\w./-]*\bfig[\w.-]*\.(?:png|pdf|svg))',
@@ -579,7 +598,7 @@ def main():
     print('=' * width)
     print(f'report : {rel}'
           f'{"" if lines else "  (absent/empty)"}')
-    print(f'facts  : data/FACTS.md  ({len(facts):,} numeric forms)')
+    print(f'facts  : report/facts/FACTS.md  ({len(facts):,} numeric forms)')
     print(f'figures: {len(disk)} on disk across {len(FIG_DIRS)} directories')
     if lines:
         print(f'lines  : {len(lines):,}   figures cited: {len(cited)}')

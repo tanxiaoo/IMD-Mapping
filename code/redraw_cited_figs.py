@@ -34,8 +34,8 @@ emit, and these redraws reproduce:
     F13 fig02_forest_ci           (none)
     F14 fig01_scatter_grid        (none)
 
-F9 and F10 share a filename across `outputs_transfer_v2` and
-`outputs_transfer_S2_median`, which is precisely the case the rule allows a
+F9 and F10 share a filename across `output/transfer/embedding` and
+`output/transfer/median`, which is precisely the case the rule allows a
 run-identifying line for. What none of them carries is a figure number, a
 restatement of the caption, or a conclusion.
 
@@ -197,8 +197,8 @@ def redraw_importance(run_dir: Path, block: str = '1000m') -> Path:
 def redraw_spatial_split() -> Path:
     import geopandas as gpd
 
-    run_dir = REPO / 'outputs_v2'
-    gdf_all = gpd.read_file(REPO / 'outputs_sampling' / 'sample_points_all.gpkg')
+    run_dir = REPO / 'output/milan/clms/embedding'
+    gdf_all = gpd.read_file(REPO / 'data' / 'sample_points_all_CLMS.gpkg')
     gdf_train = gpd.read_file(run_dir / 'spatial_train_pts.gpkg')
     gdf_test = gpd.read_file(run_dir / 'spatial_test_pts.gpkg')
 
@@ -284,7 +284,7 @@ def redraw_obs_vs_pred() -> Path:
     import rioxarray as rxr
     from matplotlib.colors import ListedColormap
 
-    run_dir = REPO / 'outputs_transfer_v2'
+    run_dir = REPO / 'output' / 'transfer' / 'embedding'
     comp = pd.read_csv(run_dir / 'transferability_comparison.csv')
 
     # Notebook 02 cell 3.
@@ -293,9 +293,8 @@ def redraw_obs_vs_pred() -> Path:
     imd_cmap = ListedColormap(IMD_PALETTE)
     SCENARIOS = [('zeroshot', 'Milan transfer', 'A - Milan model transfer'),
                  ('localrf', 'Local retrain', 'B - Local retrain')]
-    # The notebook config points at ./data/; the rasters live at the repo root.
-    CITIES = {'Hanoi': REPO / 'IMD_2018_Hanoi.tif',
-              'HCMC': REPO / 'IMD_2018_HCMC.tif'}
+    CITIES = {'Hanoi': REPO / 'data' / 'IMD_2018_Hanoi.tif',
+              'HCMC': REPO / 'data' / 'IMD_2018_HCMC.tif'}
 
     def imshow_aspect(ax, da, **kw):
         b = da.rio.bounds()
@@ -316,7 +315,8 @@ def redraw_obs_vs_pred() -> Path:
     for row, (city, ghsl_path) in enumerate(CITIES.items()):
         preds = {}
         for tag, _, _ in SCENARIOS:
-            p = run_dir / f'IMD_{city}_10m_{tag}.tif'
+            p = (REPO / 'output' / city.lower() / 'embedding'
+                 / f'IMD_{city}_10m_{tag}.tif')
             if not p.exists():
                 raise FileNotFoundError(f'{p} -- the GEE export is missing.')
             preds[tag] = rxr.open_rasterio(p, masked=True).squeeze('band',
@@ -363,14 +363,14 @@ REDRAWS = {
     'F2':  redraw_spatial_split,
     'F11': redraw_obs_vs_pred,
     'F9':  lambda: redraw_transfer_comparison(
-        REPO / 'outputs_transfer_v2',
+        REPO / 'output/transfer/embedding',
         'scored against GHSL (Milan baseline against CLMS)'),
     'F10': lambda: redraw_transfer_comparison(
-        REPO / 'outputs_transfer_S2_median',
+        REPO / 'output/transfer/median',
         'scored against GHSL (Milan baseline against CLMS)'),
-    'F12': lambda: redraw_per_class_mae(REPO / 'outputs_transfer_v2'),
+    'F12': lambda: redraw_per_class_mae(REPO / 'output/transfer/embedding'),
     'F8':  lambda: redraw_importance(
-        REPO / 'outputs_S2_percentile_p10p25p50p75p90'),
+        REPO / 'output/milan/clms/percentile'),
 }
 
 

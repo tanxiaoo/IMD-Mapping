@@ -21,7 +21,7 @@ already used for `fig_cv_inflation` (F3) and `fig_milan_raster_comparison`
 
 The plotted values are the notebook's. Panel geometry, colours, limits, marker
 sizes and annotation boxes are copied verbatim from cells 39 and 45. Figures are
-rewritten at their existing paths, so `report.md`, `data/FIGURES.md` and
+rewritten at their existing paths, so `report.md`, `report/facts/FIGURES.md` and
 `report/OUTLINE.md` keep working unchanged. Because those paths are gitignored
 notebook outputs, a future 01b run overwrites them -- harmlessly now, since 01b
 renders the same thing.
@@ -52,7 +52,7 @@ CLASS_COLORS = ['#2166ac', '#74add1', '#abd9e9', '#fee090',
 MODEL_COLORS = {'RF': '#2ecc71', 'SVR': '#3498db'}
 
 REPO = Path(__file__).resolve().parent.parent
-DEFAULT_RUN = REPO / 'outputs_S2_percentile_p10p25p50p75p90'
+DEFAULT_RUN = REPO / 'output/milan/clms/percentile'
 
 # The panels are named GEE_RF / GEE_SVR while MODEL_COLORS is keyed RF / SVR, so
 # the notebook's `.get(name, '#7f8c8d')` falls through to grey for both. Kept.

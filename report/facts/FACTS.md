@@ -12,28 +12,28 @@ _Each map scored against the product it was trained on: CLMS in Milan, GHSL in H
 
 | city | predictor_set | model | mode | RMSE | MAE | R2 | Bias | n | source_file | provenance |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Milan | AlphaEarth embeddings | GEE_RF | local train | 14.123 | 10.675 | 0.837 | 0.624 | 1014 | outputs_v2/holdout_test_metrics.csv | live |
-| Milan | AlphaEarth embeddings | GEE_SVR | local train | 14.756 | 11.400 | 0.822 | 0.274 | 1014 | outputs_v2/holdout_test_metrics.csv | live |
-| Milan | S2 median | GEE_RF | local train | 11.285 | 7.820 | 0.896 | 0.046 | 1014 | outputs_S2_median/holdout_test_metrics.csv | live |
-| Milan | S2 median | GEE_SVR | local train | 10.939 | 7.171 | 0.902 | -1.263 | 1014 | outputs_S2_median/holdout_test_metrics.csv | live |
-| Milan | S2 stack | GEE_RF | local train | 10.864 | 7.641 | 0.904 | -0.169 | 1014 | outputs_S2_stack/holdout_test_metrics.csv | live |
-| Milan | S2 stack | GEE_SVR | local train | 10.219 | 6.918 | 0.915 | -0.328 | 1014 | outputs_S2_stack/holdout_test_metrics.csv | live |
-| Milan | S2 percentile | GEE_RF | local train | 9.462 | 6.389 | 0.927 | -0.104 | 1014 | outputs_S2_percentile_p10p25p50p75p90/holdout_test_metrics.csv | live |
-| Milan | S2 percentile | GEE_SVR | local train | 9.051 | 5.810 | 0.933 | -0.513 | 1014 | outputs_S2_percentile_p10p25p50p75p90/holdout_test_metrics.csv | live |
-| Hanoi | AlphaEarth embeddings | RF | zero-shot transfer | 35.960 | 30.140 | -0.070 | -24.930 | 895 | outputs_transfer_v2/transferability_comparison.csv | live |
-| Hanoi | AlphaEarth embeddings | RF | local retrain | 23.860 | 17.720 | 0.529 | -0.690 | 895 | outputs_transfer_v2/transferability_comparison.csv | live |
-| HCMC | AlphaEarth embeddings | RF | zero-shot transfer | 40.650 | 34.170 | -0.279 | -29.760 | 887 | outputs_transfer_v2/transferability_comparison.csv | live |
-| HCMC | AlphaEarth embeddings | RF | local retrain | 21.310 | 16.580 | 0.649 | 0.400 | 887 | outputs_transfer_v2/transferability_comparison.csv | live |
-| Hanoi | S2 median | RF | zero-shot transfer | 37.150 | 28.930 | -0.142 | -23.790 | 895 | outputs_transfer_S2_median/transferability_comparison.csv | live |
-| Hanoi | S2 median | RF | local retrain | 24.050 | 18.490 | 0.522 | -2.080 | 895 | outputs_transfer_S2_median/transferability_comparison.csv | live |
-| HCMC | S2 median | RF | zero-shot transfer | 35.190 | 26.980 | 0.042 | -23.180 | 887 | outputs_transfer_S2_median/transferability_comparison.csv | live |
-| HCMC | S2 median | RF | local retrain | 22.880 | 17.930 | 0.595 | -1.900 | 887 | outputs_transfer_S2_median/transferability_comparison.csv | live |
+| Milan | AlphaEarth embeddings | GEE_RF | local train | 14.123 | 10.675 | 0.837 | 0.624 | 1014 | output/milan/clms/embedding/holdout_test_metrics.csv | live |
+| Milan | AlphaEarth embeddings | GEE_SVR | local train | 14.756 | 11.400 | 0.822 | 0.274 | 1014 | output/milan/clms/embedding/holdout_test_metrics.csv | live |
+| Milan | S2 median | GEE_RF | local train | 11.285 | 7.820 | 0.896 | 0.046 | 1014 | output/milan/clms/median/holdout_test_metrics.csv | live |
+| Milan | S2 median | GEE_SVR | local train | 10.939 | 7.171 | 0.902 | -1.263 | 1014 | output/milan/clms/median/holdout_test_metrics.csv | live |
+| Milan | S2 stack | GEE_RF | local train | 10.864 | 7.641 | 0.904 | -0.169 | 1014 | output/milan/clms/stack/holdout_test_metrics.csv | live |
+| Milan | S2 stack | GEE_SVR | local train | 10.219 | 6.918 | 0.915 | -0.328 | 1014 | output/milan/clms/stack/holdout_test_metrics.csv | live |
+| Milan | S2 percentile | GEE_RF | local train | 9.462 | 6.389 | 0.927 | -0.104 | 1014 | output/milan/clms/percentile/holdout_test_metrics.csv | live |
+| Milan | S2 percentile | GEE_SVR | local train | 9.051 | 5.810 | 0.933 | -0.513 | 1014 | output/milan/clms/percentile/holdout_test_metrics.csv | live |
+| Hanoi | AlphaEarth embeddings | RF | zero-shot transfer | 35.960 | 30.140 | -0.070 | -24.930 | 895 | output/transfer/embedding/transferability_comparison.csv | live |
+| Hanoi | AlphaEarth embeddings | RF | local retrain | 23.860 | 17.720 | 0.529 | -0.690 | 895 | output/transfer/embedding/transferability_comparison.csv | live |
+| HCMC | AlphaEarth embeddings | RF | zero-shot transfer | 40.650 | 34.170 | -0.279 | -29.760 | 887 | output/transfer/embedding/transferability_comparison.csv | live |
+| HCMC | AlphaEarth embeddings | RF | local retrain | 21.310 | 16.580 | 0.649 | 0.400 | 887 | output/transfer/embedding/transferability_comparison.csv | live |
+| Hanoi | S2 median | RF | zero-shot transfer | 37.150 | 28.930 | -0.142 | -23.790 | 895 | output/transfer/median/transferability_comparison.csv | live |
+| Hanoi | S2 median | RF | local retrain | 24.050 | 18.490 | 0.522 | -2.080 | 895 | output/transfer/median/transferability_comparison.csv | live |
+| HCMC | S2 median | RF | zero-shot transfer | 35.190 | 26.980 | 0.042 | -23.180 | 887 | output/transfer/median/transferability_comparison.csv | live |
+| HCMC | S2 median | RF | local retrain | 22.880 | 17.930 | 0.595 | -1.900 | 887 | output/transfer/median/transferability_comparison.csv | live |
 
 
 Milan rows are the GEE estimators (`GEE_RF`, `GEE_SVR`) from each run's `holdout_test_metrics.csv`. The `holdout_*` copies in `model_metadata_S2.json` are **backfilled** by the deleted `00c_backfill_S2_models.ipynb` and are not cited here; the CSVs are the source of record and agree exactly.
 
 
-**Provenance of `n`.** `holdout_test_metrics.csv` carries no sample-size column, so Milan `n = 1014` is recovered from the spatial split itself: `spatial_test_pts.gpkg` in each run directory holds 1014 held-out points, cross-checked against `holdout_residuals.csv` (1014 rows). It is identical across all four Milan runs because notebook 01b imports the split from `outputs_v2` rather than recomputing it. Vietnam `n` is `n_samples_test` from `transfer_summary.json` (Hanoi 895, HCMC 887).
+**Provenance of `n`.** `holdout_test_metrics.csv` carries no sample-size column, so Milan `n = 1014` is recovered from the spatial split itself: `spatial_test_pts.gpkg` in each run directory holds 1014 held-out points, cross-checked against `holdout_residuals.csv` (1014 rows). It is identical across all four Milan runs because notebook 01b imports the split from `output/milan/clms/embedding` rather than recomputing it. Vietnam `n` is `n_samples_test` from `transfer_summary.json` (Hanoi 895, HCMC 887).
 
 
 ## Table B — independent validation (vs photo-interpretation)
@@ -42,57 +42,57 @@ _Every map scored against 450 photo-interpreted plots per city that no model saw
 
 | city | map_id | role | rule | RMSE | RMSE_corr | RMSE_CI | MAE | MAE_CI | R2 | Bias | n | source_file |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| HCMC | S2_median_localrf | model | **strict** (primary) | 29.615 | 26.484 | [27.618, 31.496] | 23.030 | [21.317, 24.750] | 0.563 | 12.233 | 450 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | S2_median_localrf | model | B | 29.615 | MISSING | MISSING | 23.030 | MISSING | 0.563 | 12.233 | 450 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | S2_median_localrf | model | C | 30.189 | MISSING | MISSING | 23.541 | MISSING | 0.547 | 13.072 | 450 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | S2_median_zeroshot | model | **strict** (primary) | 25.950 | 23.420 | [23.432, 28.548] | 16.779 | [15.046, 18.698] | 0.665 | -6.827 | 450 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | S2_median_zeroshot | model | B | 25.950 | MISSING | MISSING | 16.779 | MISSING | 0.665 | -6.827 | 450 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | S2_median_zeroshot | model | C | 25.476 | MISSING | MISSING | 16.556 | MISSING | 0.678 | -5.988 | 450 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | emb_localrf | model | **strict** (primary) | 27.242 | 24.011 | [25.181, 29.269] | 20.294 | [18.607, 22.022] | 0.630 | 11.088 | 450 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | emb_localrf | model | B | 27.242 | MISSING | MISSING | 20.294 | MISSING | 0.630 | 11.088 | 450 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | emb_localrf | model | C | 27.951 | MISSING | MISSING | 20.879 | MISSING | 0.612 | 11.927 | 450 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | emb_zeroshot | model | **strict** (primary) | 38.494 | 35.775 | [36.617, 40.356] | 32.404 | [30.529, 34.352] | 0.262 | -19.641 | 450 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | emb_zeroshot | model | B | 38.494 | MISSING | MISSING | 32.404 | MISSING | 0.262 | -19.641 | 450 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | emb_zeroshot | model | C | 38.059 | MISSING | MISSING | 32.038 | MISSING | 0.280 | -18.802 | 450 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | GHSL | reference | **strict** (primary) | 37.355 | 35.597 | [34.602, 40.109] | 25.730 | [23.301, 28.315] | 0.305 | 19.800 | 450 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | GHSL | reference | B | 37.355 | MISSING | MISSING | 25.730 | MISSING | 0.305 | 19.800 | 450 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | GHSL | reference | C | 38.153 | MISSING | MISSING | 26.434 | MISSING | 0.277 | 20.639 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | S2_median_localrf | model | **strict** (primary) | 27.282 | 23.885 | [25.567, 28.996] | 21.320 | [19.765, 22.918] | 0.628 | 8.181 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | S2_median_localrf | model | B | 27.282 | MISSING | MISSING | 21.320 | MISSING | 0.628 | 8.181 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | S2_median_localrf | model | C | 27.902 | MISSING | MISSING | 21.778 | MISSING | 0.612 | 9.736 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | S2_median_zeroshot | model | **strict** (primary) | 33.791 | 31.195 | [31.089, 36.520] | 24.469 | [22.363, 26.663] | 0.429 | -15.876 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | S2_median_zeroshot | model | B | 33.791 | MISSING | MISSING | 24.469 | MISSING | 0.429 | -15.876 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | S2_median_zeroshot | model | C | 32.658 | MISSING | MISSING | 23.648 | MISSING | 0.469 | -14.320 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | emb_localrf | model | **strict** (primary) | 26.502 | 23.266 | [24.676, 28.371] | 19.588 | [17.987, 21.278] | 0.649 | 6.592 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | emb_localrf | model | B | 26.502 | MISSING | MISSING | 19.588 | MISSING | 0.649 | 6.592 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | emb_localrf | model | C | 27.097 | MISSING | MISSING | 19.973 | MISSING | 0.634 | 8.148 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | emb_zeroshot | model | **strict** (primary) | 34.352 | 31.061 | [32.545, 36.167] | 29.537 | [27.919, 31.205] | 0.410 | -15.716 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | emb_zeroshot | model | B | 34.352 | MISSING | MISSING | 29.537 | MISSING | 0.410 | -15.716 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | emb_zeroshot | model | C | 33.501 | MISSING | MISSING | 28.917 | MISSING | 0.441 | -14.161 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | GHSL | reference | **strict** (primary) | 40.345 | 38.833 | [37.461, 43.162] | 27.052 | [24.354, 29.824] | 0.187 | 19.680 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | GHSL | reference | B | 40.345 | MISSING | MISSING | 27.052 | MISSING | 0.187 | 19.680 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | GHSL | reference | C | 41.087 | MISSING | MISSING | 27.781 | MISSING | 0.159 | 21.236 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Milan | S2_median | model | **strict** (primary) | 25.984 | 22.917 | [23.519, 28.380] | 18.363 | [16.689, 20.099] | 0.613 | -4.176 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Milan | S2_median | model | B | 25.943 | MISSING | MISSING | 18.322 | MISSING | 0.619 | -3.608 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Milan | S2_median | model | C | 22.981 | MISSING | MISSING | 16.594 | MISSING | 0.703 | -1.389 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Milan | S2_percentile | model | **strict** (primary) | 24.809 | 21.874 | [22.401, 27.194] | 16.486 | [14.804, 18.220] | 0.647 | -3.342 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Milan | S2_percentile | model | B | 24.711 | MISSING | MISSING | 16.411 | MISSING | 0.654 | -2.774 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Milan | S2_percentile | model | C | 21.374 | MISSING | MISSING | 14.590 | MISSING | 0.743 | -0.555 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Milan | S2_stack | model | **strict** (primary) | 24.644 | 21.559 | [22.170, 27.109] | 16.551 | [14.902, 18.260] | 0.652 | -3.344 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Milan | S2_stack | model | B | 24.536 | MISSING | MISSING | 16.496 | MISSING | 0.659 | -2.776 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Milan | S2_stack | model | C | 20.976 | MISSING | MISSING | 14.595 | MISSING | 0.753 | -0.557 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Milan | emb_RF | model | **strict** (primary) | 25.625 | 22.420 | [23.605, 27.604] | 18.299 | [16.668, 19.977] | 0.624 | -1.622 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Milan | emb_RF | model | B | 25.544 | MISSING | MISSING | 18.255 | MISSING | 0.631 | -1.054 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Milan | emb_RF | model | C | 23.031 | MISSING | MISSING | 16.831 | MISSING | 0.702 | 1.165 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Milan | CLMS | reference | **strict** (primary) | 26.253 | 24.411 | [23.329, 29.136] | 14.606 | [12.604, 16.675] | 0.605 | 2.263 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Milan | CLMS | reference | B | 25.966 | MISSING | MISSING | 14.400 | MISSING | 0.618 | 2.831 | 450 | outputs_validation/validation_per_plot_long.csv |
-| Milan | CLMS | reference | C | 24.075 | MISSING | MISSING | 13.157 | MISSING | 0.674 | 5.050 | 450 | outputs_validation/validation_per_plot_long.csv |
+| HCMC | S2_median_localrf | model | **strict** (primary) | 29.615 | 26.484 | [27.618, 31.496] | 23.030 | [21.317, 24.750] | 0.563 | 12.233 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | S2_median_localrf | model | B | 29.615 | MISSING | MISSING | 23.030 | MISSING | 0.563 | 12.233 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | S2_median_localrf | model | C | 30.189 | MISSING | MISSING | 23.541 | MISSING | 0.547 | 13.072 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | S2_median_zeroshot | model | **strict** (primary) | 25.950 | 23.420 | [23.432, 28.548] | 16.779 | [15.046, 18.698] | 0.665 | -6.827 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | S2_median_zeroshot | model | B | 25.950 | MISSING | MISSING | 16.779 | MISSING | 0.665 | -6.827 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | S2_median_zeroshot | model | C | 25.476 | MISSING | MISSING | 16.556 | MISSING | 0.678 | -5.988 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | emb_localrf | model | **strict** (primary) | 27.242 | 24.011 | [25.181, 29.269] | 20.294 | [18.607, 22.022] | 0.630 | 11.088 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | emb_localrf | model | B | 27.242 | MISSING | MISSING | 20.294 | MISSING | 0.630 | 11.088 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | emb_localrf | model | C | 27.951 | MISSING | MISSING | 20.879 | MISSING | 0.612 | 11.927 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | emb_zeroshot | model | **strict** (primary) | 38.494 | 35.775 | [36.617, 40.356] | 32.404 | [30.529, 34.352] | 0.262 | -19.641 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | emb_zeroshot | model | B | 38.494 | MISSING | MISSING | 32.404 | MISSING | 0.262 | -19.641 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | emb_zeroshot | model | C | 38.059 | MISSING | MISSING | 32.038 | MISSING | 0.280 | -18.802 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | GHSL | reference | **strict** (primary) | 37.355 | 35.597 | [34.602, 40.109] | 25.730 | [23.301, 28.315] | 0.305 | 19.800 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | GHSL | reference | B | 37.355 | MISSING | MISSING | 25.730 | MISSING | 0.305 | 19.800 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | GHSL | reference | C | 38.153 | MISSING | MISSING | 26.434 | MISSING | 0.277 | 20.639 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | S2_median_localrf | model | **strict** (primary) | 27.282 | 23.885 | [25.567, 28.996] | 21.320 | [19.765, 22.918] | 0.628 | 8.181 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | S2_median_localrf | model | B | 27.282 | MISSING | MISSING | 21.320 | MISSING | 0.628 | 8.181 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | S2_median_localrf | model | C | 27.902 | MISSING | MISSING | 21.778 | MISSING | 0.612 | 9.736 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | S2_median_zeroshot | model | **strict** (primary) | 33.791 | 31.195 | [31.089, 36.520] | 24.469 | [22.363, 26.663] | 0.429 | -15.876 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | S2_median_zeroshot | model | B | 33.791 | MISSING | MISSING | 24.469 | MISSING | 0.429 | -15.876 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | S2_median_zeroshot | model | C | 32.658 | MISSING | MISSING | 23.648 | MISSING | 0.469 | -14.320 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | emb_localrf | model | **strict** (primary) | 26.502 | 23.266 | [24.676, 28.371] | 19.588 | [17.987, 21.278] | 0.649 | 6.592 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | emb_localrf | model | B | 26.502 | MISSING | MISSING | 19.588 | MISSING | 0.649 | 6.592 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | emb_localrf | model | C | 27.097 | MISSING | MISSING | 19.973 | MISSING | 0.634 | 8.148 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | emb_zeroshot | model | **strict** (primary) | 34.352 | 31.061 | [32.545, 36.167] | 29.537 | [27.919, 31.205] | 0.410 | -15.716 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | emb_zeroshot | model | B | 34.352 | MISSING | MISSING | 29.537 | MISSING | 0.410 | -15.716 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | emb_zeroshot | model | C | 33.501 | MISSING | MISSING | 28.917 | MISSING | 0.441 | -14.161 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | GHSL | reference | **strict** (primary) | 40.345 | 38.833 | [37.461, 43.162] | 27.052 | [24.354, 29.824] | 0.187 | 19.680 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | GHSL | reference | B | 40.345 | MISSING | MISSING | 27.052 | MISSING | 0.187 | 19.680 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | GHSL | reference | C | 41.087 | MISSING | MISSING | 27.781 | MISSING | 0.159 | 21.236 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Milan | S2_median | model | **strict** (primary) | 25.984 | 22.917 | [23.519, 28.380] | 18.363 | [16.689, 20.099] | 0.613 | -4.176 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Milan | S2_median | model | B | 25.943 | MISSING | MISSING | 18.322 | MISSING | 0.619 | -3.608 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Milan | S2_median | model | C | 22.981 | MISSING | MISSING | 16.594 | MISSING | 0.703 | -1.389 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Milan | S2_percentile | model | **strict** (primary) | 24.809 | 21.874 | [22.401, 27.194] | 16.486 | [14.804, 18.220] | 0.647 | -3.342 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Milan | S2_percentile | model | B | 24.711 | MISSING | MISSING | 16.411 | MISSING | 0.654 | -2.774 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Milan | S2_percentile | model | C | 21.374 | MISSING | MISSING | 14.590 | MISSING | 0.743 | -0.555 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Milan | S2_stack | model | **strict** (primary) | 24.644 | 21.559 | [22.170, 27.109] | 16.551 | [14.902, 18.260] | 0.652 | -3.344 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Milan | S2_stack | model | B | 24.536 | MISSING | MISSING | 16.496 | MISSING | 0.659 | -2.776 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Milan | S2_stack | model | C | 20.976 | MISSING | MISSING | 14.595 | MISSING | 0.753 | -0.557 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Milan | emb_RF | model | **strict** (primary) | 25.625 | 22.420 | [23.605, 27.604] | 18.299 | [16.668, 19.977] | 0.624 | -1.622 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Milan | emb_RF | model | B | 25.544 | MISSING | MISSING | 18.255 | MISSING | 0.631 | -1.054 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Milan | emb_RF | model | C | 23.031 | MISSING | MISSING | 16.831 | MISSING | 0.702 | 1.165 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Milan | CLMS | reference | **strict** (primary) | 26.253 | 24.411 | [23.329, 29.136] | 14.606 | [12.604, 16.675] | 0.605 | 2.263 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Milan | CLMS | reference | B | 25.966 | MISSING | MISSING | 14.400 | MISSING | 0.618 | 2.831 | 450 | output/milan/validation/validation_per_plot_long.csv |
+| Milan | CLMS | reference | C | 24.075 | MISSING | MISSING | 13.157 | MISSING | 0.674 | 5.050 | 450 | output/milan/validation/validation_per_plot_long.csv |
 
 
 All three impervious rules are carried, never collapsed or averaged. `strict` is primary; `B` adds permeable pavement (code 11), `C` adds unpaved dirt road (code 12). `RMSE_corr` (binomial reference-noise correction) is stored for the primary rule only and is an **upper bound** on map error — it is left MISSING for rules B and C rather than estimated.
 
 
-`RMSE_CI` and `MAE_CI` are **95 % percentile bootstrap** intervals read from `outputs_validation/table1_headline_ci.csv`: 10,000 resamples, seed 42, resampling **plots** as the independent unit, with one shared resample index across maps within a city. Like `RMSE_corr` they are stored for the primary rule only and are left MISSING for rules B and C.
+`RMSE_CI` and `MAE_CI` are **95 % percentile bootstrap** intervals read from `output/milan/validation/table1_headline_ci.csv`: 10,000 resamples, seed 42, resampling **plots** as the independent unit, with one shared resample index across maps within a city. Like `RMSE_corr` they are stored for the primary rule only and are left MISSING for rules B and C.
 
 
 An interval here describes the uncertainty of **one map's** metric taken on its own. It is not a test of the difference between two maps: the paired tests below remove the plot-level variance common to both maps and therefore have more power, so overlapping intervals and a significant paired difference are consistent rather than contradictory.
@@ -121,8 +121,8 @@ _Usable dates after screening, against the ceiling case in which every screening
 
 | city | n_screened | n_ceiling | n_required | shortfall | source_file |
 |---|---|---|---|---|---|
-| Hanoi | 4 | 10 | 17 | 7 | samples_S2_median_Hanoi/s2_extraction_metadata.json |
-| HCMC | 3 | 16 | 17 | 1 | samples_S2_median_HCMC/s2_extraction_metadata.json |
+| Hanoi | 4 | 10 | 17 | 7 | output/hanoi/median/s2_extraction_metadata.json |
+| HCMC | 3 | 16 | 17 | 1 | output/hcmc/median/s2_extraction_metadata.json |
 
 
 `n_required` is derived from `s2_utils.min_dates_for`, not read from the metadata prose: 5 percentiles require **17 dates**. The prose value is cross-checked against it and the row is written MISSING if the two disagree, since a rationale written against a different percentile set cannot vouch for either number.
@@ -186,11 +186,11 @@ _MAE is the mean of this distribution; RMSE squares the errors first and is ther
 
 | map_id | role | MAE | RMSE | median | p75 | p90 | max | pct_under5 | pct_over50 | n | source_file |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| emb_RF | model | 18.30 | 25.63 | 14.38 | 27.05 | 43.67 | 82.84 | 29.8% | 7.3% | 450 | outputs_validation/validation_per_plot_long.csv |
-| S2_median | model | 18.36 | 25.98 | 12.17 | 25.20 | 41.49 | 94.41 | 21.8% | 6.9% | 450 | outputs_validation/validation_per_plot_long.csv |
-| S2_percentile | model | 16.49 | 24.81 | 9.09 | 24.81 | 40.76 | 94.92 | 34.2% | 6.7% | 450 | outputs_validation/validation_per_plot_long.csv |
-| S2_stack | model | 16.55 | 24.64 | 10.38 | 23.79 | 39.37 | 96.26 | 32.7% | 6.7% | 450 | outputs_validation/validation_per_plot_long.csv |
-| CLMS | reference | 14.61 | 26.25 | 3.00 | 22.47 | 45.20 | 100.00 | 53.3% | 8.7% | 450 | outputs_validation/validation_per_plot_long.csv |
+| emb_RF | model | 18.30 | 25.63 | 14.38 | 27.05 | 43.67 | 82.84 | 29.8% | 7.3% | 450 | output/milan/validation/validation_per_plot_long.csv |
+| S2_median | model | 18.36 | 25.98 | 12.17 | 25.20 | 41.49 | 94.41 | 21.8% | 6.9% | 450 | output/milan/validation/validation_per_plot_long.csv |
+| S2_percentile | model | 16.49 | 24.81 | 9.09 | 24.81 | 40.76 | 94.92 | 34.2% | 6.7% | 450 | output/milan/validation/validation_per_plot_long.csv |
+| S2_stack | model | 16.55 | 24.64 | 10.38 | 23.79 | 39.37 | 96.26 | 32.7% | 6.7% | 450 | output/milan/validation/validation_per_plot_long.csv |
+| CLMS | reference | 14.61 | 26.25 | 3.00 | 22.47 | 45.20 | 100.00 | 53.3% | 8.7% | 450 | output/milan/validation/validation_per_plot_long.csv |
 
 
 **`CLMS` has the best MAE and the worst RMSE of the five Milan maps.** The distribution accounts for the split: it is right more often than any model — the largest `pct_under5` and the lowest median absolute error — and wrong by more when it is wrong, carrying the largest `pct_over50`. The models fitted to it hedge, which costs them on the plots `CLMS` gets nearly exact and saves them on the plots it gets badly wrong. The two metrics measure the two halves of that trade and are not in conflict.
@@ -308,16 +308,16 @@ _Mean predicted IMD vs the mean photo-interpreted reference, per city. Positive 
 
 | city | map_id | mean_reference | mean_predicted | level_gap | source_file |
 |---|---|---|---|---|---|
-| Hanoi | emb_zeroshot | 46.05 | 61.77 | 15.72 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | S2_median_zeroshot | 46.05 | 61.93 | 15.88 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | emb_localrf | 46.05 | 39.46 | -6.59 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | S2_median_localrf | 46.05 | 37.87 | -8.18 | outputs_validation/validation_per_plot_long.csv |
-| Hanoi | GHSL | 46.05 | 26.37 | -19.68 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | emb_zeroshot | 51.06 | 70.70 | 19.64 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | S2_median_zeroshot | 51.06 | 57.89 | 6.83 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | emb_localrf | 51.06 | 39.97 | -11.09 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | S2_median_localrf | 51.06 | 38.83 | -12.23 | outputs_validation/validation_per_plot_long.csv |
-| HCMC | GHSL | 51.06 | 31.26 | -19.80 | outputs_validation/validation_per_plot_long.csv |
+| Hanoi | emb_zeroshot | 46.05 | 61.77 | 15.72 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | S2_median_zeroshot | 46.05 | 61.93 | 15.88 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | emb_localrf | 46.05 | 39.46 | -6.59 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | S2_median_localrf | 46.05 | 37.87 | -8.18 | output/milan/validation/validation_per_plot_long.csv |
+| Hanoi | GHSL | 46.05 | 26.37 | -19.68 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | emb_zeroshot | 51.06 | 70.70 | 19.64 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | S2_median_zeroshot | 51.06 | 57.89 | 6.83 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | emb_localrf | 51.06 | 39.97 | -11.09 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | S2_median_localrf | 51.06 | 38.83 | -12.23 | output/milan/validation/validation_per_plot_long.csv |
+| HCMC | GHSL | 51.06 | 31.26 | -19.80 | output/milan/validation/validation_per_plot_long.csv |
 
 
 Both zero-shot maps inherit Milan's high level and both local retrains inherit GHSL's low one, in both cities. Which scenario scores better is therefore partly set by where the city's own reference level falls between them — not by transfer quality alone.
@@ -329,62 +329,62 @@ _Per IMD class, scored against GHSL on the spatial test set. Same reference and 
 
 | predictor_set | city | scenario | cls | n | RMSE | MAE | Bias | R2_not_for_quoting | source_file |
 |---|---|---|---|---|---|---|---|---|---|
-| AlphaEarth embeddings | Hanoi | zero-shot transfer | C0 | 131 | 42.60 | 40.75 | -40.75 | undefined (no variance) | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | Hanoi | zero-shot transfer | C1 | 147 | 52.11 | 50.08 | -50.08 | -73.654 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | Hanoi | zero-shot transfer | C2 | 148 | 46.82 | 44.37 | -44.35 | -64.604 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | Hanoi | zero-shot transfer | C3 | 123 | 29.54 | 26.89 | -26.82 | -24.951 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | Hanoi | zero-shot transfer | C4 | 132 | 16.69 | 14.99 | -12.48 | -7.600 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | Hanoi | zero-shot transfer | C5 | 123 | 9.38 | 6.96 | 2.70 | -3.288 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | Hanoi | zero-shot transfer | C6 | 91 | 21.26 | 17.25 | 17.25 | undefined (no variance) | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | Hanoi | local retrain | C0 | 131 | 13.71 | 6.36 | -6.36 | undefined (no variance) | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | Hanoi | local retrain | C1 | 147 | 26.34 | 20.12 | -18.46 | -18.071 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | Hanoi | local retrain | C2 | 148 | 27.99 | 24.30 | -20.64 | -22.448 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | Hanoi | local retrain | C3 | 123 | 14.98 | 12.57 | -4.90 | -5.672 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | Hanoi | local retrain | C4 | 132 | 15.58 | 10.88 | 8.34 | -6.494 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | Hanoi | local retrain | C5 | 123 | 24.76 | 21.73 | 21.70 | -28.875 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | Hanoi | local retrain | C6 | 91 | 38.05 | 30.95 | 30.95 | undefined (no variance) | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | HCMC | zero-shot transfer | C0 | 128 | 50.41 | 49.05 | -49.05 | undefined (no variance) | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | HCMC | zero-shot transfer | C1 | 133 | 62.82 | 61.59 | -61.59 | -115.553 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | HCMC | zero-shot transfer | C2 | 119 | 55.77 | 55.09 | -55.09 | -95.678 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | HCMC | zero-shot transfer | C3 | 130 | 35.60 | 34.71 | -34.71 | -40.236 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | HCMC | zero-shot transfer | C4 | 130 | 19.79 | 18.56 | -18.54 | -11.993 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | HCMC | zero-shot transfer | C5 | 114 | 6.69 | 5.60 | -1.51 | -1.346 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | HCMC | zero-shot transfer | C6 | 133 | 13.65 | 12.93 | 12.93 | undefined (no variance) | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | HCMC | local retrain | C0 | 128 | 9.45 | 5.15 | -5.15 | undefined (no variance) | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | HCMC | local retrain | C1 | 133 | 25.61 | 20.14 | -19.39 | -18.371 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | HCMC | local retrain | C2 | 119 | 25.67 | 22.89 | -21.42 | -19.479 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | HCMC | local retrain | C3 | 130 | 14.39 | 11.41 | -4.38 | -5.736 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | HCMC | local retrain | C4 | 130 | 15.00 | 11.64 | 8.51 | -6.463 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | HCMC | local retrain | C5 | 114 | 23.15 | 20.17 | 19.74 | -27.091 | outputs_transfer_v2/per_class_metrics.csv |
-| AlphaEarth embeddings | HCMC | local retrain | C6 | 133 | 28.55 | 25.20 | 25.20 | undefined (no variance) | outputs_transfer_v2/per_class_metrics.csv |
-| S2 median | Hanoi | zero-shot transfer | C0 | 131 | 50.03 | 42.35 | -42.35 | undefined (no variance) | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | Hanoi | zero-shot transfer | C1 | 147 | 49.82 | 44.14 | -44.14 | -67.240 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | Hanoi | zero-shot transfer | C2 | 148 | 47.00 | 41.91 | -41.16 | -65.131 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | Hanoi | zero-shot transfer | C3 | 123 | 31.34 | 27.90 | -25.19 | -28.212 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | Hanoi | zero-shot transfer | C4 | 132 | 19.41 | 16.44 | -9.75 | -10.638 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | Hanoi | zero-shot transfer | C5 | 123 | 15.04 | 10.69 | 4.00 | -10.018 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | Hanoi | zero-shot transfer | C6 | 91 | 13.75 | 8.07 | 8.07 | undefined (no variance) | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | Hanoi | local retrain | C0 | 131 | 19.42 | 12.43 | -12.43 | undefined (no variance) | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | Hanoi | local retrain | C1 | 147 | 27.78 | 20.54 | -18.77 | -20.221 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | Hanoi | local retrain | C2 | 148 | 28.03 | 24.52 | -19.73 | -22.516 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | Hanoi | local retrain | C3 | 123 | 16.19 | 13.95 | -5.46 | -6.792 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | Hanoi | local retrain | C4 | 132 | 15.67 | 11.27 | 8.17 | -6.581 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | Hanoi | local retrain | C5 | 123 | 25.22 | 21.85 | 21.60 | -29.980 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | Hanoi | local retrain | C6 | 91 | 32.41 | 26.16 | 26.16 | undefined (no variance) | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | HCMC | zero-shot transfer | C0 | 128 | 33.82 | 24.47 | -24.47 | undefined (no variance) | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | HCMC | zero-shot transfer | C1 | 133 | 49.64 | 41.44 | -41.21 | -71.796 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | HCMC | zero-shot transfer | C2 | 119 | 51.26 | 46.64 | -43.98 | -80.650 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | HCMC | zero-shot transfer | C3 | 130 | 37.17 | 34.21 | -32.03 | -43.938 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | HCMC | zero-shot transfer | C4 | 130 | 26.07 | 24.54 | -20.47 | -21.556 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | HCMC | zero-shot transfer | C5 | 114 | 14.09 | 11.51 | -5.93 | -9.413 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | HCMC | zero-shot transfer | C6 | 133 | 12.51 | 5.91 | 5.91 | undefined (no variance) | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | HCMC | local retrain | C0 | 128 | 18.73 | 12.89 | -12.89 | undefined (no variance) | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | HCMC | local retrain | C1 | 133 | 29.00 | 23.41 | -22.77 | -23.837 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | HCMC | local retrain | C2 | 119 | 26.71 | 23.63 | -19.14 | -21.176 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | HCMC | local retrain | C3 | 130 | 15.94 | 12.90 | -4.82 | -7.266 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | HCMC | local retrain | C4 | 130 | 15.67 | 11.50 | 6.96 | -7.144 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | HCMC | local retrain | C5 | 114 | 21.95 | 18.84 | 17.43 | -24.262 | outputs_transfer_S2_median/per_class_metrics.csv |
-| S2 median | HCMC | local retrain | C6 | 133 | 27.82 | 22.58 | 22.58 | undefined (no variance) | outputs_transfer_S2_median/per_class_metrics.csv |
+| AlphaEarth embeddings | Hanoi | zero-shot transfer | C0 | 131 | 42.60 | 40.75 | -40.75 | undefined (no variance) | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | Hanoi | zero-shot transfer | C1 | 147 | 52.11 | 50.08 | -50.08 | -73.654 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | Hanoi | zero-shot transfer | C2 | 148 | 46.82 | 44.37 | -44.35 | -64.604 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | Hanoi | zero-shot transfer | C3 | 123 | 29.54 | 26.89 | -26.82 | -24.951 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | Hanoi | zero-shot transfer | C4 | 132 | 16.69 | 14.99 | -12.48 | -7.600 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | Hanoi | zero-shot transfer | C5 | 123 | 9.38 | 6.96 | 2.70 | -3.288 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | Hanoi | zero-shot transfer | C6 | 91 | 21.26 | 17.25 | 17.25 | undefined (no variance) | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | Hanoi | local retrain | C0 | 131 | 13.71 | 6.36 | -6.36 | undefined (no variance) | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | Hanoi | local retrain | C1 | 147 | 26.34 | 20.12 | -18.46 | -18.071 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | Hanoi | local retrain | C2 | 148 | 27.99 | 24.30 | -20.64 | -22.448 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | Hanoi | local retrain | C3 | 123 | 14.98 | 12.57 | -4.90 | -5.672 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | Hanoi | local retrain | C4 | 132 | 15.58 | 10.88 | 8.34 | -6.494 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | Hanoi | local retrain | C5 | 123 | 24.76 | 21.73 | 21.70 | -28.875 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | Hanoi | local retrain | C6 | 91 | 38.05 | 30.95 | 30.95 | undefined (no variance) | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | HCMC | zero-shot transfer | C0 | 128 | 50.41 | 49.05 | -49.05 | undefined (no variance) | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | HCMC | zero-shot transfer | C1 | 133 | 62.82 | 61.59 | -61.59 | -115.553 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | HCMC | zero-shot transfer | C2 | 119 | 55.77 | 55.09 | -55.09 | -95.678 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | HCMC | zero-shot transfer | C3 | 130 | 35.60 | 34.71 | -34.71 | -40.236 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | HCMC | zero-shot transfer | C4 | 130 | 19.79 | 18.56 | -18.54 | -11.993 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | HCMC | zero-shot transfer | C5 | 114 | 6.69 | 5.60 | -1.51 | -1.346 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | HCMC | zero-shot transfer | C6 | 133 | 13.65 | 12.93 | 12.93 | undefined (no variance) | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | HCMC | local retrain | C0 | 128 | 9.45 | 5.15 | -5.15 | undefined (no variance) | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | HCMC | local retrain | C1 | 133 | 25.61 | 20.14 | -19.39 | -18.371 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | HCMC | local retrain | C2 | 119 | 25.67 | 22.89 | -21.42 | -19.479 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | HCMC | local retrain | C3 | 130 | 14.39 | 11.41 | -4.38 | -5.736 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | HCMC | local retrain | C4 | 130 | 15.00 | 11.64 | 8.51 | -6.463 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | HCMC | local retrain | C5 | 114 | 23.15 | 20.17 | 19.74 | -27.091 | output/transfer/embedding/per_class_metrics.csv |
+| AlphaEarth embeddings | HCMC | local retrain | C6 | 133 | 28.55 | 25.20 | 25.20 | undefined (no variance) | output/transfer/embedding/per_class_metrics.csv |
+| S2 median | Hanoi | zero-shot transfer | C0 | 131 | 50.03 | 42.35 | -42.35 | undefined (no variance) | output/transfer/median/per_class_metrics.csv |
+| S2 median | Hanoi | zero-shot transfer | C1 | 147 | 49.82 | 44.14 | -44.14 | -67.240 | output/transfer/median/per_class_metrics.csv |
+| S2 median | Hanoi | zero-shot transfer | C2 | 148 | 47.00 | 41.91 | -41.16 | -65.131 | output/transfer/median/per_class_metrics.csv |
+| S2 median | Hanoi | zero-shot transfer | C3 | 123 | 31.34 | 27.90 | -25.19 | -28.212 | output/transfer/median/per_class_metrics.csv |
+| S2 median | Hanoi | zero-shot transfer | C4 | 132 | 19.41 | 16.44 | -9.75 | -10.638 | output/transfer/median/per_class_metrics.csv |
+| S2 median | Hanoi | zero-shot transfer | C5 | 123 | 15.04 | 10.69 | 4.00 | -10.018 | output/transfer/median/per_class_metrics.csv |
+| S2 median | Hanoi | zero-shot transfer | C6 | 91 | 13.75 | 8.07 | 8.07 | undefined (no variance) | output/transfer/median/per_class_metrics.csv |
+| S2 median | Hanoi | local retrain | C0 | 131 | 19.42 | 12.43 | -12.43 | undefined (no variance) | output/transfer/median/per_class_metrics.csv |
+| S2 median | Hanoi | local retrain | C1 | 147 | 27.78 | 20.54 | -18.77 | -20.221 | output/transfer/median/per_class_metrics.csv |
+| S2 median | Hanoi | local retrain | C2 | 148 | 28.03 | 24.52 | -19.73 | -22.516 | output/transfer/median/per_class_metrics.csv |
+| S2 median | Hanoi | local retrain | C3 | 123 | 16.19 | 13.95 | -5.46 | -6.792 | output/transfer/median/per_class_metrics.csv |
+| S2 median | Hanoi | local retrain | C4 | 132 | 15.67 | 11.27 | 8.17 | -6.581 | output/transfer/median/per_class_metrics.csv |
+| S2 median | Hanoi | local retrain | C5 | 123 | 25.22 | 21.85 | 21.60 | -29.980 | output/transfer/median/per_class_metrics.csv |
+| S2 median | Hanoi | local retrain | C6 | 91 | 32.41 | 26.16 | 26.16 | undefined (no variance) | output/transfer/median/per_class_metrics.csv |
+| S2 median | HCMC | zero-shot transfer | C0 | 128 | 33.82 | 24.47 | -24.47 | undefined (no variance) | output/transfer/median/per_class_metrics.csv |
+| S2 median | HCMC | zero-shot transfer | C1 | 133 | 49.64 | 41.44 | -41.21 | -71.796 | output/transfer/median/per_class_metrics.csv |
+| S2 median | HCMC | zero-shot transfer | C2 | 119 | 51.26 | 46.64 | -43.98 | -80.650 | output/transfer/median/per_class_metrics.csv |
+| S2 median | HCMC | zero-shot transfer | C3 | 130 | 37.17 | 34.21 | -32.03 | -43.938 | output/transfer/median/per_class_metrics.csv |
+| S2 median | HCMC | zero-shot transfer | C4 | 130 | 26.07 | 24.54 | -20.47 | -21.556 | output/transfer/median/per_class_metrics.csv |
+| S2 median | HCMC | zero-shot transfer | C5 | 114 | 14.09 | 11.51 | -5.93 | -9.413 | output/transfer/median/per_class_metrics.csv |
+| S2 median | HCMC | zero-shot transfer | C6 | 133 | 12.51 | 5.91 | 5.91 | undefined (no variance) | output/transfer/median/per_class_metrics.csv |
+| S2 median | HCMC | local retrain | C0 | 128 | 18.73 | 12.89 | -12.89 | undefined (no variance) | output/transfer/median/per_class_metrics.csv |
+| S2 median | HCMC | local retrain | C1 | 133 | 29.00 | 23.41 | -22.77 | -23.837 | output/transfer/median/per_class_metrics.csv |
+| S2 median | HCMC | local retrain | C2 | 119 | 26.71 | 23.63 | -19.14 | -21.176 | output/transfer/median/per_class_metrics.csv |
+| S2 median | HCMC | local retrain | C3 | 130 | 15.94 | 12.90 | -4.82 | -7.266 | output/transfer/median/per_class_metrics.csv |
+| S2 median | HCMC | local retrain | C4 | 130 | 15.67 | 11.50 | 6.96 | -7.144 | output/transfer/median/per_class_metrics.csv |
+| S2 median | HCMC | local retrain | C5 | 114 | 21.95 | 18.84 | 17.43 | -24.262 | output/transfer/median/per_class_metrics.csv |
+| S2 median | HCMC | local retrain | C6 | 133 | 27.82 | 22.58 | 22.58 | undefined (no variance) | output/transfer/median/per_class_metrics.csv |
 
 
 **`R2_not_for_quoting` is named that way deliberately.** Restricting to a single IMD class removes most of the observed variance, so R² is normalised by a very small denominator and a modest offset drives it sharply negative — every defined value here is. That is arithmetic, not model failure: the same models reach global R² 0.52–0.65 in the local-retrain scenario (Table A). Quote per-class RMSE, MAE or Bias; reserve R² for the global comparison. Classes C0 and C6 are the single-valued 0 % and 100 % strata, so their R² is undefined rather than zero.
@@ -399,18 +399,18 @@ _Top bands by permutation importance on the spatial holdout, with mean-decrease-
 
 | rank | band | perm_importance | perm_std | impurity_importance | source_file |
 |---|---|---|---|---|---|
-| 1 | B4_p25 | 0.1812 | 0.0075 | 0.3518 | outputs_S2_percentile_p10p25p50p75p90/feature_importance_RF.csv |
-| 2 | B4_p10 | 0.0556 | 0.0031 | 0.1163 | outputs_S2_percentile_p10p25p50p75p90/feature_importance_RF.csv |
-| 3 | B8_p90 | 0.0401 | 0.0042 | 0.0664 | outputs_S2_percentile_p10p25p50p75p90/feature_importance_RF.csv |
-| 4 | B4_p50 | 0.0225 | 0.0021 | 0.0751 | outputs_S2_percentile_p10p25p50p75p90/feature_importance_RF.csv |
-| 5 | B8_p75 | 0.0211 | 0.0023 | 0.0446 | outputs_S2_percentile_p10p25p50p75p90/feature_importance_RF.csv |
-| 6 | B2_p25 | 0.0127 | 0.0015 | 0.1384 | outputs_S2_percentile_p10p25p50p75p90/feature_importance_RF.csv |
-| 7 | B8_p50 | 0.0079 | 0.0010 | 0.0187 | outputs_S2_percentile_p10p25p50p75p90/feature_importance_RF.csv |
-| 8 | B8A_p90 | 0.0075 | 0.0011 | 0.0225 | outputs_S2_percentile_p10p25p50p75p90/feature_importance_RF.csv |
-| 9 | B2_p10 | 0.0057 | 0.0005 | 0.0176 | outputs_S2_percentile_p10p25p50p75p90/feature_importance_RF.csv |
-| 10 | B8_p25 | 0.0037 | 0.0005 | 0.0073 | outputs_S2_percentile_p10p25p50p75p90/feature_importance_RF.csv |
-| 11 | B8A_p75 | 0.0033 | 0.0005 | 0.0116 | outputs_S2_percentile_p10p25p50p75p90/feature_importance_RF.csv |
-| 12 | B8_p10 | 0.0032 | 0.0004 | 0.0050 | outputs_S2_percentile_p10p25p50p75p90/feature_importance_RF.csv |
+| 1 | B4_p25 | 0.1812 | 0.0075 | 0.3518 | output/milan/clms/percentile/feature_importance_RF.csv |
+| 2 | B4_p10 | 0.0556 | 0.0031 | 0.1163 | output/milan/clms/percentile/feature_importance_RF.csv |
+| 3 | B8_p90 | 0.0401 | 0.0042 | 0.0664 | output/milan/clms/percentile/feature_importance_RF.csv |
+| 4 | B4_p50 | 0.0225 | 0.0021 | 0.0751 | output/milan/clms/percentile/feature_importance_RF.csv |
+| 5 | B8_p75 | 0.0211 | 0.0023 | 0.0446 | output/milan/clms/percentile/feature_importance_RF.csv |
+| 6 | B2_p25 | 0.0127 | 0.0015 | 0.1384 | output/milan/clms/percentile/feature_importance_RF.csv |
+| 7 | B8_p50 | 0.0079 | 0.0010 | 0.0187 | output/milan/clms/percentile/feature_importance_RF.csv |
+| 8 | B8A_p90 | 0.0075 | 0.0011 | 0.0225 | output/milan/clms/percentile/feature_importance_RF.csv |
+| 9 | B2_p10 | 0.0057 | 0.0005 | 0.0176 | output/milan/clms/percentile/feature_importance_RF.csv |
+| 10 | B8_p25 | 0.0037 | 0.0005 | 0.0073 | output/milan/clms/percentile/feature_importance_RF.csv |
+| 11 | B8A_p75 | 0.0033 | 0.0005 | 0.0116 | output/milan/clms/percentile/feature_importance_RF.csv |
+| 12 | B8_p10 | 0.0032 | 0.0004 | 0.0050 | output/milan/clms/percentile/feature_importance_RF.csv |
 
 
 The low percentiles of red (B4) and the high percentiles of NIR (B8) dominate — precisely the quantiles a median composite discards, which is the mechanistic explanation for the percentile run leading Table A. `B4_p25` alone carries over three times the permutation importance of the next band.
@@ -422,30 +422,30 @@ _CV RMSE per run × model × block. `cv_rmse_tuning` is the randomised search sc
 
 | predictor_set | model | block | cv_rmse_tuning | cv_std | cv_rmse_eval | selected | source_file |
 |---|---|---|---|---|---|---|---|
-| AlphaEarth embeddings | RF | 500m | 13.204 | 0.273 | 13.260 |  | outputs_v2/hyperparameter_tuning.csv |
-| AlphaEarth embeddings | RF | 1000m | 13.162 | 0.502 | 13.240 | **yes** | outputs_v2/hyperparameter_tuning.csv |
-| AlphaEarth embeddings | RF | 2000m | 13.172 | 0.476 | 13.200 |  | outputs_v2/hyperparameter_tuning.csv |
-| AlphaEarth embeddings | SVR | 500m | 11.711 | 0.244 | 11.600 | **yes** | outputs_v2/hyperparameter_tuning.csv |
-| AlphaEarth embeddings | SVR | 1000m | 11.793 | 0.582 | 11.600 |  | outputs_v2/hyperparameter_tuning.csv |
-| AlphaEarth embeddings | SVR | 2000m | 11.817 | 0.560 | 11.600 |  | outputs_v2/hyperparameter_tuning.csv |
-| S2 median | RF | 500m | 11.094 | 0.398 | 11.290 | **yes** | outputs_S2_median/hyperparameter_tuning.csv |
-| S2 median | RF | 1000m | 11.128 | 0.838 | 11.230 |  | outputs_S2_median/hyperparameter_tuning.csv |
-| S2 median | RF | 2000m | 11.211 | 0.488 | 11.200 |  | outputs_S2_median/hyperparameter_tuning.csv |
-| S2 median | SVR | 500m | 10.849 | 0.546 | 10.990 | **yes** | outputs_S2_median/hyperparameter_tuning.csv |
-| S2 median | SVR | 1000m | 10.898 | 0.687 | 10.950 |  | outputs_S2_median/hyperparameter_tuning.csv |
-| S2 median | SVR | 2000m | 10.921 | 0.445 | 10.910 |  | outputs_S2_median/hyperparameter_tuning.csv |
-| S2 stack | RF | 500m | 10.248 | 0.441 | 10.380 |  | outputs_S2_stack/hyperparameter_tuning.csv |
-| S2 stack | RF | 1000m | 10.193 | 0.491 | 10.260 | **yes** | outputs_S2_stack/hyperparameter_tuning.csv |
-| S2 stack | RF | 2000m | 10.360 | 0.608 | 10.350 |  | outputs_S2_stack/hyperparameter_tuning.csv |
-| S2 stack | SVR | 500m | 10.121 | 0.564 | 10.070 |  | outputs_S2_stack/hyperparameter_tuning.csv |
-| S2 stack | SVR | 1000m | 10.263 | 0.333 | 10.080 |  | outputs_S2_stack/hyperparameter_tuning.csv |
-| S2 stack | SVR | 2000m | 10.119 | 0.535 | 9.990 | **yes** | outputs_S2_stack/hyperparameter_tuning.csv |
-| S2 percentile | RF | 500m | 8.612 | 0.452 | 8.710 |  | outputs_S2_percentile_p10p25p50p75p90/hyperparameter_tuning.csv |
-| S2 percentile | RF | 1000m | 8.611 | 0.276 | 8.640 | **yes** | outputs_S2_percentile_p10p25p50p75p90/hyperparameter_tuning.csv |
-| S2 percentile | RF | 2000m | 8.662 | 0.533 | 8.650 |  | outputs_S2_percentile_p10p25p50p75p90/hyperparameter_tuning.csv |
-| S2 percentile | SVR | 500m | 8.508 | 0.347 | 8.570 | **yes** | outputs_S2_percentile_p10p25p50p75p90/hyperparameter_tuning.csv |
-| S2 percentile | SVR | 1000m | 8.540 | 0.272 | 8.550 |  | outputs_S2_percentile_p10p25p50p75p90/hyperparameter_tuning.csv |
-| S2 percentile | SVR | 2000m | 8.524 | 0.598 | 8.530 |  | outputs_S2_percentile_p10p25p50p75p90/hyperparameter_tuning.csv |
+| AlphaEarth embeddings | RF | 500m | 13.204 | 0.273 | 13.260 |  | output/milan/clms/embedding/hyperparameter_tuning.csv |
+| AlphaEarth embeddings | RF | 1000m | 13.162 | 0.502 | 13.240 | **yes** | output/milan/clms/embedding/hyperparameter_tuning.csv |
+| AlphaEarth embeddings | RF | 2000m | 13.172 | 0.476 | 13.200 |  | output/milan/clms/embedding/hyperparameter_tuning.csv |
+| AlphaEarth embeddings | SVR | 500m | 11.711 | 0.244 | 11.600 | **yes** | output/milan/clms/embedding/hyperparameter_tuning.csv |
+| AlphaEarth embeddings | SVR | 1000m | 11.793 | 0.582 | 11.600 |  | output/milan/clms/embedding/hyperparameter_tuning.csv |
+| AlphaEarth embeddings | SVR | 2000m | 11.817 | 0.560 | 11.600 |  | output/milan/clms/embedding/hyperparameter_tuning.csv |
+| S2 median | RF | 500m | 11.094 | 0.398 | 11.290 | **yes** | output/milan/clms/median/hyperparameter_tuning.csv |
+| S2 median | RF | 1000m | 11.128 | 0.838 | 11.230 |  | output/milan/clms/median/hyperparameter_tuning.csv |
+| S2 median | RF | 2000m | 11.211 | 0.488 | 11.200 |  | output/milan/clms/median/hyperparameter_tuning.csv |
+| S2 median | SVR | 500m | 10.849 | 0.546 | 10.990 | **yes** | output/milan/clms/median/hyperparameter_tuning.csv |
+| S2 median | SVR | 1000m | 10.898 | 0.687 | 10.950 |  | output/milan/clms/median/hyperparameter_tuning.csv |
+| S2 median | SVR | 2000m | 10.921 | 0.445 | 10.910 |  | output/milan/clms/median/hyperparameter_tuning.csv |
+| S2 stack | RF | 500m | 10.248 | 0.441 | 10.380 |  | output/milan/clms/stack/hyperparameter_tuning.csv |
+| S2 stack | RF | 1000m | 10.193 | 0.491 | 10.260 | **yes** | output/milan/clms/stack/hyperparameter_tuning.csv |
+| S2 stack | RF | 2000m | 10.360 | 0.608 | 10.350 |  | output/milan/clms/stack/hyperparameter_tuning.csv |
+| S2 stack | SVR | 500m | 10.121 | 0.564 | 10.070 |  | output/milan/clms/stack/hyperparameter_tuning.csv |
+| S2 stack | SVR | 1000m | 10.263 | 0.333 | 10.080 |  | output/milan/clms/stack/hyperparameter_tuning.csv |
+| S2 stack | SVR | 2000m | 10.119 | 0.535 | 9.990 | **yes** | output/milan/clms/stack/hyperparameter_tuning.csv |
+| S2 percentile | RF | 500m | 8.612 | 0.452 | 8.710 |  | output/milan/clms/percentile/hyperparameter_tuning.csv |
+| S2 percentile | RF | 1000m | 8.611 | 0.276 | 8.640 | **yes** | output/milan/clms/percentile/hyperparameter_tuning.csv |
+| S2 percentile | RF | 2000m | 8.662 | 0.533 | 8.650 |  | output/milan/clms/percentile/hyperparameter_tuning.csv |
+| S2 percentile | SVR | 500m | 8.508 | 0.347 | 8.570 | **yes** | output/milan/clms/percentile/hyperparameter_tuning.csv |
+| S2 percentile | SVR | 1000m | 8.540 | 0.272 | 8.550 |  | output/milan/clms/percentile/hyperparameter_tuning.csv |
+| S2 percentile | SVR | 2000m | 8.524 | 0.598 | 8.530 |  | output/milan/clms/percentile/hyperparameter_tuning.csv |
 
 
 **These are cross-validation numbers, not holdout numbers, and they are not comparable with Table A.** Table A scores rasters built in Earth Engine on the held-out 1014 points; the values here score scikit-learn models on training-set folds. The gap between them is the subject of the CV-versus-holdout reversal, not an inconsistency.

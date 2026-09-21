@@ -1,11 +1,10 @@
 """Copy every figure cited by report/report.tex into report/figs/.
 
 `report/` is a self-contained Overleaf project: it must compile with no file
-outside it. Four of its figures are built by `make_report_figs.py` straight into
-`report/figs/`, but the rest live in the notebook run directories
-(`outputs_v2/`, `outputs_validation/`, `outputs_transfer_*/`, ...) and were
-previously reached with a `../` entry in \graphicspath. That works in this
-checkout and nowhere else.
+outside it. Seven of its figures are built by `make_report_figs.py` straight
+into `report/figs/`, but the rest live in the notebook run directories under
+`output/` and were previously reached with a `../` entry in \graphicspath. That
+works in this checkout and nowhere else.
 
 This script copies them in instead. It does not re-path the pipeline: the
 notebooks keep writing where they always wrote, and `report/figs/` holds copies
@@ -13,18 +12,25 @@ that this script refreshes.
 
 LAYOUT
 ------
-The copy mirrors the source directory under `figs/`:
+Each copy lands under `figs/` in a directory named after the RUN that produced
+it, which `SOURCE_DIRS` below maps to that run's place in the output tree:
 
-    outputs_v2/fig01_spatial_split.png  ->  report/figs/outputs_v2/fig01_spatial_split.png
+    output/milan/clms/embedding/fig01_spatial_split.png
+        ->  report/figs/milan_clms_embedding/fig01_spatial_split.png
 
-so filenames are unchanged and `\graphicspath{{figs/}}` resolves every existing
-\includegraphics path without editing a single one. Mirroring rather than
-flattening is not cosmetic: `fig01_transfer_comparison.png` exists in both
-`outputs_transfer_v2/` and `outputs_transfer_S2_median/`, and the report cites
-both. A flat copy would silently drop one of them.
+`\graphicspath{{figs/}}` then resolves `milan_clms_embedding/fig01_...` from
+report.tex. Keeping a directory level rather than flattening is not cosmetic:
+`fig01_transfer_comparison.png` exists in both `transfer_embedding/` and
+`transfer_median/`, and the report cites both. A flat copy would silently drop
+one of them.
 
-Figures already inside `report/figs/` (the four from `make_report_figs.py`) are
-cited as `figs/fig_*.png`, resolve as themselves, and are left alone.
+Naming the copy after the run rather than after its output path means a reader
+of report.tex sees which run a figure came from without knowing the output
+tree, and moving a run changes one line in `SOURCE_DIRS` instead of every
+\includegraphics.
+
+Figures already inside `report/figs/` (the seven from `make_report_figs.py`)
+are cited as `figs/fig_*.png`, resolve as themselves, and are left alone.
 
 IDEMPOTENCE
 -----------
@@ -88,6 +94,38 @@ def same_content(src, dst):
     return _digest(src) == _digest(dst)
 
 
+# Which run directory each cited prefix comes from.
+#
+# The report names a figure by the run that produced it -- transfer_embedding,
+# milan_clms_percentile -- rather than by where that run happens to write. The
+# two are no longer the same string: runs live under output/ in a city /
+# dataset / predictor tree, and a cited path like
+# `milan_clms_percentile/figD_importance_RF.png` has no directory of that name
+# anywhere on disk. This map is the join between them.
+#
+# Naming the destination after the run rather than after its path is deliberate.
+# A reader of report.tex sees which run a figure came from without having to
+# know the output tree, and moving a run again changes one line here instead of
+# every \includegraphics.
+SOURCE_DIRS = {
+    'milan_clms_embedding':  'output/milan/clms/embedding',
+    'milan_clms_median':     'output/milan/clms/median',
+    'milan_clms_stack':      'output/milan/clms/stack',
+    'milan_clms_percentile': 'output/milan/clms/percentile',
+    'milan_ghsl_embedding':  'output/milan/ghsl/embedding',
+    'milan_ghsl_median':     'output/milan/ghsl/median',
+    'milan_ghsl_stack':      'output/milan/ghsl/stack',
+    'milan_ghsl_percentile': 'output/milan/ghsl/percentile',
+    'milan_validation':      'output/milan/validation',
+    'transfer_embedding':    'output/transfer/embedding',
+    'transfer_median':       'output/transfer/median',
+    'hanoi_embedding':       'output/hanoi/embedding',
+    'hanoi_median':          'output/hanoi/median',
+    'hcmc_embedding':        'output/hcmc/embedding',
+    'hcmc_median':           'output/hcmc/median',
+}
+
+
 def resolve(ref):
     """Where a cited path lives now, and where its copy belongs under figs/.
 
@@ -98,7 +136,13 @@ def resolve(ref):
     if ref.startswith('figs/'):
         inside = os.path.join(REPO, 'report', ref)
         return (None, inside if os.path.exists(inside) else None)
-    src = os.path.join(REPO, ref)
+    # A run figure: the first component names the run, the rest is the filename
+    # as the notebook wrote it.
+    head, _, tail = ref.partition('/')
+    if tail and head in SOURCE_DIRS:
+        src = os.path.join(REPO, SOURCE_DIRS[head], tail)
+    else:
+        src = os.path.join(REPO, ref)
     if not os.path.exists(src):
         return (None, None)
     return (src, os.path.join(FIGS, ref))
