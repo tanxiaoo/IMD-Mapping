@@ -135,13 +135,6 @@ quota is rate-based.
 Photo-interpreted validation plots were produced independently for all three
 cities and are not derived from any of the above.
 
-## Credit
-
-The embedding pipeline, the sampling design and the spatial block
-cross-validation are the work of **Matej Žgela** (Politecnico di Milano), whose
-report is in `reference/`. The Sentinel-2 and GHSL strands, the transfer
-experiments and the independent validation were built on top of it.
-
 ## License
 
 No license is specified. Please get in touch before reusing this work.
