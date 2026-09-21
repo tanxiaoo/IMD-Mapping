@@ -213,18 +213,18 @@ GHSL under-marks by **+19.68 pp (Hanoi)** and **+19.80 pp (HCMC)**. The local re
 
 ### Prediction range: tail and spread, both Vietnam cities
 
-_Per-plot predicted IMD against the interpreted reference, primary rule (n = 450 per city), with the whole-raster minimum and sub-20 % share alongside. Two failures are separable here and are kept apart: a map may lose the low **tail** the reference carries, and it may compress its **spread**. Both cities are measured on both axes, neither standing in for the other._
+_Per-plot predicted IMD against the interpreted reference, primary rule (n = 450 per city), with the whole-raster mean, minimum and sub-20 % share alongside. Two failures are separable here and are kept apart: a map may lose the low **tail** the reference carries, and it may compress its **spread**. Both cities are measured on both axes, neither standing in for the other._
 
 
 **Hanoi.** Per-plot predicted IMD:
 
-| map_id | mean | sd | min | max | IQR | pct_gt80 | pct_lt20 | ras_n | ras_min | ras_pct_lt20 |
-|---|---|---|---|---|---|---|---|---|---|---|
-| emb_zeroshot | 61.77 | 20.59 | 16.5 | 92.1 | 37.4 | 27.3% | 0.9% | 8.4 M | 9.26 | 1.3693% |
-| S2_median_zeroshot | 61.93 | 28.97 | 0.4 | 100.0 | 53.4 | 37.1% | 8.9% | 8.4 M | 0.00 | 13.4591% |
-| emb_localrf | 39.46 | 30.65 | 0.0 | 95.7 | 60.7 | 16.7% | 33.3% | 8.4 M | 0.00 | 59.8612% |
-| S2_median_localrf | 37.87 | 28.08 | 0.1 | 97.3 | 50.9 | 7.6% | 37.6% | 8.4 M | 0.00 | 54.7258% |
-| (reference) | 46.05 | 44.73 | 0.0 | 100.0 | 100.0 | 36.2% | 44.0% | MISSING | MISSING | MISSING |
+| map_id | mean | sd | min | max | IQR | pct_gt80 | pct_lt20 | ras_n | ras_mean | ras_min | ras_pct_lt20 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| emb_zeroshot | 61.77 | 20.59 | 16.5 | 92.1 | 37.4 | 27.3% | 0.9% | 8.4 M | 53.57 | 9.26 | 1.3693% |
+| S2_median_zeroshot | 61.93 | 28.97 | 0.4 | 100.0 | 53.4 | 37.1% | 8.9% | 8.4 M | 53.51 | 0.00 | 13.4591% |
+| emb_localrf | 39.46 | 30.65 | 0.0 | 95.7 | 60.7 | 16.7% | 33.3% | 8.4 M | 23.73 | 0.00 | 59.8612% |
+| S2_median_localrf | 37.87 | 28.08 | 0.1 | 97.3 | 50.9 | 7.6% | 37.6% | 8.4 M | 27.02 | 0.00 | 54.7258% |
+| (reference) | 46.05 | 44.73 | 0.0 | 100.0 | 100.0 | 36.2% | 44.0% | MISSING | MISSING | MISSING | MISSING |
 
 
 _Hanoi, distribution over the same 450 plots:_
@@ -248,13 +248,13 @@ Hanoi's reference is bimodal: **41.6%** of plots below 10 % and **31.8%** above 
 
 **HCMC.** Per-plot predicted IMD:
 
-| map_id | mean | sd | min | max | IQR | pct_gt80 | pct_lt20 | ras_n | ras_min | ras_pct_lt20 |
-|---|---|---|---|---|---|---|---|---|---|---|
-| emb_zeroshot | 70.70 | 15.95 | 31.9 | 91.4 | 26.0 | 38.4% | 0.0% | 8.2 M | 15.70 | 0.0004% |
-| S2_median_zeroshot | 57.89 | 36.24 | 0.0 | 100.0 | 74.9 | 40.9% | 24.0% | 8.2 M | 0.00 | 27.0071% |
-| emb_localrf | 39.97 | 30.15 | 0.0 | 96.6 | 57.4 | 16.7% | 33.3% | 8.2 M | 0.00 | 42.5806% |
-| S2_median_localrf | 38.83 | 28.18 | 0.0 | 98.1 | 51.2 | 9.6% | 34.4% | 8.2 M | 0.00 | 40.8569% |
-| (reference) | 51.06 | 44.81 | 0.0 | 100.0 | 100.0 | 40.7% | 39.3% | MISSING | MISSING | MISSING |
+| map_id | mean | sd | min | max | IQR | pct_gt80 | pct_lt20 | ras_n | ras_mean | ras_min | ras_pct_lt20 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| emb_zeroshot | 70.70 | 15.95 | 31.9 | 91.4 | 26.0 | 38.4% | 0.0% | 8.2 M | 68.55 | 15.70 | 0.0004% |
+| S2_median_zeroshot | 57.89 | 36.24 | 0.0 | 100.0 | 74.9 | 40.9% | 24.0% | 8.2 M | 53.82 | 0.00 | 27.0071% |
+| emb_localrf | 39.97 | 30.15 | 0.0 | 96.6 | 57.4 | 16.7% | 33.3% | 8.2 M | 32.41 | 0.00 | 42.5806% |
+| S2_median_localrf | 38.83 | 28.18 | 0.0 | 98.1 | 51.2 | 9.6% | 34.4% | 8.2 M | 33.72 | 0.00 | 40.8569% |
+| (reference) | 51.06 | 44.81 | 0.0 | 100.0 | 100.0 | 40.7% | 39.3% | MISSING | MISSING | MISSING | MISSING |
 
 
 _HCMC, distribution over the same 450 plots:_
@@ -274,6 +274,9 @@ _HCMC, distribution over the same 450 plots:_
 
 
 HCMC's reference is bimodal: **37.3%** of plots below 10 % and **35.8%** above 90 %, giving an IQR of 100.0 and an sd of 44.81. **39.3%** of plots are below 20 %.
+
+
+**`mean` and `ras_mean` are not the same population and are not expected to agree.** `mean` averages the map at the 450 validation plots; `ras_mean` averages every finite pixel in the raster. The plots are stratified across IMD classes rather than drawn in proportion to the city, so they over-represent built-up area and `mean` sits above `ras_mean` for every map in both cities. The gap measures the sampling design, not map error, and the two must never be differenced or quoted as a disagreement.
 
 
 **Tail and spread retention, every map.** Two failures are separable and are kept apart. `tail_retained` is the share of the reference's sub-20 % mass the raster keeps; `spread_retained` is the map IQR over the reference IQR. Neither is thresholded into a yes/no — a single cut on tail retention would decide the borderline case by where the cut was put rather than by the data. Tail retention compares a raster-wide share against a 450-plot share, so read it as an order of magnitude, not to the percentage point; values near or above 100 % mean the tail is fully present, not that it is oversized.

@@ -463,6 +463,7 @@ def collect_raster_range(city, map_id):
         return {}
     return {
         'ras_n': f'{v.size / 1e6:.1f} M',
+        'ras_mean': f'{v.mean():.2f}',
         'ras_min': f'{v.min():.2f}',
         'ras_pct_lt20': f'{100 * float((v < 20).mean()):.4f}%',
         'ras_source': rel,
@@ -504,7 +505,8 @@ def collect_city_range(city):
         # only -- there is no interpreted raster -- so it stays MISSING there.
         ras = collect_raster_range(city, m) if m != '(reference)' else {}
         row.update({k: ras.get(k, MISSING)
-                    for k in ('ras_n', 'ras_min', 'ras_pct_lt20')})
+                    for k in ('ras_n', 'ras_mean', 'ras_min',
+                              'ras_pct_lt20')})
         stats_rows.append(row)
 
     edges = list(range(0, 101, 10))
@@ -1122,14 +1124,14 @@ def main():
     # ── Range diagnostics, both Vietnam cities ──────────────────────────────
     md.append('\n### Prediction range: tail and spread, both Vietnam cities\n')
     md.append('_Per-plot predicted IMD against the interpreted reference, '
-              'primary rule (n = 450 per city), with the whole-raster minimum '
-              'and sub-20 % share alongside. Two failures are separable here '
-              'and are kept apart: a map may lose the low **tail** the '
-              'reference carries, and it may compress its **spread**. Both '
-              'cities are measured on both axes, neither standing in for the '
-              'other._\n')
+              'primary rule (n = 450 per city), with the whole-raster mean, '
+              'minimum and sub-20 % share alongside. Two failures are '
+              'separable here and are kept apart: a map may lose the low '
+              '**tail** the reference carries, and it may compress its '
+              '**spread**. Both cities are measured on both axes, neither '
+              'standing in for the other._\n')
     stat_cols = ['map_id', 'mean', 'sd', 'min', 'max', 'IQR', 'pct_gt80',
-                 'pct_lt20', 'ras_n', 'ras_min', 'ras_pct_lt20']
+                 'pct_lt20', 'ras_n', 'ras_mean', 'ras_min', 'ras_pct_lt20']
     hist_cols = ['bin', 'emb_zeroshot', 'S2_median_zeroshot',
                  'emb_localrf', 'S2_median_localrf', '(reference)']
     for city in ('Hanoi', 'HCMC'):
@@ -1144,6 +1146,19 @@ def main():
                       f'90 %, giving an IQR of {fx["ref_iqr"]} and an sd of '
                       f'{fx["ref_sd"]}. **{fx["ref_lt20"]}** of plots are '
                       'below 20 %.\n')
+
+    # `mean` and `ras_mean` are means of two different populations and will
+    # not agree. Stating why here keeps the gap from being read downstream as
+    # a map error or a collection bug -- it is the sampling design showing up.
+    md.append('\n**`mean` and `ras_mean` are not the same population and are '
+              'not expected to agree.** `mean` averages the map at the 450 '
+              'validation plots; `ras_mean` averages every finite pixel in '
+              'the raster. The plots are stratified across IMD classes rather '
+              'than drawn in proportion to the city, so they over-represent '
+              'built-up area and `mean` sits above `ras_mean` for every map '
+              'in both cities. The gap measures the sampling design, not map '
+              'error, and the two must never be differenced or quoted as a '
+              'disagreement.\n')
 
     # Every map with a registered raster must have produced raster columns.
     # check_range_rasters() catches a path that does not exist; this catches
