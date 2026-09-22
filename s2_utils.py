@@ -1,7 +1,7 @@
 """Shared Sentinel-2 helpers for the IMD baseline.
 
 Imported by BOTH 00_S2_Extraction_Milan_2018.ipynb (which extracts the
-training table) and 01b_IMD_Prediction_Milan_blockCV_S2.ipynb (which exports
+training table) and 01b_IMD_Prediction_Milan_blockCV_S2_CLMS.ipynb (which exports
 the prediction raster). The mask and composite definitions MUST NOT diverge
 between the two: the holdout evaluation compares points sampled from the
 exported raster against a model trained on the extracted table, so a
