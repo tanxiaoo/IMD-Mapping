@@ -94,7 +94,13 @@ report/   report.tex, report.pdf, IMD_Mapping.pptx
 
 > **Code only.** `data/` and `output/` are around 5 GB of rasters, models and
 > sample points — regenerable by re-running the notebooks, and the GeoTIFFs
-> exceed GitHub's file size limit. 
+> exceed GitHub's file size limit.
+>
+> **Download them instead:** the predicted maps and the input data are archived
+> on Zenodo, 1.8 GB, CC BY 4.0 —
+> [doi:10.5281/zenodo.22874238](https://doi.org/10.5281/zenodo.22874238).
+> Unpack into `data/` and `output/` and the notebooks run without re-exporting
+> anything from Earth Engine.
 
 ## Method in brief
 
@@ -172,8 +178,23 @@ EarthLabel validation plots were photo-interpreted independently for all three
 cities and are not derived from any of the above. The annotation tool is at
 [github.com/tanxiaoo/earth-label](https://github.com/tanxiaoo/earth-label).
 
-Predicted rasters and the project code are published at
-[github.com/gisgeolab/IMD](https://github.com/gisgeolab/IMD).
+## Archive
+
+The predicted maps for all three cities, together with the inputs under
+`data/`, are deposited on Zenodo under CC BY 4.0:
+
+> Brovelli, M. A., Žgela, M., Kirubakaran, K. and Tan, X. (2026). *Mapping
+> Imperviousness Density Using Geospatial Foundation-Model AlphaEarth
+> Embeddings* (v1) [Data set]. Zenodo.
+> [doi:10.5281/zenodo.22874238](https://doi.org/10.5281/zenodo.22874238)
+
+1.8 GB in total: the Milan embedding and Sentinel-2 models, the IMD maps for
+Milan, Hanoi and HCMC, and the zero-shot and locally retrained Vietnam
+outputs.
+
+The project code is published at
+[github.com/gisgeolab/IMD](https://github.com/gisgeolab/IMD); the predicted
+rasters are in the Zenodo deposit above, not in either repository.
 
 ## Acknowledgements
 
