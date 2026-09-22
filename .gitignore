@@ -111,6 +111,9 @@ CLAUDE.md
 !requirements*.json
 .env
 .env.*
+# ...but .env.example is the committed template. It holds no secret, only the
+# key names, and without it a fresh clone has nothing to copy from.
+!.env.example
 credentials/
 *-service-account*
 .config/earthengine/
