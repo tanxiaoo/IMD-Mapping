@@ -42,9 +42,9 @@ between them is what a city gains by collecting its own training data.
 
 ### Training target
 
-Milan is modelled twice, against CLMS and against GHS-BUILT-S. The two measure
+Milan is modelled twice, against CLMS and against GHS-BUILT-S (GHSL). The two measure
 different things, CLMS sealed surface including roads while GHSL roofed built-up
-area excluding them. so the comparison separates what the method achieves from
+area excluding them. So the comparison separates what the method achieves from
 what the reference it learned from dictates.
 
 Everything is evaluated against 450 independently photo-interpreted **EarthLabel** plots per city, which no model ever saw during training.
@@ -107,30 +107,30 @@ unpack them here, or regenerate them by running the notebooks.
 ## Method in brief
 
 **Sampling.** 500 points in each of the seven density classes, giving a
-balanced 3 500, so sparse classes are not swamped by the dominant one. Drawn
+balanced 3500, so sparse classes are not swamped by the dominant one. Drawn
 separately for CLMS and GHSL, since the two products differ pixel by pixel.
 
-**Train/test split.** The 3 500 points are split using 1 km spatial blocks,
-whole blocks to one side or the other. A 250 m buffer around the test blocks
-then removes training points lying too close to a test point — 37 of them for
-CLMS, leaving **2 449 train and 1 014 test**. Splitting on blocks rather than
+**Train/test split.** The 3500 points are split using 1 km spatial blocks,
+whole blocks to one side or the other. A 250m buffer around the test blocks
+then removes training points lying too close to a test point, 37 of them for
+CLMS, leaving **2449 train and 1014 test**. Splitting on blocks rather than
 on points keeps a pixel's neighbours out of the other half, which ordinary
 random splitting does not.
 
-**Cross-validation.** The 2 449 training points are regrouped into spatial
+**Cross-validation.** The 2449 training points are regrouped into spatial
 blocks and the blocks assigned at random to five folds. Tuning repeats at
-three block sizes — 500 m, 1 km and 2 km — and the setting with the lowest
-mean RMSE is selected. For AlphaEarth on Milan that was 1 km.
+three block sizes (500m, 1000m and 2000m) and the setting with the lowest
+mean RMSE is selected. For AlphaEarth on Milan that was 1000m.
 
-**Model.** Random forest, tuned in scikit-learn under those spatial folds,
-then retrained server-side in Earth Engine and exported as a 10 m raster. The
+**Model.** Random forest, tuned in scikit-learn under spatial folds,
+then retrained server-side in Earth Engine and exported as a 10m raster. The
 selected trees and depth differ per run and are recorded in each run's
 `model_metadata_*.json`.
 
 **Validation.** Maps are ranked against the EarthLabel plots on three measures:
 R² on the raw predicted percentage, Cohen's κ at a 50 % cut-off, and quadratic
 weighted κ over ten fraction levels; RMSE, MAE, overall accuracy and F1 are
-reported alongside. Each plot is one 10 m pixel subdivided into nine
+reported alongside. Each plot is one 10m pixel subdivided into nine
 photo-interpreted sub-cells.
 
 Run in Google Earth Engine via its Python API, with tuning in scikit-learn.
@@ -203,5 +203,5 @@ and Google (AlphaEarth) for the satellite data and reference products, and
 Mohammad Ammar Mughees for the EarthLabel annotation tool.
 
 This research was conducted as part of the **LCZ-UHI-GEO** Italy–Vietnam
-bilateral project and **Space it up!**, funded and supported by the Italian
+bilateral and **Space it up!** projects, funded and supported by the Italian
 Space Agency (ASI) and the Vietnam National Space Center (VNSC).
