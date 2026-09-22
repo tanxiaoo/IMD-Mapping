@@ -79,7 +79,7 @@ Run them in order: extract, model, transfer, validate.
 
 ### Where things live
 
-Four directories, each with one job.
+Three directories, each with one job, plus `report/` which builds the PDF.
 
 **`data/` — inputs only.** The CLMS and GHSL reference rasters, the sample
 points, the Milan AOI and the EarthLabel plots. Nothing a notebook writes ever
@@ -98,15 +98,12 @@ lands here.
 A file describing one city goes under that city; a file comparing two goes
 under `hanoi_and_hcmc/`.
 
-**`report/` — the report source:** `report.tex`, with the bibliography and
-figures it compiles from.
-
 **`deliverables/` — what gets handed over:** `report.pdf` and
-`IMD_Mapping.pptx`. Both are built in `report/` and copied here when a
-version is finished; the copies in `report/` are gitignored, so this folder
-is the one place holding the current versions.
+`IMD_Mapping.pptx`, the finished versions.
 
-Neither `data/` nor `output/` is in the repository. Download them from
+`report/` holds the LaTeX source, the fact base and the figure scripts that
+build the PDF. It is not in the repository, and neither are `data/` and
+`output/` — download those from
 [Zenodo](https://doi.org/10.5281/zenodo.22874238) (1.8 GB, CC BY 4.0) and
 unpack them here, or regenerate them by running the notebooks.
 

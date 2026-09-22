@@ -54,16 +54,17 @@ output/
 # None of it is ours to redistribute and none of it fits in the repository.
 data/
 
-# ── report/ : only the three deliverables ────────────────────────────────────
-# The repository carries what gets handed over and nothing that builds it.
-# Three files, and they are the ONLY things tracked under report/:
+# ── report/ : ignored in full ────────────────────────────────────────────────
+# Nothing under report/ is tracked. The finished PDF and deck are committed in
+# deliverables/ instead, so the repository carries what gets handed over and
+# nothing that builds it.
 #
-#   report/report.tex        the source
-#   report/report.pdf        the built report
-#   report/IMD_Mapping.pptx  the presentation
+# Everything under report/ stays on disk and keeps working -- it is ignored,
+# not deleted:
 #
-# Everything else under report/ stays on disk and keeps working -- it is
-# ignored, not deleted:
+#   report.tex     the LaTeX source of the PDF
+#   report.pdf     the built report, copied to deliverables/ when finished
+#   IMD_Mapping.pptx  the deck, likewise
 #
 #   facts/         FACTS.md, EXPERIMENT_MAP.md, FIGURES.md, FIGURE_GAPS.md,
 #                  OUTLINE.md -- the written record
@@ -78,6 +79,7 @@ data/
 # FACTS.md and the figures are regenerable -- collect_metrics.py and
 # make_report_figs.py rebuild them from output/. These are NOT:
 #
+#   report.tex         the LaTeX source -- the ONLY copy of the report's text
 #   EXPERIMENT_MAP.md  hand-written provenance and design decisions
 #   OUTLINE.md         hand-written section plan and figure assignments
 #   report/code/*.py   the only way to rebuild FACTS.md and the figures
@@ -86,24 +88,14 @@ data/
 # None of those can be recovered from anything else in the repository. They
 # exist on this disk alone, and a fresh clone will not have them. They ARE in
 # git history up to the commit that untracked them -- recover with
-# `git show <commit>:report/facts/EXPERIMENT_MAP.md` -- but nothing after that
-# point is recorded. Back them up outside git, or track them again.
+# `git show <commit>:report/facts/EXPERIMENT_MAP.md`, or
+# `git show 024c874:report/report.tex` for the source -- but nothing after
+# that point is recorded. Back them up outside git, or track them again.
 #
-# Also note: report.tex alone does not compile. It needs refs.bib and figs/,
-# both ignored here, so the repository no longer holds a buildable report.
-#
-# Written as `report/*` rather than `report/`: git does not descend into an
-# excluded DIRECTORY, so a bare `report/` would make the negation below
-# unreachable and nothing under report/ would be tracked at all. The `*` form
-# excludes the entries instead, which leaves the negation able to re-include
-# report.tex.
-#
-# The built report.pdf and IMD_Mapping.pptx are ignored HERE, where they are
-# produced. The copies handed over are tracked in deliverables/ instead, so
-# there is one obvious place to look for the current versions and the build
-# directory does not decide what ships.
-report/*
-!report/report.tex
+# report.tex matters most here: deliverables/report.pdf is the built output,
+# and nothing in the repository can regenerate it. Lose the working copy and
+# the report's text is gone from today forward.
+report/
 
 docs/
 
