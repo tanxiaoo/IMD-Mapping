@@ -29,6 +29,13 @@
 *.jpg
 *.pdf
 
+# ...except the handed-over deliverables. The rules above are aimed at the
+# figures and tables the notebooks generate; deliverables/ holds the two
+# finished documents and is tracked in full. Without this negation the blanket
+# *.pdf above silently swallows report.pdf and only the deck gets committed.
+!deliverables/
+!deliverables/**
+
 # ── Run outputs ───────────────────────────────────────────────────────────────
 # Every notebook writes under output/, laid out city / dataset / predictor:
 #
@@ -86,23 +93,17 @@ data/
 # both ignored here, so the repository no longer holds a buildable report.
 #
 # Written as `report/*` rather than `report/`: git does not descend into an
-# excluded DIRECTORY, so a bare `report/` would make the three negations below
+# excluded DIRECTORY, so a bare `report/` would make the negation below
 # unreachable and nothing under report/ would be tracked at all. The `*` form
-# excludes the entries instead, which leaves the negations able to re-include
-# their three files.
+# excludes the entries instead, which leaves the negation able to re-include
+# report.tex.
+#
+# The built report.pdf and IMD_Mapping.pptx are ignored HERE, where they are
+# produced. The copies handed over are tracked in deliverables/ instead, so
+# there is one obvious place to look for the current versions and the build
+# directory does not decide what ships.
 report/*
 !report/report.tex
-
-# report.pdf (~9 MB) and IMD_Mapping.pptx (~45 MB) are NOT tracked here. Git
-# keeps every version of every file forever, so each new deck added ~45 MB to
-# the history rather than replacing the last one -- .git had reached 785 MB.
-# They diff as whole binaries, so versioning them beside the code bought
-# nothing. They now live in their own repository:
-#
-#   ../IMD-Mapping-deliverables
-#
-# report.tex stays tracked above: it is plain text, it diffs meaningfully, and
-# it is the source that builds the PDF.
 
 docs/
 
