@@ -7,12 +7,11 @@ Maria Antonia Brovelli, Matej Žgela, Keerthana Kirubakaran, Xiao Tan
 · Politecnico di Milano
 
 Impervious surface density (IMD) is the proportion of a pixel covered by
-impervious material — buildings, roads, pavement. Mapping it at 10 m for Milan,
+impervious material such as buildings, roads, pavement. Mapping it at 10 m for Milan,
 Hanoi and Ho Chi Minh City in 2018.
 
 Hanoi and HCMC have no IMD product at all. The maps are needed to support local
-climate zone mapping and urban heat island analysis in the **LCZ-UHI-GEO**
-Italy–Vietnam bilateral project.
+climate zone mapping and urban heat island analysis in the **LCZ-UHI-GEO** project.
 
 ## Contributions
 
@@ -24,7 +23,7 @@ Italy–Vietnam bilateral project.
 ### Predictors
 
 AlphaEarth is ready to use: one global annual product, no compositing to get
-right. Sentinel-2 costs more work — searching scenes, screening cloud, building
+right. Sentinel-2 costs more work for searching scenes, screening cloud, building
 a composite per city. Four predictor sets are compared on Milan under identical
 conditions, so the only thing that varies is the input:
 
@@ -32,8 +31,8 @@ conditions, so the only thing that varies is the input:
 |---|---|
 | AlphaEarth embeddings | 64 learned bands from [Google Satellite Embedding V1](https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_SATELLITE_EMBEDDING_V1_ANNUAL), encoding a year of Sentinel-1/2, Landsat and more per 10 m pixel |
 | Sentinel-2 median | 10 reflectance bands, per-pixel median of cloud-free 2018 dates |
-| Sentinel-2 stack | the same dates kept as separate bands |
 | Sentinel-2 percentile | five percentiles per band, capturing within-year variation |
+| Sentinel-2 stack | Four near-cloud-free dates , evenly spaced from March to October. kept as separate bands |
 
 ### Transfer
 
@@ -44,14 +43,11 @@ between them is what a city gains by collecting its own training data.
 ### Training target
 
 Milan is modelled twice, against CLMS and against GHS-BUILT-S. The two measure
-different things — CLMS sealed surface including roads, GHSL roofed built-up
-area excluding them — so the comparison separates what the method achieves from
+different things, CLMS sealed surface including roads while GHSL roofed built-up
+area excluding them. so the comparison separates what the method achieves from
 what the reference it learned from dictates.
 
-Everything is checked twice: against the same reference the models trained on,
-and against 450 independently photo-interpreted **EarthLabel** plots per city,
-which no model ever saw. The two are never merged — a model can beat its own
-training reference and still be wrong about the ground.
+Everything is evaluated against 450 independently photo-interpreted **EarthLabel** plots per city, which no model ever saw during training.
 
 ## What is here
 
@@ -65,16 +61,17 @@ ghsl_data_preparation.ipynb                     GHSL clipped, reclassified, resa
 
 01_IMD_Prediction_Milan_blockCV_embedding.ipynb Milan, embeddings
 01b_IMD_Prediction_Milan_blockCV_S2.ipynb       Milan, Sentinel-2
-01c_IMD_Prediction_Milan_blockCV_GHSL.ipynb     the same, GHSL-labelled
-01d_IMD_Prediction_Milan_blockCV_S2_GHSL.ipynb  the same, GHSL-labelled
+01c_IMD_Prediction_Milan_blockCV_GHSL.ipynb     Milan, embeddings, GHSL-labelled
+01d_IMD_Prediction_Milan_blockCV_S2_GHSL.ipynb  Milan, Sentinel-2, GHSL-labelled
 
 02_Transferability_Vietnam_v2.ipynb             Hanoi / HCMC transfer, embeddings
 03_Transferability_Vietnam_S2_median.ipynb      the same, Sentinel-2
 
-04_SameSource_Validation.ipynb                  vs the training target, 16 runs
-05_Independent_Validation.ipynb                 vs EarthLabel plots, 20 rasters
+04_SameSource_Validation.ipynb                  same-source validation, against the training product
+05_Independent_Validation.ipynb                 independent validation, 450 EarthLabel plots/city
 
 s2_utils.py                                     shared cloud masks + composite builder
+gee_init.py                                     reads the GEE project id from .env
 ```
 
 Run them in order: extract, model, transfer, validate.
@@ -82,59 +79,49 @@ Run them in order: extract, model, transfer, validate.
 ### Where things live
 
 ```
-data/     inputs only — nothing a notebook writes ever lands here.
-            CLMS_2018_Milan_{LAEA,UTM32N}.tif   training target, Milan
-            GHSL_2018_{Milan_UTM32N,Hanoi_UTM48N,HCMC_UTM48N}.tif
-            sample_points/   the four sampled point sets
-            earthlabel/   the 450 photo-interpreted plots per city
-            aoi_milan/    the Milan study-area polygon
+data/     inputs only — reference rasters, sample points, the AOI and the
+          EarthLabel plots. Nothing a notebook writes ever lands here.
 
 output/   every run, as city / label source / predictor:
             milan/{clms,ghsl}/{embedding,median,stack,percentile}/
             transfer_vietnam/{hanoi,hcmc}/{embedding,median}/
-            transfer_vietnam/hanoi_and_hcmc/   two-city comparison files
-            validation_samesource/  vs the training target
-            validation_independent/ vs the EarthLabel plots
+            transfer_vietnam/hanoi_and_hcmc/  two-city comparison files
+            validation_samesource/            against the training product
+            validation_independent/           against the EarthLabel plots
 
 report/   report.tex, report.pdf, IMD_Mapping.pptx
 ```
 
-Raster names say source, year, city and projection. The Vietnam references are
-GHSL, not CLMS — CLMS covers Europe only.
-
 > **Code only.** `data/` and `output/` are around 5 GB of rasters, models and
 > sample points — regenerable by re-running the notebooks, and the GeoTIFFs
-> exceed GitHub's file size limit. Neither is in this repository, and neither
-> are the report's own sources beyond `report.tex`.
+> exceed GitHub's file size limit. 
 
 ## Method in brief
 
-**Sampling.** 3 500 points per city — 500 in each of seven density classes, so
-sparse classes are not swamped by the dominant one. Sampled separately for CLMS
-and GHSL, since the two products differ pixel by pixel. Roughly 70/30 train and
-test: 2 449 train, 1 014 test.
+**Sampling.** 500 points in each of seven density classes, so sparse classes
+are not swamped by the dominant one. Milan against CLMS hits the full 3 500;
+the GHSL sets come in slightly under once water-masked points are dropped
+(3 448 Milan, 3 282 Hanoi, 3 249 HCMC). Sampled separately for CLMS and GHSL,
+since the two products differ pixel by pixel. Roughly 70/30 train and test:
+2 449 train, 1 014 test on the Milan CLMS split.
 
 **Spatial cross-validation.** Ordinary random CV leaks between neighbouring
 pixels and reports accuracy that does not survive contact with new ground.
-Training points are grouped into blocks of 500 m, 1 km and 2 km, whole blocks
-go to five folds, and a 250 m buffer drops validation points sitting too close
-to a training point. The locked train/test split is scored exactly once.
+Training points are grouped into blocks of 500 m, 1 km or 2 km — the size is
+tuned per run — whole blocks go to five folds, and a 250 m buffer drops
+validation points sitting too close to a training point. The locked train/test
+split is scored exactly once.
 
-**Model.** Random forest — 500 trees, depth 30, seed 42 — tuned in scikit-learn
-under those spatial folds, then retrained server-side in Earth Engine and
-exported as a 10 m raster.
+**Model.** Random forest, seed 42, tuned in scikit-learn under those spatial
+folds over a grid of tree count and depth, then retrained server-side in Earth
+Engine and exported as a 10 m raster. The selected settings differ per run and
+are recorded in each run's `model_metadata_*.json`.
 
-**Validation, twice over.** *Same-source* (notebook 04) scores each map against
-the product it trained on, at that run's own held-out points — it measures
-agreement with the training target, not correctness. *Independent* (notebook
-05) scores every map against the 450 EarthLabel plots per city, which no model
-saw; each plot is one 10 m pixel subdivided into nine photo-interpreted
-sub-cells.
-
-Both apply the same three techniques: **A** continuous (RMSE, MAE, bias, R²),
-**B** hard confusion at a 50 % cut-off (overall accuracy, Cohen's κ), and
-**C** 10-level confusion (quadratic weighted κ). The two validations are
-reported side by side and never merged.
+**Validation.** Maps are ranked against the EarthLabel plots on three measures:
+R² on the raw predicted percentage, Cohen's κ at a 50 % cut-off, and quadratic
+weighted κ over ten fraction levels; RMSE, MAE, overall accuracy and F1 are
+reported alongside. Each plot is one 10 m pixel subdivided into nine
+photo-interpreted sub-cells.
 
 Run in Google Earth Engine via its Python API, with tuning in scikit-learn.
 
@@ -145,10 +132,18 @@ python -m venv .venv
 .venv\Scripts\activate          # Windows;  source .venv/bin/activate on Unix
 pip install -r requirements.txt
 earthengine authenticate
+copy .env.example .env          # Windows;  cp .env.example .env on Unix
 ```
 
-Set `GEE_PROJECT` in the config cell of each notebook, and upload your AOI
-polygon as an Earth Engine asset.
+Put your own Earth Engine project id in `.env`:
+
+```
+GEE_PROJECT=your-cloud-project-id
+```
+
+`.env` is gitignored, so it survives a pull and no notebook needs editing —
+they all read it through `gee_init.init_gee()`. Upload your AOI polygon as an
+Earth Engine asset too.
 
 The Sentinel-2 notebooks are interactive by design: run the first cells, read
 the ranked table of candidate acquisition dates, choose the dates, then run on.
@@ -184,7 +179,7 @@ Predicted rasters and the project code are published at
 
 We acknowledge Copernicus/EEA (CLMS), EC JRC (GHS-BUILT-S), ESA (Sentinel-2)
 and Google (AlphaEarth) for the satellite data and reference products, and
-Ammar Mughees for the EarthLabel annotation tool.
+Mohammad Ammar Mughees for the EarthLabel annotation tool.
 
 This research was conducted as part of the **LCZ-UHI-GEO** Italy–Vietnam
 bilateral project and **Space it up!**, funded and supported by the Italian
