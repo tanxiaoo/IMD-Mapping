@@ -51,8 +51,10 @@ Everything is evaluated against 450 independently photo-interpreted **EarthLabel
 
 ## What is here
 
-The full write-up is `report/report.pdf`, with `report/IMD_Mapping.pptx` as
-the accompanying deck. The notebooks are the pipeline that produced them.
+The full write-up and the accompanying deck are in
+[IMD-Mapping-deliverables](https://github.com/tanxiaoo/IMD-Mapping-deliverables);
+`report/report.tex` here is the source the PDF is built from. The notebooks
+are the pipeline that produced them.
 
 ```
 00_S2_Extraction_Milan_2018.ipynb               Sentinel-2 scene search + extraction
@@ -97,8 +99,11 @@ lands here.
 A file describing one city goes under that city; a file comparing two goes
 under `hanoi_and_hcmc/`.
 
-**`report/` — the deliverables:** `report.tex`, `report.pdf` and
-`IMD_Mapping.pptx`.
+**`report/` — the report source:** `report.tex`, with the bibliography and
+figures it compiles from. The built `report.pdf` and the presentation are not
+tracked here; they are large binaries that git would keep a full copy of at
+every revision, so they live in their own repository,
+[IMD-Mapping-deliverables](https://github.com/tanxiaoo/IMD-Mapping-deliverables).
 
 Neither `data/` nor `output/` is in the repository. Download them from
 [Zenodo](https://doi.org/10.5281/zenodo.22874238) (1.8 GB, CC BY 4.0) and

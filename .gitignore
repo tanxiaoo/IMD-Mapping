@@ -92,8 +92,17 @@ data/
 # their three files.
 report/*
 !report/report.tex
-!report/report.pdf
-!report/IMD_Mapping.pptx
+
+# report.pdf (~9 MB) and IMD_Mapping.pptx (~45 MB) are NOT tracked here. Git
+# keeps every version of every file forever, so each new deck added ~45 MB to
+# the history rather than replacing the last one -- .git had reached 785 MB.
+# They diff as whole binaries, so versioning them beside the code bought
+# nothing. They now live in their own repository:
+#
+#   ../IMD-Mapping-deliverables
+#
+# report.tex stays tracked above: it is plain text, it diffs meaningfully, and
+# it is the source that builds the PDF.
 
 docs/
 
