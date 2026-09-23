@@ -22,10 +22,10 @@ climate zone mapping and urban heat island analysis in the **LCZ-UHI-GEO** and *
 
 ### Predictors
 
-AlphaEarth is ready to use: one global annual product, no compositing to get
-right. Sentinel-2 costs more work for searching scenes, screening cloud, building
-a composite per city. Four predictor sets are compared on Milan under identical
-conditions, so the only thing that varies is the input:
+AlphaEarth is ready to use: one global product per year, nothing to build.
+Sentinel-2 takes more work, because you have to find the scenes, mask the
+clouds and build a composite for each city yourself. Four predictor sets are
+compared on Milan, everything else kept the same, so only the input changes:
 
 | Predictor | What it is |
 |---|---|
@@ -43,17 +43,17 @@ between them is what a city gains by collecting its own training data.
 ### Training target
 
 Milan is modelled twice, against CLMS and against GHS-BUILT-S (GHSL). The two measure
-different things, CLMS sealed surface including roads while GHSL roofed built-up
-area excluding them. So the comparison separates what the method achieves from
-what the reference it learned from dictates.
+different things: CLMS maps sealed surface including roads, GHSL maps roofed
+built-up area without them. Comparing the two separates what the method
+achieves from what the training reference already decides.
 
 Everything is evaluated against 450 independently photo-interpreted **EarthLabel** plots per city, which no model ever saw during training.
 
 ## What is here
 
-The full write-up is `deliverables/report.pdf`, with
-`deliverables/IMD_Mapping.pptx` as the accompanying deck. The notebooks are
-the pipeline that produced them.
+`deliverables/report.pdf` is the full write-up of the project and
+`deliverables/IMD_Mapping.pptx` is the accompanying deck. The notebooks below
+are the pipeline that produced the maps and the numbers those two report on.
 
 ```
 00_S2_Extraction_Milan_2018.ipynb               Sentinel-2 scene search + extraction
@@ -79,13 +79,41 @@ Run them in order: extract, model, transfer, validate.
 
 ### Where things live
 
-Three directories, each with one job, plus `report/` which builds the PDF.
+Two directories, each with one job. Neither is in the repository: create them
+yourself, then fill `data/` from the [Zenodo
+archive](https://doi.org/10.5281/zenodo.22874238) (1.8 GB, CC BY 4.0) before
+running anything.
 
-**`data/` — inputs only.** The CLMS and GHSL reference rasters, the sample
-points, the Milan AOI and the EarthLabel plots. Nothing a notebook writes ever
-lands here.
+**`data/` — inputs only,** never written to by a notebook. Make the folder at
+the repository root and put the files in this layout:
 
-**`output/` — one directory per run,** named `city / label source / predictor`:
+```
+data/
+  CLMS_2018_Milan_LAEA.tif            CLMS imperviousness, Milan
+  CLMS_2018_Milan_UTM32N.tif          the same, reprojected
+  GHSL_2018_Milan_UTM32N.tif          GHS-BUILT-S, one per city
+  GHSL_2018_Hanoi_UTM48N.tif
+  GHSL_2018_HCMC_UTM48N.tif
+  sample_points/                      the 3500 training points per run
+    sample_points_all_CLMS_Milan.gpkg
+    sample_points_all_GHSL_Milan.gpkg
+    sample_points_all_GHSL_Hanoi.gpkg
+    sample_points_all_GHSL_HCMC.gpkg
+  earthlabel/                         450 photo-interpreted plots per city
+    milan_imd_2018_results_cells.csv
+    hanoi_imd_2018_results_cells.csv
+    hcmc_imd_2018_results_cells.csv
+  aoi_milan/                          Milan study area polygon
+    milano_aoi.gpkg  (and .shp/.dbf/.shx/.prj)
+```
+
+Everything here is in the Zenodo archive. The two reference products can also
+be downloaded from their own sources, listed under **Data sources** below, and
+the EarthLabel plots can be re-made with the annotation tool linked there.
+
+**`output/` — one directory per run,** named `city / label source / predictor`.
+The notebooks create it as they go; the finished rasters are also in the Zenodo
+archive if you would rather not rerun them:
 
 | Path | Holds |
 |---|---|
@@ -100,12 +128,6 @@ under `hanoi_and_hcmc/`.
 
 **`deliverables/` — what gets handed over:** `report.pdf` and
 `IMD_Mapping.pptx`, the finished versions.
-
-`report/` holds the LaTeX source, the fact base and the figure scripts that
-build the PDF. It is not in the repository, and neither are `data/` and
-`output/` — download those from
-[Zenodo](https://doi.org/10.5281/zenodo.22874238) (1.8 GB, CC BY 4.0) and
-unpack them here, or regenerate them by running the notebooks.
 
 ## Method in brief
 
