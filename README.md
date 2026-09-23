@@ -22,17 +22,21 @@ climate zone mapping and urban heat island analysis in the **LCZ-UHI-GEO** and *
 
 ### Predictors
 
-AlphaEarth is ready to use: one global product per year, nothing to build.
-Sentinel-2 takes more work, because you have to find the scenes, mask the
-clouds and build a composite for each city yourself. Four predictor sets are
-compared on Milan, everything else kept the same, so only the input changes:
+AlphaEarth is one annual product: a single image per year, ready to use.
+Sentinel-2 is not. It passes over each city many times a year, so 2018 gives
+dozens of images, each with its own clouds and gaps. To get one annual layer
+out of them, we screen for cloud and valid pixels and then combine the
+remaining dates into a composite, and we do that three ways. Those three,
+plus AlphaEarth, are the four predictor sets below. They are compared on Milan
+with everything else kept the same, so the input is the only thing that
+changes:
 
 | Predictor | What it is |
 |---|---|
 | AlphaEarth embeddings | 64 learned bands from [Google Satellite Embedding V1](https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_SATELLITE_EMBEDDING_V1_ANNUAL), encoding a year of Sentinel-1/2, Landsat and more per 10 m pixel |
 | Sentinel-2 median | 10 reflectance bands, per-pixel median of cloud-free 2018 dates |
 | Sentinel-2 percentile | five percentiles per band, capturing within-year variation |
-| Sentinel-2 stack | Four near-cloud-free dates , evenly spaced from March to October. kept as separate bands |
+| Sentinel-2 stack | four near-cloud-free dates evenly spaced from March to October, kept as separate bands rather than combined |
 
 ### Transfer
 
@@ -112,19 +116,42 @@ be downloaded from their own sources, listed under **Data sources** below, and
 the EarthLabel plots can be re-made with the annotation tool linked there.
 
 **`output/` — one directory per run,** named `city / label source / predictor`.
-The notebooks create it as they go; the finished rasters are also in the Zenodo
-archive if you would rather not rerun them:
+The notebooks create it as they go, so you do not have to; the finished rasters
+are also in the Zenodo archive if you would rather not rerun them.
 
-| Path | Holds |
-|---|---|
-| `milan/{clms,ghsl}/{embedding,median,stack,percentile}/` | the eight Milan runs |
-| `transfer_vietnam/{hanoi,hcmc}/{embedding,median}/` | per-city rasters and samples |
-| `transfer_vietnam/hanoi_and_hcmc/` | files comparing the two cities |
-| `validation_samesource/` | notebook 04, against the training product |
-| `validation_independent/` | notebook 05, against the EarthLabel plots |
+```
+output/
+  milan/                              the eight Milan runs
+    clms/                             trained against CLMS
+      embedding/                      each run directory holds the
+      median/                           predicted raster, the fitted
+      percentile/                       model, its metadata JSON and
+      stack/                            the run's figures and CSVs
+    ghsl/                             the same four, against GHSL
+      embedding/  median/  percentile/  stack/
+
+  transfer_vietnam/
+    hanoi/                            one city: rasters and samples
+      embedding/                        IMD_Hanoi_10m_zeroshot.tif
+      median/                           IMD_Hanoi_10m_localrf.tif
+    hcmc/
+      embedding/  median/
+    hanoi_and_hcmc/                   both cities: the comparison
+      embedding/                        transferability_comparison.csv
+      median/                           per_class_metrics.csv, figures
+
+  validation_samesource/              notebook 04, against the
+                                        training product
+  validation_independent/             notebook 05, against EarthLabel
+    Milan_2018/                         per_raster/<map>/ and
+    Hanoi_2018/                         comparison/ per city
+    HCMC_2018/
+    cross_city/                       the three cities together
+```
 
 A file describing one city goes under that city; a file comparing two goes
-under `hanoi_and_hcmc/`.
+under `hanoi_and_hcmc/`. Keeping them apart matters: a two-city file filed
+under one city hides the other city's results inside it.
 
 **`deliverables/` — what gets handed over:** `report.pdf` and
 `IMD_Mapping.pptx`, the finished versions.
