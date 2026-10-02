@@ -62,6 +62,7 @@ are the pipeline that produced the maps and the numbers those two report on.
 ```
 00_S2_Extraction_Milan_2018.ipynb               Sentinel-2 scene search + extraction
 00b_S2_Extraction_Vietnam_2018.ipynb            the same for Hanoi and HCMC
+00c_S2_Extraction_Vietnam_Stack_Manual.ipynb    Hanoi/HCMC stack composite, hand-picked dates
 ghsl_data_preparation.ipynb                     GHSL clipped, reclassified, resampled
 
 01_IMD_Prediction_Milan_blockCV_embedding_CLMS.ipynb   Milan, embeddings, CLMS
@@ -70,7 +71,8 @@ ghsl_data_preparation.ipynb                     GHSL clipped, reclassified, resa
 01d_IMD_Prediction_Milan_blockCV_S2_GHSL.ipynb         Milan, Sentinel-2, GHSL
 
 02_Transferability_Vietnam_embedding.ipynb      Hanoi / HCMC transfer, embeddings
-03_Transferability_Vietnam_S2_median.ipynb      the same, Sentinel-2
+03_Transferability_Vietnam_S2_median.ipynb      the same, Sentinel-2 median
+03b_Transferability_Vietnam_S2_stack_manual.ipynb   the same, Sentinel-2 manual stack (local retrain only)
 
 04_SameSource_Validation.ipynb                  same-source validation, against the training product
 05_Independent_Validation.ipynb                 independent validation, 450 EarthLabel plots/city
@@ -134,8 +136,11 @@ output/
     hanoi/                            one city: rasters and samples
       embedding/                        IMD_Hanoi_10m_zeroshot.tif
       median/                           IMD_Hanoi_10m_localrf.tif
+      stack_manual/                     local retrain only, no zero-shot --
+                                          Milan's stack model has 40 bands,
+                                          Hanoi/HCMC's don't match it
     hcmc/
-      embedding/  median/
+      embedding/  median/  stack_manual/
     hanoi_and_hcmc/                   both cities: the comparison
       embedding/                        transferability_comparison.csv
       median/                           per_class_metrics.csv, figures
