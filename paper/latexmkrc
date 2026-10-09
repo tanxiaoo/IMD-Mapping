@@ -1,0 +1,14 @@
+# latexmk configuration for paper.tex. Copied from report/latexmkrc, adapted
+# for this file name -- same reasons apply throughout.
+@default_files = ('paper.tex');
+#
+$pdf_mode = 5;              # 5 = xelatex (U+2212, mid dots)
+$aux_dir  = 'build';
+$out_dir  = '.';
+$emulate_aux = 1;           # MiKTeX resolves \label across a split aux/out dir
+
+# BibTeX runs on build/paper.aux with build/ as its working directory, so a
+# bare \bibdata{refs} resolves against build/ and refs.bib (beside paper.tex)
+# is not found without this. See report/latexmkrc for the full explanation of
+# why $ENV{'BIBINPUTS'} is set here rather than left to latexmk.
+$ENV{'BIBINPUTS'} = '..;';

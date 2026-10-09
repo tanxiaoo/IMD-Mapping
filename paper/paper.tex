@@ -1,0 +1,192 @@
+% Urban Imperviousness Mapping with AlphaEarth Embeddings and Sentinel-2:
+% Local Performance, Cross-City Transfer and Training-Label Effects.
+%
+% Separate journal-style paper, distinct from report/IMD_Mapping_report.tex.
+% Outline from Prof. Brovelli, saved at paper/OUTLINE.md. Written one section
+% at a time; this file currently holds Section 1 (Introduction) only.
+%
+% Compile with XeLaTeX: `latexmk` (see latexmkrc). This directory is
+% self-contained: paper.tex, refs.bib and figs/ (once added) are everything
+% the build needs.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2cm]{geometry}
+\usepackage{fontspec}
+\setmainfont{Times New Roman}[Ligatures=TeX]
+
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\sisetup{group-separator={,}, group-minimum-digits=4}
+\usepackage{graphicx}
+\usepackage[font=small,labelfont=bf,justification=justified,
+            singlelinecheck=false,skip=6pt]{caption}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{xcolor}
+\input{layout}
+\usepackage[numbers,square,sort&compress]{natbib}
+\bibliographystyle{unsrtnat}
+\renewcommand{\bibfont}{\small}
+\usepackage[colorlinks,breaklinks,
+            linkcolor=linkcol,citecolor=linkcol,urlcolor=linkcol]{hyperref}
+\usepackage{xurl}
+\usepackage[capitalise,nameinlink]{cleveref}
+
+\graphicspath{{figs/}}
+
+\newcommand{\Rsq}{$R^2$}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+% Author list copied from the internal report as a default -- not yet
+% confirmed by Prof. Brovelli for this paper specifically. Update once the
+% author list and order for submission are settled.
+\title{Urban Imperviousness Mapping with AlphaEarth Embeddings and
+Sentinel-2: Local Performance, Cross-City Transfer and Training-Label Effects}
+\author{Maria Antonia Brovelli, Matej Žgela, Keerthana Kirubakaran and Xiao Tan\\[2pt]
+\small Politecnico di Milano}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+\label{sec:intro}
+
+\subsection{Imperviousness density and applications}
+\label{sec:intro-imd}
+
+Imperviousness, or impervious surface density (IMD), is the proportion of
+land surface covered by impervious materials such as buildings, roads and
+pavements. Unlike natural ground, these surfaces do not let rain infiltrate,
+and turn it into runoff instead. IMD mapping estimates the impervious
+fraction for each pixel of a study area and produces a continuous spatial
+map, with every pixel holding a value from 0 to 100\%, rather than a binary
+built/not-built label.
+
+Because it is continuous and spatially explicit, IMD underpins a range of
+applications beyond the surface-cover inventory it directly measures.
+Stormwater and flood-risk models use it to estimate runoff generation at the
+catchment scale. Urban Heat Island (UHI) studies use it as a covariate for
+land surface temperature, since impervious materials retain and re-radiate
+heat differently from vegetated or bare ground. Local Climate Zone (LCZ)
+classification, which groups urban areas into classes with comparable
+thermal behaviour, uses IMD as one of its defining surface-cover fractions.
+Sustainability and land-monitoring programmes track IMD change over time as
+an indicator of urban growth and soil sealing.
+
+This range of downstream uses is also what motivates the present study. Milan
+has a published IMD product; Hanoi and Ho Chi Minh City (HCMC) do not. A map
+is needed for both cities to support LCZ mapping and UHI analysis within the
+Italy--Vietnam LCZ-UHI-GEO project and the \emph{Space it up!} project, whose
+partners are Politecnico di Milano and the Vietnam National Space Center
+(VNSC). Producing it is the applied motivation behind the comparison this
+paper reports.
+
+\subsection{Existing EO-based IMD mapping: state of the art}
+\label{sec:intro-sota}
+
+Mapping impervious surfaces from Earth observation (EO) imagery has been an
+active area of remote sensing research for over two decades; Weng
+\citep{weng2012impervious} reviews the methods, requirements and trends up to
+the early 2010s. Two broad families of approach dominate the literature.
+Sub-pixel methods, most commonly spectral mixture analysis, decompose each
+pixel's reflectance into fractions of a small set of pure materials
+(impervious surface, vegetation, soil, sometimes water) and report the
+impervious fraction directly. Regression and classification methods instead
+train a statistical or machine-learning model -- historically linear
+regression and support vector machines, more recently ensemble
+tree methods -- against a reference IMD or built-up surface layer, then apply
+it to new imagery. The present study follows the second family: a
+Random Forest regressor trained against a reference product (\cref{sec:data}),
+the approach also used by the two reference products this study relies on
+(\cref{sec:data}).
+
+Global and regional IMD or built-up-surface products exist at a range of
+resolutions. The Copernicus Land Monitoring Service's Imperviousness Density
+and the Global Human Settlement Layer's GHS-BUILT-S, both used as training
+targets in this study (\cref{sec:data}), are two examples. Others combine
+multiple sensors on cloud platforms to reach global or near-global coverage:
+Zhang et al.\ \citep{zhang2020global30m} produce a 30\,m global impervious
+surface map for 2015 by combining Landsat~8, Sentinel-1 and VIIRS night-light
+imagery on Google Earth Engine, and Sun et al.\ \citep{sun2023mekong} map
+10\,m impervious surface for the Greater Mekong Subregion -- which includes
+northern and southern Vietnam -- from Sentinel-2 and Sentinel-1. Neither,
+however, produces a 2018-dated, 10\,m product for Hanoi or HCMC specifically,
+which is the gap this study's reference-target choice (\cref{sec:data}) works
+around rather than fills directly.
+
+A recurring finding across this literature is that mapping accuracy depends
+as much on the reference product a model is trained against as on the
+predictor imagery itself, since different reference products encode
+different physical definitions of what counts as impervious (sealed ground
+versus roofed structure, for instance). \Cref{sec:results} returns to this
+point directly for the three cities studied here.
+
+\subsection{Geospatial foundation models and embeddings}
+\label{sec:intro-fm}
+
+Foundation models -- large models pretrained on broad data and adapted to
+many downstream tasks -- have more recently been extended from natural
+imagery to Earth observation. Xiao et al.\ \citep{xiao2024fmsurvey} survey
+this emerging field, covering visual, vision-language and other remote
+sensing foundation models and the growing collection of pretraining datasets
+built to support them.
+
+One strand of this work produces \emph{embeddings}: fixed-length, per-pixel
+feature vectors that summarise large amounts of multi-sensor, multi-temporal
+satellite imagery into a single, ready-made input layer. Used this way, a
+downstream task needs no local image compositing -- no choice of which
+dates to use or how to combine them -- because that work has already been
+done once, globally, by the model that produced the embeddings. Google's
+AlphaEarth Foundations \citep{brown2025alphaearth} is one such model,
+providing 64-dimensional annual embeddings worldwide through Google Earth
+Engine \citep{gorelick2017gee}.
+
+Most published evaluations of EO embeddings address discrete tasks -- land
+cover classification, crop type mapping -- rather than continuous surface
+estimation. Whether embeddings of this kind are competitive with purpose-built
+local composites for a continuous regression target like IMD, and whether
+a model trained on them transfers across cities with different climates and
+urban forms, is accordingly still largely untested. This is the gap the
+present study addresses.
+
+\subsection{Research questions and contributions}
+\label{sec:intro-rq}
+
+This paper asks three questions, corresponding to the three themes in its
+title.
+
+\begin{enumerate}
+  \item \textbf{Local performance.} For 10\,m imperviousness mapping within a
+        single city, how does a Random Forest trained on AlphaEarth
+        embeddings compare with one trained on a locally composed
+        Sentinel-2 image, under the same sampling, validation and tuning
+        procedure?
+  \item \textbf{Cross-city transfer.} Does a model trained in one city apply
+        directly to another, climatically and structurally different city
+        (zero-shot transfer), or is local retraining needed -- and does the
+        answer differ between AlphaEarth and Sentinel-2 predictors?
+  \item \textbf{Training-label effects.} How much of a mapping method's
+        accuracy is attributable to the predictor (AlphaEarth versus
+        Sentinel-2) as opposed to the reference product it is trained
+        against (CLMS versus GHS-BUILT-S)?
+\end{enumerate}
+
+Answering them, the paper makes four contributions. First, it compares
+Sentinel-2 and AlphaEarth embeddings for local 10\,m imperviousness mapping
+in Milan, under an identical spatial-block sampling, cross-validation and
+hyperparameter-tuning procedure for both predictors. Second, it evaluates
+both zero-shot transfer and local retraining of that mapping across three
+cities with different climates and urban morphologies -- Milan, Hanoi and
+HCMC -- none of which has previously been compared this way for this task.
+Third, it isolates the effect of the training target by producing Milan maps
+against both CLMS and GHS-BUILT-S under otherwise identical conditions.
+Fourth, it validates every resulting map against an independent reference
+dataset, EarthLabel, that was not used to train any of the models, so that
+the comparisons above are not an artefact of a shared reference product.
+
+\end{document}

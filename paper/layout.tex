@@ -1,0 +1,26 @@
+% Layout for paper.tex, \input from its preamble right after xcolor.
+% Copied from report/layout.tex -- same typesetting conventions, same project.
+
+% Clickable links (URLs, citations, cross-references).
+\definecolor{linkcol}{HTML}{467886}
+
+% Float placement.
+%
+% Kept in its own file because these are typesetting parameters, not claims:
+% an audit script that reads paper.tex for numbers would otherwise report
+% every fraction below as an unsourced value. Nothing here is a result.
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.8}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{5}
+\setlength{\floatsep}{8pt plus 2pt minus 2pt}
+\setlength{\textfloatsep}{10pt plus 2pt minus 4pt}
+\setlength{\intextsep}{8pt plus 2pt minus 2pt}
+
+% Two floats side by side in one figure environment: half the text width
+% less a gutter.
+\newlength{\halfwidth}
+\setlength{\halfwidth}{\dimexpr0.48\textwidth\relax}
