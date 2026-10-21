@@ -75,7 +75,7 @@ are the pipeline that produced the maps and the numbers those two report on.
 03_Transferability_Vietnam_S2_median.ipynb      the same, Sentinel-2 median
 03b_Transferability_Vietnam_S2_stack_manual.ipynb   the same, Sentinel-2 manual stack (local retrain only)
 
-04_SameSource_Validation.ipynb                  difference against the benchmark, whole map vs training product
+04_Benchmark_Difference.ipynb                   difference against the benchmark, whole map vs training product
 05_Independent_Validation.ipynb                 independent validation, 450 EarthLabel plots/city
 
 sample_features.py                              point sets, feature tables, the fixed split
@@ -168,8 +168,8 @@ output/
       embedding/                        transferability_comparison.csv
       median/                           per_class_metrics.csv, figures
 
-  validation_samesource/              notebook 04, against the
-                                        training product
+  benchmark_difference/               notebook 04, each whole map against
+                                        its training product
   validation_independent/             notebook 05, against EarthLabel
     Milan_2018/                         per_raster/<map>/ and
     Hanoi_2018/                         comparison/ per city
