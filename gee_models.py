@@ -132,20 +132,23 @@ def training_fc(df, band_names, label):
         for _, row in df.iterrows()])
 
 
-def compare_predictions(trained_clf, sk_model, X, band_names, y_true=None):
+def compare_predictions(trained_clf, sk_model, X, band_names, y_true=None, chunk=500):
     """Predict ``X`` with both forests and report how far apart they are.
 
-    Run on the held-out points, so it describes the map's model where it is
-    evaluated. Returns the two prediction arrays and the summary it prints.
+    Returns the two prediction arrays and the summary it prints. ``X`` is sent
+    in chunks: every request also carries the trained forest's training points
+    inline, and the two together must stay under Earth Engine's 10 MB payload
+    limit (3,500 training points x 64 bands is already about half of it).
     """
-    fc = ee.FeatureCollection([
-        ee.Feature(None, {"idx": i, **{b: float(v) for b, v in zip(band_names, row)}})
-        for i, row in enumerate(X)])
-    cols = (fc.classify(trained_clf, "pred")
-            .reduceColumns(ee.Reducer.toList(2), ["idx", "pred"]).get("list").getInfo())
     gee_pred = np.empty(len(X))
-    for i, v in cols:
-        gee_pred[int(i)] = v
+    for start in range(0, len(X), chunk):
+        fc = ee.FeatureCollection([
+            ee.Feature(None, {"idx": start + i, **{b: float(v) for b, v in zip(band_names, row)}})
+            for i, row in enumerate(X[start:start + chunk])])
+        cols = (fc.classify(trained_clf, "pred")
+                .reduceColumns(ee.Reducer.toList(2), ["idx", "pred"]).get("list").getInfo())
+        for i, v in cols:
+            gee_pred[int(i)] = v
     gee_pred = np.clip(gee_pred, 0, 100)
     sk_pred = np.clip(sk_model.predict(X), 0, 100)
 
@@ -159,7 +162,7 @@ def compare_predictions(trained_clf, sk_model, X, band_names, y_true=None):
     if y_true is not None:
         for name, pred in (("sklearn", sk_pred), ("gee", gee_pred)):
             summary[f"rmse_{name}"] = float(np.sqrt(np.mean((y_true - pred) ** 2)))
-    print("  Earth Engine vs scikit-learn RF on the held-out points: "
+    print("  Earth Engine vs scikit-learn RF on the given points: "
           + ", ".join(f"{k}={v:.3f}" if isinstance(v, float) else f"{k}={v}"
                       for k, v in summary.items()))
     return gee_pred, sk_pred, summary
