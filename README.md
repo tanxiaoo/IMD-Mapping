@@ -75,7 +75,7 @@ are the pipeline that produced the maps and the numbers those two report on.
 03_Transferability_Vietnam_S2_median.ipynb      the same, Sentinel-2 median
 03b_Transferability_Vietnam_S2_stack_manual.ipynb   the same, Sentinel-2 manual stack (local retrain only)
 
-04_SameSource_Validation.ipynb                  same-source validation, against the training product
+04_SameSource_Validation.ipynb                  difference against the benchmark, whole map vs training product
 05_Independent_Validation.ipynb                 independent validation, 450 EarthLabel plots/city
 
 sample_features.py                              point sets, feature tables, the fixed split
@@ -86,7 +86,12 @@ gee_init.py                                     reads the GEE project id from .e
 ```
 
 Run them in order: extract (00, 00b, once), model (01-01d), transfer (02, 03,
-03b), validate (04, 05). The 00 notebooks write every point's band values to
+03b), validate (04, 05).
+
+**No train/test split on `main`.** Every model is tuned by spatial-block CV
+and fitted on all its points; accuracy is that spatial CV (out-of-fold for the
+Vietnam local models) and the independent EarthLabel validation (05). The
+design with a held-out test set is kept on branch `train-test-split`. The 00 notebooks write every point's band values to
 `data/sample_features/`; every later notebook reads its table from there.
 Each table keeps the points its predictor has a value at (a point on water, or
 with no clear Sentinel-2 observation, is dropped from that table only; the
