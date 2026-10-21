@@ -3,8 +3,11 @@
 Two folders under data/:
 
 ``data/sample_points/``
-    The four fixed point sets: where the samples are, their label and their
-    train/test split. Inputs; nothing here rewrites them.
+    The four point sets: where the samples are, their label and a train/test
+    split (used only on the train-test-split branch). Drawn once by notebooks
+    00 and 00b with :func:`stratified_sample`: 500 points per class, from the
+    pixels where EVERY predictor of the city has a value (combined mask), so
+    every predictor uses the same points.
 
 ``data/sample_features/``
     One table per (point set, predictor): the same points in the same order,
@@ -52,6 +55,102 @@ EMBEDDING_BANDS = [f"A{i:02d}" for i in range(64)]
 
 # The split design, used only where a point set has no stored split.
 SPLIT_BLOCK_M, SPLIT_TEST_FRAC, SPLIT_BUFFER_M, SPLIT_SEED = 1000, 0.30, 250, 42
+
+
+# Where each point set is drawn from: the reference raster, the label column
+# name kept from the original files, and the AOI the mask was clipped to.
+REFERENCE = {
+    ("CLMS", "Milan"): (REPO / "data" / "CLMS_2018_Milan_UTM32N.tif", "IMD"),
+    ("GHSL", "Milan"): (REPO / "data" / "GHSL_2018_Milan_UTM32N.tif", "GHSL"),
+    ("GHSL", "Hanoi"): (REPO / "data" / "GHSL_2018_Hanoi_UTM48N.tif", "IMD"),
+    ("GHSL", "HCMC"):  (REPO / "data" / "GHSL_2018_HCMC_UTM48N.tif", "IMD"),
+}
+N_PER_CLASS, SAMPLE_SEED, N_CLASSES = 500, 42, 7
+
+
+def reclass_imd_7(arr):
+    """Continuous 0-100 % -> the 7 IMD classes (0 / 1-20 / 21-40 / 41-60 /
+    61-80 / 81-99 / 100); -1 elsewhere. The rule the original points use."""
+    out = np.full(arr.shape, -1, dtype=np.int8)
+    out[arr == 0] = 0
+    out[(arr > 0) & (arr <= 20)] = 1
+    out[(arr > 20) & (arr <= 40)] = 2
+    out[(arr > 40) & (arr <= 60)] = 3
+    out[(arr > 60) & (arr <= 80)] = 4
+    out[(arr > 80) & (arr < 100)] = 5
+    out[arr == 100] = 6
+    return out
+
+
+def combined_mask_image(test_bands, aoi_geom):
+    """1 where EVERY image in ``test_bands`` has a value, 0 elsewhere (uint8).
+
+    Pass one band per predictor image: the Sentinel-2 cloud/validity mask is
+    applied to a date's whole image, so one band tells whether a pixel has a
+    value (median: at least one clear date; stack: one band per date, so clear
+    on every date). Images already carry the water mask; 0 outside the AOI.
+    """
+    import ee
+
+    mask = ee.Image.constant(1)
+    for band in test_bands:
+        mask = mask.And(band.mask().gt(0))
+    return mask.clip(aoi_geom).unmask(0).rename("valid").toUint8()
+
+
+def stratified_sample(source, city, mask_path, aoi, n=N_PER_CLASS, seed=SAMPLE_SEED):
+    """Draw ``n`` points per class from the reference raster, valid pixels only.
+
+    Valid = inside ``aoi`` (a GeoDataFrame or GeoSeries), not nodata, and 1 in
+    the combined mask (resampled, nearest, onto the reference grid). Points are
+    pixel centres. Writes the point set to data/sample_points/ (label, class,
+    split) and returns it with a per-class report of what the mask removed.
+    """
+    import rasterio
+    from rasterio.features import geometry_mask
+    from rasterio.transform import xy
+    from rasterio.warp import Resampling, reproject
+
+    ref_path, label = REFERENCE[(source, city)]
+    with rasterio.open(ref_path) as r:
+        ref = r.read(1).astype("float32")
+        if r.nodata is not None:
+            ref[ref == r.nodata] = np.nan
+        transform, crs, shape = r.transform, r.crs, r.shape
+    ref[(ref < 0) | (ref > 100)] = np.nan
+    with rasterio.open(mask_path) as m:
+        valid = np.zeros(shape, dtype="uint8")
+        reproject(m.read(1), valid, src_transform=m.transform, src_crs=m.crs,
+                  dst_transform=transform, dst_crs=crs, src_nodata=None,
+                  dst_nodata=0, resampling=Resampling.nearest)
+    in_aoi = ~geometry_mask(list(aoi.to_crs(crs).geometry), shape, transform)
+    cls = np.where(np.isfinite(ref) & in_aoi, reclass_imd_7(np.nan_to_num(ref, nan=-1)), -1)
+
+    rng = np.random.RandomState(seed)
+    rows, cols, report = [], [], []
+    for c in range(N_CLASSES):
+        in_class = cls == c
+        ys, xs = np.where(in_class & (valid == 1))
+        if len(ys) < n:
+            raise RuntimeError(f"{source} {city} class {c}: only {len(ys)} valid pixels, need {n}.")
+        pick = rng.choice(len(ys), n, replace=False)
+        rows.append(ys[pick]); cols.append(xs[pick])
+        total = int(in_class.sum())
+        report.append({"class": c, "pixels_in_aoi": total, "valid_pixels": len(ys),
+                       "masked_pct": round(100 * (1 - len(ys) / total), 2)})
+    rows, cols = np.concatenate(rows), np.concatenate(cols)
+    x, y = xy(transform, rows, cols, offset="center")
+    utm = gpd.GeoDataFrame({label: ref[rows, cols].astype("float64"),
+                            f"{label}_class": cls[rows, cols].astype(int)},
+                           geometry=gpd.points_from_xy(x, y), crs=crs)
+    coords = np.column_stack([utm.geometry.x, utm.geometry.y])
+    utm["split"] = spatial_split(coords)   # unused on main; kept for the table format
+    pts = utm.to_crs("EPSG:4326")
+    POINTS_DIR.mkdir(parents=True, exist_ok=True)
+    pts.to_file(POINTS_DIR / POINT_SETS[(source, city)], driver="GPKG")
+    print(f"  {source} {city}: {len(pts)} points ({n} per class) -> "
+          f"{POINTS_DIR / POINT_SETS[(source, city)]}")
+    return load_points(source, city), pd.DataFrame(report)
 
 
 def label_column(gdf):

@@ -117,7 +117,8 @@ data/
   GHSL_2018_Milan_UTM32N.tif          GHS-BUILT-S, one per city
   GHSL_2018_Hanoi_UTM48N.tif
   GHSL_2018_HCMC_UTM48N.tif
-  sample_points/                      the fixed point sets: location, label, split
+  sample_points/                      the point sets, drawn by 00 / 00b: 500 per
+                                      class from pixels valid in every predictor
     sample_points_all_CLMS_Milan.gpkg
     sample_points_all_GHSL_Milan.gpkg
     sample_points_all_GHSL_Hanoi.gpkg
