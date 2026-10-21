@@ -43,6 +43,9 @@ changes:
 Milan models are applied to Hanoi and HCMC two ways: *zero-shot*, with no local
 data at all, and *locally retrained*, using a sample of local labels. The gap
 between them is what a city gains by collecting its own training data.
+The zero-shot model is the Milan one trained on CLMS, as in the Zgela report;
+scored against GHS-BUILT-S in Vietnam, it is a different-source comparison
+(`MILAN_TARGET` in notebooks 02 and 03).
 
 ### Training target
 
@@ -60,9 +63,8 @@ Everything is evaluated against 450 independently photo-interpreted **EarthLabel
 are the pipeline that produced the maps and the numbers those two report on.
 
 ```
-00_S2_Extraction_Milan_2018.ipynb               Sentinel-2 scene search + extraction
-00b_S2_Extraction_Vietnam_2018.ipynb            the same for Hanoi and HCMC
-ghsl_data_preparation.ipynb                     GHSL clipped, reclassified, resampled
+00_S2_Extraction_Milan_2018.ipynb               Milan: date screening + every feature table (run once)
+00b_S2_Extraction_Vietnam_2018.ipynb            the same for Hanoi and HCMC (median + stack)
 
 01_IMD_Prediction_Milan_blockCV_embedding_CLMS.ipynb   Milan, embeddings, CLMS
 01b_IMD_Prediction_Milan_blockCV_S2_CLMS.ipynb         Milan, Sentinel-2, CLMS
@@ -70,16 +72,28 @@ ghsl_data_preparation.ipynb                     GHSL clipped, reclassified, resa
 01d_IMD_Prediction_Milan_blockCV_S2_GHSL.ipynb         Milan, Sentinel-2, GHSL
 
 02_Transferability_Vietnam_embedding.ipynb      Hanoi / HCMC transfer, embeddings
-03_Transferability_Vietnam_S2_median.ipynb      the same, Sentinel-2
+03_Transferability_Vietnam_S2_median.ipynb      the same, Sentinel-2 median
+03b_Transferability_Vietnam_S2_stack_manual.ipynb   the same, Sentinel-2 manual stack (local retrain only)
 
 04_SameSource_Validation.ipynb                  same-source validation, against the training product
 05_Independent_Validation.ipynb                 independent validation, 450 EarthLabel plots/city
 
+sample_features.py                              point sets, feature tables, the fixed split
 s2_utils.py                                     shared cloud masks + composite builder
+gee_models.py                                   the RF tuning space and its Earth Engine twin
+gee_export.py                                   export to Drive and download, automatically
 gee_init.py                                     reads the GEE project id from .env
 ```
 
-Run them in order: extract, model, transfer, validate.
+Run them in order: extract (00, 00b, once), model (01-01d), transfer (02, 03,
+03b), validate (04, 05). The 00 notebooks write every point's band values to
+`data/sample_features/`; every later notebook reads its table from there.
+Each table keeps the points its predictor has a value at (a point on water, or
+with no clear Sentinel-2 observation, is dropped from that table only; the
+stack is not gap-filled), and the train/test split comes from the point set,
+so a point is train or test for every predictor alike. Each table's `.json`
+records how many points it dropped. How the GHSL Milan raster and points were made is in git history
+(`ghsl_data_preparation.ipynb`, removed in favour of the 00 notebooks).
 
 ### Where things live
 
@@ -88,8 +102,8 @@ yourself, then fill `data/` from the [Zenodo
 archive](https://doi.org/10.5281/zenodo.22874238) (1.8 GB, CC BY 4.0) before
 running anything.
 
-**`data/` — inputs only,** never written to by a notebook. Make the folder at
-the repository root and put the files in this layout:
+**`data/` — inputs,** plus the feature tables the 00 notebooks write once.
+Make the folder at the repository root and put the files in this layout:
 
 ```
 data/
@@ -98,11 +112,17 @@ data/
   GHSL_2018_Milan_UTM32N.tif          GHS-BUILT-S, one per city
   GHSL_2018_Hanoi_UTM48N.tif
   GHSL_2018_HCMC_UTM48N.tif
-  sample_points/                      the 3500 training points per run
+  sample_points/                      the fixed point sets: location, label, split
     sample_points_all_CLMS_Milan.gpkg
     sample_points_all_GHSL_Milan.gpkg
     sample_points_all_GHSL_Hanoi.gpkg
     sample_points_all_GHSL_HCMC.gpkg
+  sample_features/                    written by 00 / 00b, read by 01-03b
+    {CLMS,GHSL}_Milan_{embedding,S2median,S2stack,S2percentile}.gpkg
+    GHSL_{Hanoi,HCMC}_{embedding,S2median,S2stack}.gpkg
+                                      the point set's points that this predictor
+                                      has a value at, with label and split, plus
+                                      its bands; a .json holds bands and dates
   earthlabel/                         450 photo-interpreted plots per city
     milan_imd_2018_results_cells.csv
     hanoi_imd_2018_results_cells.csv
@@ -134,8 +154,11 @@ output/
     hanoi/                            one city: rasters and samples
       embedding/                        IMD_Hanoi_10m_zeroshot.tif
       median/                           IMD_Hanoi_10m_localrf.tif
+      stack_manual/                     local retrain only, no zero-shot --
+                                          Milan's stack model has 40 bands,
+                                          Hanoi/HCMC's don't match it
     hcmc/
-      embedding/  median/
+      embedding/  median/  stack_manual/
     hanoi_and_hcmc/                   both cities: the comparison
       embedding/                        transferability_comparison.csv
       median/                           per_class_metrics.csv, figures

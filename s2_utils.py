@@ -7,10 +7,11 @@ between the two: the holdout evaluation compares points sampled from the
 exported raster against a model trained on the extracted table, so a
 divergence here would silently invalidate the metrics.
 
-Notebook 00 writes ``method`` and ``band_names`` into
-``s2_extraction_metadata.json``; notebook 01b reads both back and asserts the
-band names match. That handshake is what keeps the two notebooks building the
-same image now that the composite method is switchable.
+Notebooks 00 and 00b write each composite's ``method``, dates and band names
+into the feature table's ``.json`` (``data/sample_features``, see
+sample_features.py); the modelling notebooks rebuild the composite from that
+record and assert the band names match. That handshake is what keeps the
+extraction and the prediction building the same image.
 """
 
 import ee
@@ -221,16 +222,14 @@ def _reduce_stack(masked, selected_dates):
     date order so the band list is a function of the dates themselves, not of
     the order they happened to be typed in.
 
-    Masked pixels are gap-filled from the per-pixel median across all selected
-    dates, because a pixel clouded on any single date would otherwise drop the
-    whole point -- and with N dates the odds of a point being clean on all N
-    approach zero. Filled values are NOT observations and the model cannot tell
-    them apart from real ones; cloud is also not randomly distributed, so the
-    fill lands unevenly across the AOI. Keep N small (3-6) and check the
-    per-date fill rate before attributing any gain to temporal information.
+    Masked pixels are NOT filled: a pixel clouded on any selected date stays
+    masked, so it has no value and the point is dropped (and the map has no
+    prediction there). Filling from other dates would give the model values
+    that are not observations of that date. Keep N small (3-6) -- every extra
+    date can only remove points -- and check the per-date masked share
+    (``stack_masked_pct``) when choosing them.
     """
     dates = sorted(selected_dates)
-    fill = masked.select(S2_BANDS).median()         # 10 bands, S2_BANDS names
 
     per_date = []
     for i, d in enumerate(dates):
@@ -240,7 +239,7 @@ def _reduce_stack(masked, selected_dates):
         # is usually 2+ scenes. Mosaicking keeps a date a single observation.
         img = (masked.filter(ee.Filter.date(day, day.advance(1, 'day')))
                .mosaic().select(S2_BANDS).rename(names))
-        per_date.append(img.unmask(fill.rename(names)))
+        per_date.append(img)
 
     names = [f'{b}_d{i:02d}' for i in range(len(dates)) for b in S2_BANDS]
     return ee.Image.cat(per_date), names
@@ -315,12 +314,13 @@ def build_composite(collection_id, selected_dates, aoi_geom, non_water=None,
     return img, proj, band_names
 
 
-def stack_fill_rates(collection_id, selected_dates, aoi_geom, scale=60):
-    """Fraction of the AOI gap-filled per date under ``method='stack'``.
+def stack_masked_pct(collection_id, selected_dates, aoi_geom, scale=60):
+    """Share of the AOI masked per date under ``method='stack'``.
 
     Client-side dict ``{date: pct}`` -- one ``reduceRegion`` per date, so it is
-    cheap at ``scale=60`` but not free. A date filling more than a few percent
-    is contributing mostly synthetic features and should be swapped out.
+    cheap at ``scale=60`` but not free. The stack is not gap-filled, so every
+    masked pixel of any date has no stack value: a date masking more than a few
+    percent removes that many points and leaves that much of the map empty.
     """
     masked, _ = _masked_collection(collection_id, selected_dates, aoi_geom)
 
