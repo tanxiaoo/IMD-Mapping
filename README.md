@@ -213,8 +213,11 @@ Cloud screening scores each date on cloud cover, pixel validity and swath
 coverage *over the study area* rather than trusting scene-level metadata, which
 describes a whole tile and misleads for a smaller AOI.
 
-After the modelling cells, the prediction rasters are exported to Google Drive;
-download them into the run directory before continuing.
+After the modelling cells, the prediction rasters are exported to Google Drive
+and downloaded into the run directory automatically by `gee_export.py`; the
+export cell waits until they are saved. Drive access reuses your Earth Engine
+login. If the download fails with a permissions error, run
+`earthengine authenticate --force` once to refresh it.
 
 ## Data sources
 

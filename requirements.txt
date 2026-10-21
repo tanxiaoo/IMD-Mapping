@@ -1,6 +1,8 @@
 # Google Earth Engine
 earthengine-api
 geemap
+# Drive API, used by gee_export.py to download exported rasters
+google-api-python-client
 geedim
 
 # Geospatial
