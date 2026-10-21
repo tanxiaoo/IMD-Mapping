@@ -12,11 +12,15 @@ finds the file the task wrote and saves it at the path the notebook reads.
     wait_and_download(jobs)
 
 All tasks are submitted before any is waited on, so Earth Engine runs them in
-parallel. The Drive file name is the stem of the local path.
+parallel. The Drive file name is the stem of the local path plus a
+timestamp, so every export writes a file of its own.
 
 Design decisions, each fixing a way the manual or copy-pasted versions went
 wrong:
 
+- **Every export gets a unique Drive name** (``<stem>__<timestamp>``). With a
+  plain name, Earth Engine was seen to report success without writing a new
+  file when one of that name already existed, leaving only the stale one.
 - **The file is found through its task, not by name alone.** The same name is
   exported by every run of 01b/01d (one per composite method) and by every
   rerun, so Drive holds several files with it. The search is restricted to the
@@ -56,7 +60,8 @@ class Export:
     """A submitted export and where its result should land locally."""
 
     task: ee.batch.Task
-    name: str
+    name: str        # local stem, used in messages
+    drive_name: str  # unique Drive file name of this export
     out_path: Path
 
 
@@ -68,13 +73,14 @@ def start_export(image, out_path, *, region, crs, scale=10, folder=DRIVE_FOLDER)
     """
     out_path = Path(out_path)
     name = out_path.stem
+    drive_name = f"{name}__{time.strftime('%Y%m%dT%H%M%S')}"
     task = ee.batch.Export.image.toDrive(
         image=image, description=name[:100], folder=folder,
-        fileNamePrefix=name, region=region, scale=scale, crs=crs,
+        fileNamePrefix=drive_name, region=region, scale=scale, crs=crs,
         maxPixels=1e10, fileFormat="GeoTIFF")
     task.start()
     print(f"  export started: {name} (task {task.id})")
-    return Export(task=task, name=name, out_path=out_path)
+    return Export(task=task, name=name, drive_name=drive_name, out_path=out_path)
 
 
 def wait_and_download(exports, poll_seconds=POLL_SECONDS):
@@ -131,11 +137,11 @@ def _find_files(drive, job, status):
     # Allow for clock difference between the two services.
     since = (created - timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S")
 
-    query = [f"name contains '{job.name}'", "trashed = false",
+    query = [f"name contains '{job.drive_name}'", "trashed = false",
              f"createdTime > '{since}'"]
     if folder:
         query.append(f"'{folder.group(1)}' in parents")
-    pattern = re.compile(re.escape(job.name) + r"(-\d+-\d+)?\.tif")
+    pattern = re.compile(re.escape(job.drive_name) + r"(-\d+-\d+)?\.tif")
 
     # A completed task's file can take a few seconds to become listable.
     for attempt in range(6):
@@ -156,7 +162,7 @@ def _find_files(drive, job, status):
             return sorted(files, key=lambda f: f["name"])
         time.sleep(5 * (attempt + 1))
     where = f"folder {folder.group(1)}" if folder else "Drive"
-    raise RuntimeError(f"{job.name}: task completed but no {job.name}*.tif found in {where}.")
+    raise RuntimeError(f"{job.name}: task completed but no {job.drive_name}*.tif found in {where}.")
 
 
 def _download_file(drive, file_id, path):
