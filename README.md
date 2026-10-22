@@ -80,7 +80,7 @@ are the pipeline that produced the maps and the numbers those two report on.
 
 sample_features.py                              point sets, feature tables, the fixed split
 s2_utils.py                                     shared cloud masks + composite builder
-gee_models.py                                   the RF tuning space and its Earth Engine twin
+gee_models.py                                   RF tuned, scored and built in Earth Engine; model records
 gee_export.py                                   export to Drive and download, automatically
 gee_init.py                                     reads the GEE project id from .env
 ```
