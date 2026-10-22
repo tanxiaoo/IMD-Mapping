@@ -47,6 +47,8 @@
 # All of it is regenerable by re-running the notebooks against Earth Engine,
 # and the predicted rasters exceed GitHub's 100 MB limit on their own.
 output/
+# Earlier runs, moved aside before a rerun (not part of the repository).
+output_previous/
 
 # ── Input data ────────────────────────────────────────────────────────────────
 # data/ holds only original inputs now: the CLMS and GHSL reference rasters,
