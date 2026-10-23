@@ -1,0 +1,667 @@
+% Results section (4.1-4.6) of the journal paper, following paper/OUTLINE.md.
+%
+% Every number comes from the final report and validation tables on OneDrive
+% (Final_correct_ results/IMD_Mapping_report 1.pdf and validation_combined.docx,
+% 2026-10-23), not from the older report/IMD_Mapping_report.tex.
+%
+% Figures are placeholders (\figfrom) naming the figure of the final report to
+% copy in; replace each with \includegraphics once the final figure files are
+% in paper/figs/. Cross-references to Sections 2-3 and 5 (sec:data,
+% sec:method, sec:validation, sec:discussion, sec:limitations) resolve once
+% this file is \input into the full paper.
+%
+% Standalone build: compiles with pdfLaTeX (Overleaf default).
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2.2cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage[colorlinks,linkcolor=blue!50!black,citecolor=blue!50!black]{hyperref}
+\usepackage[capitalise,nameinlink]{cleveref}
+
+\newcommand{\Rsq}{$R^2$}
+\newcommand{\pp}{\,pp}
+% Placeholder box for a figure still to be copied from the final report.
+\newcommand{\figfrom}[1]{\fbox{\parbox[c][3.2cm][c]{0.8\textwidth}{\centering
+  \small\itshape Placeholder: #1}}}
+
+\begin{document}
+
+\setcounter{section}{3}
+\section{Results}
+\label{sec:results}
+
+Two sign conventions are used throughout. Raster-wide and plot-wise
+differences are given as \emph{predicted $-$ reference}, so a positive
+difference means the map lies above the reference. The bias of the
+independent validation follows the definition of
+Section~\ref{sec:validation} and is \emph{observed $-$ predicted}, so a
+negative bias means the map over-predicts the photo-interpreted
+imperviousness. Continuous errors are in percentage points (pp) of
+imperviousness on the 0--100 scale. Within each validation table, maps are
+ordered by the mean rank of \Rsq{}, Cohen's $\kappa$ and the quadratic
+weighted kappa (QWK).
+
+% ---------------------------------------------------------------------------
+\subsection{Spatial cross-validation and model robustness}
+\label{sec:res-cv}
+
+\Cref{tab:cv} reports the spatially blocked five-fold cross-validation used
+to tune every random forest. For each block size it gives the mean RMSE of
+the best of the forty hyperparameter settings; the last column gives the RMSE
+of the out-of-fold predictions of the selected model. These scores measure
+how well each model reproduces its own training target, not the
+photo-interpreted ground truth, and serve only for model selection.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Random forest tuning by spatially blocked five-fold
+  cross-validation (pp). For each block size, the mean RMSE over the five
+  rounds of the best of the forty settings; bold marks the selected
+  (lowest) block size. Out-of-fold RMSE is that of the selected model.
+  Spread is the largest minus the smallest of the three block-size scores.
+  Scores are against each run's own training target. Zero-shot maps reuse
+  the Milan CLMS-trained models and have no row of their own.}
+  \label{tab:cv}
+  \begin{tabular}{llccccc}
+    \toprule
+    & & \multicolumn{3}{c}{Best setting, mean RMSE} & Out-of-fold & \\
+    \cmidrule(lr){3-5}
+    Run & Predictor & 500\,m & 1{,}000\,m & 2{,}000\,m & RMSE & Spread \\
+    \midrule
+    \multirow{4}{*}{Milan, CLMS}
+      & AlphaEarth    & 13.240 & 13.253 & \textbf{13.210} & 13.24 & 0.04 \\
+      & S2 stack      & \textbf{10.503} & 10.504 & 10.530 & 10.51 & 0.03 \\
+      & S2 median     & \textbf{10.785} & 10.810 & 10.801 & 10.79 & 0.03 \\
+      & S2 percentile & 9.169 & \textbf{9.108} & 9.174 & 9.11 & 0.07 \\
+    \midrule
+    \multirow{4}{*}{Milan, GHSL}
+      & AlphaEarth    & \textbf{18.684} & 18.743 & 18.696 & 18.70 & 0.06 \\
+      & S2 stack      & 18.212 & 18.227 & \textbf{18.190} & 18.20 & 0.04 \\
+      & S2 median     & 18.744 & \textbf{18.648} & 18.807 & 18.67 & 0.16 \\
+      & S2 percentile & 18.180 & \textbf{18.149} & 18.212 & 18.16 & 0.06 \\
+    \midrule
+    \multirow{3}{*}{Hanoi, local}
+      & AlphaEarth    & 22.479 & 22.890 & \textbf{22.448} & 22.54 & 0.44 \\
+      & S2 median     & \textbf{23.955} & 24.455 & 23.979 & 24.01 & 0.50 \\
+      & S2 stack      & \textbf{24.043} & 24.432 & 24.063 & 24.05 & 0.39 \\
+    \midrule
+    \multirow{3}{*}{HCMC, local}
+      & AlphaEarth    & 21.537 & \textbf{21.512} & 21.646 & 21.55 & 0.13 \\
+      & S2 median     & 23.388 & 23.325 & \textbf{23.283} & 23.24 & 0.11 \\
+      & S2 stack      & 23.208 & 23.199 & \textbf{23.120} & 23.08 & 0.09 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Block size has little effect.} For every model, the three block
+sizes give almost the same RMSE. The spread is at most 0.16\pp{} in Milan and
+at most 0.50\pp{} in Hanoi and HCMC, which is small next to the differences
+between predictors and between training targets. No block size is
+consistently best: each of 500, 1{,}000 and 2{,}000\,m is selected for some
+models. Model selection is therefore insensitive to the spatial scale of the
+blocks, and the selected hyperparameters do not depend on that choice.
+
+\paragraph{Cross-validation error depends mostly on the training target.}
+The out-of-fold RMSE rises from 9.1--13.2\pp{} for the Milan CLMS-trained
+models to 18.2--18.7\pp{} for the Milan GHSL-trained models and
+21.6--24.1\pp{} for the locally trained Vietnamese models. In Milan, where
+both targets share the same predictors and area, replacing CLMS with GHSL
+raises the cross-validation error by 5.5 to 9.1\pp{}: the roofed-surface
+target of GHSL is harder to reproduce from 10\,m predictors than the
+sealed-surface target of CLMS.
+
+\paragraph{Predictor rankings differ between cross-validation and
+independent validation.} Against CLMS, the Sentinel-2 percentile composite
+has the lowest cross-validation error (9.11\pp) and AlphaEarth the highest
+(13.24\pp). In Vietnam the order reverses: AlphaEarth has the lowest error in
+both Hanoi (22.54\pp) and HCMC (21.55\pp), 1.5 to 1.7\pp{} below the
+Sentinel-2 composites. As the following sections show, the independent
+validation does not reproduce the Milan cross-validation ranking: AlphaEarth
+scores above the S2 median against the EarthLabel plots, and the
+cross-validation errors (9--24\pp) are well below the independent RMSEs
+(26--40\pp). Cross-validation against the training product is thus a guide
+for tuning, not a measure of mapping accuracy.
+
+% ---------------------------------------------------------------------------
+\subsection{Milan: AlphaEarth versus Sentinel-2}
+\label{sec:res-milan}
+
+\begin{figure}[htbp]
+  \centering
+  \figfrom{final report Fig.~11 --- the eight Milan maps and their
+  difference from the benchmark they were trained on}
+  \caption{Milan: the eight predicted maps (top two rows trained on CLMS,
+  bottom two on GHSL) and their difference maps, predicted map $-$ training
+  benchmark. Red: map above the benchmark; blue: below.}
+  \label{fig:milan-maps}
+\end{figure}
+
+\paragraph{Agreement with the benchmark over the raster.} Every Milan map lies
+above its training benchmark on average (\cref{fig:milan-maps},
+\cref{tab:milan-diff}). Among the CLMS-trained maps, AlphaEarth has the
+smallest mean difference (+4.27\pp) and the S2 percentile composite the
+smallest mean absolute difference (7.40\pp) and standard deviation
+(10.99\pp). The S2 median departs most from CLMS, with a mean difference of
++8.50\pp{} and a mean absolute difference of 11.21\pp. The stack maps cover
+slightly fewer pixels than the others, since the stack has no value where any
+of its dates is cloudy.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Milan: difference between each predicted map and its training
+  benchmark over the whole raster (pp; predicted $-$ benchmark).}
+  \label{tab:milan-diff}
+  \begin{tabular}{llccc}
+    \toprule
+    Benchmark & Predicted map & Mean diff. & Mean abs. diff. & SD \\
+    \midrule
+    \multirow{4}{*}{CLMS}
+      & S2 stack      & +5.53 & 8.07 & 11.91 \\
+      & S2 percentile & +5.19 & 7.40 & 10.99 \\
+      & S2 median     & +8.50 & 11.21 & 13.66 \\
+      & AlphaEarth    & +4.27 & 7.82 & 11.28 \\
+    \midrule
+    \multirow{4}{*}{GHSL}
+      & S2 stack      & +6.02 & 8.01 & 12.81 \\
+      & S2 percentile & +5.20 & 7.34 & 13.00 \\
+      & S2 median     & +6.77 & 9.16 & 13.81 \\
+      & AlphaEarth    & +5.47 & 7.41 & 11.88 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \setlength{\tabcolsep}{4.5pt}
+  \caption{Milan: independent validation against the 450 EarthLabel plots.
+  RMSE, MAE and bias in pp; bias is observed $-$ predicted. ``CLMS'' and
+  ``GHSL'' alone are the benchmark products scored as maps (grey). Within
+  each block, rows run from best to worst by mean rank of \Rsq, $\kappa$ and
+  QWK; bold marks the best value in each block.}
+  \label{tab:milan-val}
+  \begin{tabular}{lccccccccc}
+    \toprule
+    & \multicolumn{4}{c}{A $\cdot$ continuous error}
+    & \multicolumn{2}{c}{B $\cdot$ binary at 50\%}
+    & \multicolumn{3}{c}{C $\cdot$ ordinal, 10 levels} \\
+    \cmidrule(lr){2-5}\cmidrule(lr){6-7}\cmidrule(lr){8-10}
+    Predicted map & RMSE & MAE & Bias & \Rsq & OA & $\kappa$
+      & OA exact & OA $\pm$1 & QWK \\
+    \midrule
+    \multicolumn{10}{l}{\emph{Trained on CLMS}} \\
+    S2 stack      & \textbf{25.9} & 17.5 & $-$4.3 & \textbf{0.630} & \textbf{0.840} & \textbf{0.667} & 0.364 & 0.620 & \textbf{0.780} \\
+    S2 percentile & 26.1 & 17.8 & $-$4.6 & 0.622 & 0.838 & 0.661 & 0.389 & 0.616 & 0.779 \\
+    AlphaEarth    & 27.2 & 19.2 & $-$4.1 & 0.590 & 0.829 & 0.643 & 0.360 & 0.553 & 0.742 \\
+    \textcolor{gray}{CLMS (benchmark)} & \textcolor{gray}{27.2} & \textcolor{gray}{\textbf{15.2}} & \textcolor{gray}{\textbf{+0.6}} & \textcolor{gray}{0.589} & \textcolor{gray}{0.829} & \textcolor{gray}{0.641} & \textcolor{gray}{\textbf{0.558}} & \textcolor{gray}{\textbf{0.682}} & \textcolor{gray}{0.775} \\
+    S2 median     & 27.6 & 19.8 & $-$6.0 & 0.576 & 0.827 & 0.638 & 0.233 & 0.584 & 0.741 \\
+    \midrule
+    \multicolumn{10}{l}{\emph{Trained on GHSL}} \\
+    AlphaEarth    & \textbf{29.0} & 20.6 & \textbf{+7.7} & \textbf{0.533} & \textbf{0.796} & \textbf{0.542} & 0.367 & 0.542 & \textbf{0.676} \\
+    S2 stack      & 29.2 & 20.6 & +8.0 & 0.529 & 0.784 & 0.510 & 0.378 & 0.544 & 0.673 \\
+    S2 percentile & 29.2 & \textbf{20.3} & +8.3 & 0.529 & 0.778 & 0.496 & 0.378 & 0.540 & 0.672 \\
+    S2 median     & 29.5 & 20.9 & +7.8 & 0.516 & 0.782 & 0.508 & 0.344 & 0.544 & 0.661 \\
+    \textcolor{gray}{GHSL (benchmark)} & \textcolor{gray}{37.2} & \textcolor{gray}{23.8} & \textcolor{gray}{+17.6} & \textcolor{gray}{0.234} & \textcolor{gray}{0.707} & \textcolor{gray}{0.293} & \textcolor{gray}{\textbf{0.442}} & \textcolor{gray}{\textbf{0.556}} & \textcolor{gray}{0.493} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Independent validation.} Against the EarthLabel plots
+(\cref{tab:milan-val}), the CLMS-trained Sentinel-2 stack agrees best with
+the photo-interpreted imperviousness on all three techniques: RMSE
+25.9\pp, \Rsq{} 0.630, $\kappa$ 0.667 and QWK 0.780. The percentile
+composite follows within 0.01 on every agreement score. AlphaEarth comes
+third, with \Rsq{} 0.590, $\kappa$ 0.643 and QWK 0.742, ahead of the S2
+median (\Rsq{} 0.576). Relative to the stack, AlphaEarth is lower by 0.040 in
+\Rsq, 0.024 in $\kappa$ and 0.038 in QWK, and its RMSE is 1.3\pp{} higher.
+
+Among the Sentinel-2 composites, accuracy increases with the temporal
+information kept per pixel: from the median (10 bands, \Rsq{} 0.576) to the
+percentile composite (50 bands, 0.622) and the four-date stack (40 bands,
+0.630). The single-value median gains least from a full year of Sentinel-2
+dates, whereas the composites that preserve the seasonal spread or individual
+dates outperform AlphaEarth, whose 64 bands also summarise a full year.
+
+The stack and the percentile composite agree with the photo-interpreted
+plots better than CLMS itself on \Rsq, $\kappa$ and QWK, and match or beat
+it on RMSE. CLMS keeps the lowest MAE (15.2\pp), the smallest bias
+(+0.6\pp) and the highest exact and $\pm$1-level ordinal accuracies (0.558
+and 0.682). The predicted maps therefore track the ground-truth ranking of
+imperviousness as well as or better than CLMS, while CLMS more often hits
+the exact level of a plot. All CLMS-trained maps carry a negative bias of
+$-$4.1 to $-$6.0\pp, so they slightly over-predict imperviousness, consistent
+with their position above CLMS over the raster (\cref{tab:milan-diff}).
+
+When the models are trained on GHSL, the predictor ranking compresses:
+the four GHSL-trained maps span only 0.017 in \Rsq{} (0.516--0.533),
+against 0.054 for the CLMS-trained maps, and AlphaEarth moves to first place
+on \Rsq, $\kappa$ and QWK. With the weaker training target, the choice of
+predictor makes little difference.
+
+% ---------------------------------------------------------------------------
+\subsection{Effect of the training target: CLMS versus GHS-BUILT-S}
+\label{sec:res-target}
+
+Milan is the only city where both training targets are available, which
+allows the effect of the target to be isolated with the predictors, sample
+design and validation plots held fixed. This mimics the Vietnamese setting,
+where CLMS does not exist and GHSL is the only option.
+
+\paragraph{The target matters more than the predictor.} Every CLMS-trained
+map scores higher than every GHSL-trained map on \Rsq, $\kappa$ and QWK,
+whatever the predictor (\cref{tab:milan-val}). Switching the target from
+CLMS to GHSL lowers \Rsq{} by 0.101 for the stack, 0.093 for the percentile
+composite, 0.060 for the median and 0.057 for AlphaEarth. These losses are
+larger than the largest difference between predictors trained on the same
+target (0.054). The bias changes sign: from $-$4.1 to $-$6.0\pp{}
+(over-prediction) with CLMS to +7.7 to +8.3\pp{} (under-prediction) with
+GHSL.
+
+\paragraph{Raster-wide agreement hides a spatial shift.} Over the whole
+raster, the GHSL-trained maps are close to CLMS on average, with mean
+differences of $-$1.57 to $-$3.14\pp{} (\cref{tab:ghsl-clms}). The
+difference maps (\cref{fig:ghsl-clms}) show that this near-zero mean
+results from opposite errors that cancel: the GHSL-trained maps lie below
+CLMS in the urban core and above it in rural areas. Both patterns follow
+from what GHSL measures. It counts roofed surface only, so roads, car parks
+and other sealed open surfaces, which are dense in the city, are learned as
+pervious.
+
+\begin{figure}[htbp]
+  \centering
+  \figfrom{final report Fig.~12 --- the four GHSL-trained maps and CLMS,
+  and their difference from CLMS over the raster}
+  \caption{Milan: the four GHSL-trained maps and CLMS (top), and their
+  difference maps, GHSL-trained map $-$ CLMS (bottom).}
+  \label{fig:ghsl-clms}
+\end{figure}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Milan: GHSL-trained maps $-$ CLMS over the whole raster (pp).}
+  \label{tab:ghsl-clms}
+  \begin{tabular}{lccc}
+    \toprule
+    Predicted map & Mean diff. & Mean abs. diff. & SD \\
+    \midrule
+    S2 stack $\cdot$ GHSL      & $-$1.97 & 9.10 & 14.52 \\
+    S2 percentile $\cdot$ GHSL & $-$3.14 & 8.23 & 13.65 \\
+    S2 median $\cdot$ GHSL     & $-$1.57 & 10.15 & 15.38 \\
+    AlphaEarth $\cdot$ GHSL    & $-$2.86 & 8.59 & 14.34 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{At the validation plots.} The 450 plots are stratified across
+imperviousness classes, so intermediate and high imperviousness carry more
+weight than over the raster, and the shift becomes clear
+(\cref{tab:milan-plots}, \cref{fig:milan-plots}). All four GHSL-trained
+maps lie below CLMS by $-$7.10 to $-$7.75\pp{} and below the photo-interpreted
+values by $-$7.67 to $-$8.32\pp. The CLMS-trained maps, by contrast, lie
+above the photo-interpreted values by +4.06 to +6.01\pp.
+
+\begin{figure}[htbp]
+  \centering
+  \figfrom{final report Fig.~14 --- CLMS-trained and GHSL-trained maps
+  against the 450 photo-interpreted plots}
+  \caption{Milan: CLMS-trained (top two rows) and GHSL-trained (bottom two
+  rows) maps against the 450 photo-interpreted plots: each map with the plot
+  locations, and the difference, map $-$ photo-interpreted value, at each
+  plot.}
+  \label{fig:milan-plots}
+\end{figure}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Milan: difference statistics at the 450 plots (pp; predicted
+  $-$ reference, where the reference is CLMS or the photo-interpreted value).
+  The sign is opposite to that of the bias in \cref{tab:milan-val}.}
+  \label{tab:milan-plots}
+  \begin{tabular}{llcccc}
+    \toprule
+    Comparison & Predictor & Mean diff. & Mean abs. diff. & SD & RMSE \\
+    \midrule
+    \multirow{4}{*}{GHSL-trained vs CLMS}
+      & S2 stack      & $-$7.43 & 15.44 & 19.35 & 20.71 \\
+      & S2 percentile & $-$7.75 & 15.11 & 19.08 & 20.57 \\
+      & S2 median     & $-$7.27 & 15.98 & 19.81 & 21.08 \\
+      & AlphaEarth    & $-$7.10 & 14.64 & 18.74 & 20.03 \\
+    \midrule
+    \multirow{4}{*}{CLMS-trained vs plots}
+      & S2 stack      & +4.31 & 17.48 & 25.52 & 25.85 \\
+      & S2 percentile & +4.58 & 17.76 & 25.75 & 26.13 \\
+      & S2 median     & +6.01 & 19.82 & 27.02 & 27.65 \\
+      & AlphaEarth    & +4.06 & 19.18 & 26.94 & 27.21 \\
+    \midrule
+    \multirow{4}{*}{GHSL-trained vs plots}
+      & S2 stack      & $-$8.00 & 20.57 & 28.08 & 29.16 \\
+      & S2 percentile & $-$8.32 & 20.26 & 27.97 & 29.15 \\
+      & S2 median     & $-$7.83 & 20.89 & 28.52 & 29.55 \\
+      & AlphaEarth    & $-$7.67 & 20.63 & 28.04 & 29.04 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Cost of replacing CLMS with GHSL.} \Cref{tab:target-change}
+quantifies the change at the plots. Replacing CLMS with GHSL as the training
+target raises the RMSE by 1.83 to 3.31\pp{} and moves the mean difference by
+$-$11.73 to $-$13.84\pp, from over-prediction to under-prediction. The RMSE
+increase is largest for the stack (+3.31\pp) and the percentile composite
+(+3.02\pp), the two best CLMS-trained maps, and smallest for AlphaEarth
+(+1.83\pp). The predictors that exploit a good target best lose most when
+the target is degraded.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Milan: change when GHSL replaces CLMS as the training target,
+  against the 450 photo-interpreted plots (pp): GHSL-trained row minus
+  CLMS-trained row of \cref{tab:milan-plots}.}
+  \label{tab:target-change}
+  \begin{tabular}{lcccc}
+    \toprule
+    Predictor & $\Delta$ Mean diff. & $\Delta$ Mean abs. diff. & $\Delta$ SD
+      & $\Delta$ RMSE \\
+    \midrule
+    S2 stack      & $-$12.31 & +3.09 & +2.56 & +3.31 \\
+    S2 percentile & $-$12.90 & +2.50 & +2.22 & +3.02 \\
+    S2 median     & $-$13.84 & +1.07 & +1.50 & +1.90 \\
+    AlphaEarth    & $-$11.73 & +1.45 & +1.10 & +1.83 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{GHSL-trained models improve on GHSL itself.} Although GHSL is a
+weaker target, the models trained on it agree with the photo-interpreted
+plots far better than the GHSL product does. GHSL scores lowest of all ten
+Milan maps (\Rsq{} 0.234, $\kappa$ 0.293, QWK 0.493) with a bias of
++17.6\pp, whereas the GHSL-trained models reach \Rsq{} 0.516--0.533 and
+roughly halve the bias, to +7.7--8.3\pp. A regression model fitted to GHSL
+thus recovers part of the imperviousness that GHSL leaves out by design.
+This is the situation of the locally retrained Vietnamese models, which
+are trained on GHSL alone.
+
+% ---------------------------------------------------------------------------
+\subsection{Hanoi: local retraining versus zero-shot transfer}
+\label{sec:res-hanoi}
+
+In Hanoi, five maps are compared (\cref{fig:hanoi-maps}): three locally
+retrained maps (AlphaEarth, S2 median and S2 stack, trained on GHSL points
+from Hanoi) and two zero-shot maps (AlphaEarth and S2 median, from the Milan
+CLMS-trained models applied unchanged). The Hanoi stack combines three
+dates (30 bands).
+
+\begin{figure}[htbp]
+  \centering
+  \figfrom{final report Fig.~15 --- the five Hanoi maps and GHSL, and their
+  difference from GHSL}
+  \caption{Hanoi: the five predicted maps and GHSL (top), and their
+  difference maps, predicted map $-$ GHSL (bottom). Red: map above GHSL.}
+  \label{fig:hanoi-maps}
+\end{figure}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Hanoi and HCMC: difference between each predicted map and GHSL
+  over the whole raster (pp; predicted $-$ GHSL).}
+  \label{tab:viet-diff}
+  \begin{tabular}{llccc}
+    \toprule
+    City & Predicted map & Mean diff. & Mean abs. diff. & SD \\
+    \midrule
+    \multirow{5}{*}{Hanoi}
+      & AlphaEarth, local retrain & +7.64 & 11.23 & 15.37 \\
+      & AlphaEarth, zero-shot     & +33.65 & 34.08 & 18.06 \\
+      & S2 median, local retrain  & +10.31 & 14.52 & 17.95 \\
+      & S2 median, zero-shot      & +36.66 & 37.65 & 25.89 \\
+      & S2 stack, local retrain   & +10.37 & 14.47 & 17.24 \\
+    \midrule
+    \multirow{5}{*}{HCMC}
+      & AlphaEarth, local retrain & +7.64 & 13.66 & 17.54 \\
+      & AlphaEarth, zero-shot     & +45.00 & 45.36 & 20.55 \\
+      & S2 median, local retrain  & +9.18 & 16.36 & 20.08 \\
+      & S2 median, zero-shot      & +29.39 & 31.13 & 26.46 \\
+      & S2 stack, local retrain   & +9.17 & 16.22 & 19.88 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Agreement with GHSL over the raster.} Both zero-shot maps lie far
+above GHSL, with mean differences of +33.65\pp{} for AlphaEarth and
++36.66\pp{} for the S2 median (\cref{tab:viet-diff}). Local retraining
+reduces this to +7.64\pp{} for AlphaEarth, +10.31\pp{} for the S2 median and
++10.37\pp{} for the S2 stack. Part of the zero-shot excess is expected, since
+the Milan models were trained on CLMS, which includes roads and pavements
+that GHSL omits; but its size, three to four times that of the locally
+retrained maps, points to a level shift between the cities.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \setlength{\tabcolsep}{4.5pt}
+  \caption{Hanoi: independent validation against the 450 EarthLabel plots.
+  Units, sign and row order as in \cref{tab:milan-val}.}
+  \label{tab:hanoi-val}
+  \begin{tabular}{lccccccccc}
+    \toprule
+    & \multicolumn{4}{c}{A $\cdot$ continuous error}
+    & \multicolumn{2}{c}{B $\cdot$ binary at 50\%}
+    & \multicolumn{3}{c}{C $\cdot$ ordinal, 10 levels} \\
+    \cmidrule(lr){2-5}\cmidrule(lr){6-7}\cmidrule(lr){8-10}
+    Predicted map & RMSE & MAE & Bias & \Rsq & OA & $\kappa$
+      & OA exact & OA $\pm$1 & QWK \\
+    \midrule
+    AlphaEarth, local retrain & \textbf{28.4} & \textbf{21.8} & \textbf{+6.0} & \textbf{0.617} & 0.873 & 0.742 & 0.296 & 0.449 & \textbf{0.731} \\
+    S2 stack, local retrain   & 29.3 & 23.2 & +6.8 & 0.591 & \textbf{0.880} & \textbf{0.755} & 0.202 & 0.444 & 0.695 \\
+    S2 median, local retrain  & 30.0 & 23.5 & +7.3 & 0.571 & 0.856 & 0.706 & 0.216 & 0.438 & 0.690 \\
+    AlphaEarth, zero-shot     & 34.8 & 28.5 & $-$16.2 & 0.425 & 0.827 & 0.660 & 0.033 & 0.338 & 0.598 \\
+    S2 median, zero-shot      & 35.0 & 26.0 & $-$16.6 & 0.416 & 0.789 & 0.587 & 0.198 & 0.447 & 0.617 \\
+    \textcolor{gray}{GHSL (benchmark)} & \textcolor{gray}{40.0} & \textcolor{gray}{26.7} & \textcolor{gray}{+18.0} & \textcolor{gray}{0.239} & \textcolor{gray}{0.736} & \textcolor{gray}{0.444} & \textcolor{gray}{\textbf{0.376}} & \textcolor{gray}{\textbf{0.527}} & \textcolor{gray}{0.513} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Independent validation.} Local retraining outperforms zero-shot
+transfer on all three techniques (\cref{tab:hanoi-val}): each of the three
+locally retrained maps scores higher than both zero-shot maps on \Rsq,
+$\kappa$ and QWK. AlphaEarth with local retraining is the best Hanoi map on
+the continuous and ordinal techniques, with RMSE 28.4\pp, \Rsq{} 0.617 and
+QWK 0.731. The locally retrained stack has the highest binary agreement
+($\kappa$ 0.755, OA 0.880), only 0.013 in $\kappa$ above AlphaEarth. Among
+the local models, AlphaEarth exceeds the S2 median by 0.046 in \Rsq{} and
+0.041 in QWK.
+
+For AlphaEarth, moving from zero-shot transfer to local retraining raises
+\Rsq{} from 0.425 to 0.617 and QWK from 0.598 to 0.731, and lowers the RMSE
+by 6.4\pp. Both zero-shot maps over-predict strongly, with biases of
+$-$16.2 and $-$16.6\pp. The AlphaEarth zero-shot map in particular places
+almost no plot on its correct ordinal level (exact OA 0.033), even though
+its binary accuracy remains high (0.827): it separates impervious from
+pervious plots at the 50\% threshold but at a systematically inflated
+level. The locally retrained maps instead under-predict, by +6.0 to
++7.3\pp, inheriting part of the roof-only bias of GHSL, which itself
+under-predicts by +18.0\pp{} and scores lowest of the six maps on \Rsq{}
+(0.239) and $\kappa$ (0.444).
+
+% ---------------------------------------------------------------------------
+\subsection{Ho Chi Minh City: local retraining versus zero-shot transfer}
+\label{sec:res-hcmc}
+
+The same five maps are produced for HCMC (\cref{fig:hcmc-maps}). Here only
+one Sentinel-2 date passed the screening for the stack, which is therefore a
+single clear image of 10 bands.
+
+\begin{figure}[htbp]
+  \centering
+  \figfrom{final report Fig.~16 --- the five HCMC maps and GHSL, and their
+  difference from GHSL}
+  \caption{Ho Chi Minh City: the five predicted maps and GHSL (top), and
+  their difference maps, predicted map $-$ GHSL (bottom). Red: map above
+  GHSL.}
+  \label{fig:hcmc-maps}
+\end{figure}
+
+\paragraph{Agreement with GHSL over the raster.} The raster comparison
+repeats the Hanoi pattern (\cref{tab:viet-diff}). The zero-shot maps lie far
+above GHSL, by +45.00\pp{} for AlphaEarth, the largest departure in the
+study, and +29.39\pp{} for the S2 median. Local retraining reduces the mean
+difference to +7.64\pp{} for AlphaEarth, +9.18\pp{} for the S2 median and
++9.17\pp{} for the S2 stack.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \setlength{\tabcolsep}{4.5pt}
+  \caption{Ho Chi Minh City: independent validation against the 450
+  EarthLabel plots. Units, sign and row order as in \cref{tab:milan-val}.}
+  \label{tab:hcmc-val}
+  \begin{tabular}{lccccccccc}
+    \toprule
+    & \multicolumn{4}{c}{A $\cdot$ continuous error}
+    & \multicolumn{2}{c}{B $\cdot$ binary at 50\%}
+    & \multicolumn{3}{c}{C $\cdot$ ordinal, 10 levels} \\
+    \cmidrule(lr){2-5}\cmidrule(lr){6-7}\cmidrule(lr){8-10}
+    Predicted map & RMSE & MAE & Bias & \Rsq & OA & $\kappa$
+      & OA exact & OA $\pm$1 & QWK \\
+    \midrule
+    S2 median, zero-shot      & \textbf{27.4} & \textbf{18.0} & $-$7.6 & \textbf{0.643} & \textbf{0.847} & \textbf{0.691} & \textbf{0.378} & \textbf{0.633} & \textbf{0.782} \\
+    AlphaEarth, local retrain & 28.8 & 22.3 & +11.1 & 0.605 & 0.833 & 0.669 & 0.264 & 0.422 & 0.731 \\
+    S2 stack, local retrain   & 29.9 & 23.7 & +10.8 & 0.574 & 0.813 & 0.630 & 0.200 & 0.422 & 0.701 \\
+    S2 median, local retrain  & 30.8 & 24.4 & +11.4 & 0.546 & 0.793 & 0.591 & 0.224 & 0.438 & 0.687 \\
+    \textcolor{gray}{GHSL (benchmark)} & \textcolor{gray}{37.6} & \textcolor{gray}{26.0} & \textcolor{gray}{+19.0} & \textcolor{gray}{0.327} & \textcolor{gray}{0.729} & \textcolor{gray}{0.466} & \textcolor{gray}{0.324} & \textcolor{gray}{0.491} & \textcolor{gray}{0.593} \\
+    AlphaEarth, zero-shot     & 40.3 & 33.0 & $-$21.7 & 0.224 & 0.684 & 0.351 & 0.044 & 0.364 & 0.435 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Independent validation.} Among the locally retrained maps,
+AlphaEarth is again the best, on all three techniques (\cref{tab:hcmc-val}):
+\Rsq{} 0.605, $\kappa$ 0.669 and QWK 0.731, ahead of the single-date stack
+(\Rsq{} 0.574) and the S2 median (0.546). Its margin over the S2 median,
+0.059 in \Rsq{} and 0.044 in QWK, is similar to that in Hanoi. The locally
+retrained maps under-predict by +10.8 to +11.4\pp, more than in Hanoi.
+
+The two zero-shot maps diverge sharply. AlphaEarth zero-shot is the weakest
+map in HCMC, below GHSL itself, with \Rsq{} 0.224, $\kappa$ 0.351, QWK 0.435
+and a bias of $-$21.7\pp. The S2 median zero-shot map, by contrast, is the
+best map overall, with RMSE 27.4\pp, \Rsq{} 0.643, $\kappa$ 0.691 and QWK
+0.782, and it leads on every metric except bias.
+
+\paragraph{The HCMC zero-shot result reflects level matching, not
+transfer.} The S2 median zero-shot map carries the imperviousness level it
+learned in Milan into both Vietnamese cities (\cref{fig:level}). At the
+validation plots its mean predicted imperviousness is 61.0\% in Hanoi and
+57.9\% in HCMC, while the mean photo-interpreted value is 44.4\% in Hanoi
+and 50.2\% in HCMC. The carried-over level therefore lands 16.61\pp{} above
+the reference in Hanoi but only 7.64\pp{} above it in HCMC. The same model
+ranks first in HCMC and last of the five Hanoi maps on \Rsq. If its HCMC
+score reflected transferable mapping skill, it would also lead in Hanoi; it
+reflects instead a city-level offset that happens to match the HCMC
+reference.
+
+\begin{figure}[htbp]
+  \centering
+  \figfrom{final report Fig.~17 --- mean predicted IMD of the five
+  Vietnamese maps against the mean photo-interpreted value}
+  \caption{Mean predicted imperviousness of the five Vietnamese maps against
+  the mean photo-interpreted value (vertical line), in Hanoi (top) and HCMC
+  (bottom). Filled markers: mean at the 450 validation plots; open markers:
+  mean over the whole raster. The two populations differ because the plots
+  are stratified across imperviousness classes.}
+  \label{fig:level}
+\end{figure}
+
+% ---------------------------------------------------------------------------
+\subsection{Cross-city comparison}
+\label{sec:res-cross}
+
+\Cref{tab:cross} brings together the main maps of the three cities. Four
+patterns hold across them.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Cross-city summary of the independent validation (450 EarthLabel
+  plots per city). Milan rows are trained on CLMS unless marked GHSL; Hanoi
+  and HCMC local models are trained on GHSL. RMSE and bias in pp; bias is
+  observed $-$ predicted. Bold marks the best map in each city.}
+  \label{tab:cross}
+  \begin{tabular}{llccccc}
+    \toprule
+    City & Map & RMSE & Bias & \Rsq & $\kappa$ & QWK \\
+    \midrule
+    \multirow{5}{*}{Milan}
+      & S2 stack                  & \textbf{25.9} & $-$4.3 & \textbf{0.630} & \textbf{0.667} & \textbf{0.780} \\
+      & AlphaEarth                & 27.2 & $-$4.1 & 0.590 & 0.643 & 0.742 \\
+      & AlphaEarth $\cdot$ GHSL   & 29.0 & +7.7 & 0.533 & 0.542 & 0.676 \\
+      & S2 median $\cdot$ GHSL    & 29.5 & +7.8 & 0.516 & 0.508 & 0.661 \\
+      & GHSL (benchmark)          & 37.2 & +17.6 & 0.234 & 0.293 & 0.493 \\
+    \midrule
+    \multirow{5}{*}{Hanoi}
+      & AlphaEarth, local         & \textbf{28.4} & +6.0 & \textbf{0.617} & 0.742 & \textbf{0.731} \\
+      & S2 median, local          & 30.0 & +7.3 & 0.571 & 0.706 & 0.690 \\
+      & AlphaEarth, zero-shot     & 34.8 & $-$16.2 & 0.425 & 0.660 & 0.598 \\
+      & S2 median, zero-shot      & 35.0 & $-$16.6 & 0.416 & 0.587 & 0.617 \\
+      & GHSL (benchmark)          & 40.0 & +18.0 & 0.239 & 0.444 & 0.513 \\
+    \midrule
+    \multirow{5}{*}{HCMC}
+      & AlphaEarth, local         & 28.8 & +11.1 & 0.605 & 0.669 & 0.731 \\
+      & S2 median, local          & 30.8 & +11.4 & 0.546 & 0.591 & 0.687 \\
+      & AlphaEarth, zero-shot     & 40.3 & $-$21.7 & 0.224 & 0.351 & 0.435 \\
+      & S2 median, zero-shot      & \textbf{27.4} & $-$7.6 & \textbf{0.643} & \textbf{0.691} & \textbf{0.782} \\
+      & GHSL (benchmark)          & 37.6 & +19.0 & 0.327 & 0.466 & 0.593 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{AlphaEarth gives the most consistent locally trained maps.}
+Trained locally, AlphaEarth reaches \Rsq{} 0.590 in Milan (CLMS), 0.617 in
+Hanoi and 0.605 in HCMC, a range of 0.027, and QWK 0.742, 0.731 and 0.731. It
+is the best locally trained map in both Vietnamese cities and the best
+GHSL-trained map in Milan. Sentinel-2 depends more on the available
+imagery: with 30 clear Milan dates, the stack and percentile composites
+outperform AlphaEarth, but with only three or four usable dates in Vietnam
+(one for the HCMC stack), every Sentinel-2 map trails AlphaEarth, by 0.026
+to 0.059 in \Rsq. The advantage of the embeddings is largest where
+Sentinel-2 compositing is most constrained by cloud cover.
+
+\paragraph{Local retraining is needed; zero-shot transfer is unreliable.}
+AlphaEarth zero-shot transfer fails in both Vietnamese cities (\Rsq{} 0.425
+and 0.224), with the largest over-prediction of any map (bias $-$16.2 and
+$-$21.7\pp). Sentinel-2 median zero-shot transfer fails in Hanoi (\Rsq{}
+0.416) and succeeds in HCMC (0.643) only through level matching
+(\cref{sec:res-hcmc}). Zero-shot transfer from Milan thus gives no map that
+is reliably usable across both cities, whereas local retraining gives
+\Rsq{} 0.55--0.62 in both.
+
+\paragraph{The roof-only target leaves a consistent under-prediction.} The
+GHSL product under-predicts the photo-interpreted imperviousness by a
+similar amount in all three cities, +17.6, +18.0 and +19.0\pp, and is among
+the weakest maps everywhere (\Rsq{} 0.234--0.327). Every model trained on
+GHSL, in Milan or locally in Vietnam, improves substantially on GHSL itself
+(\Rsq{} 0.516--0.617) and roughly halves its bias, to +6.0 to +11.4\pp, but
+none removes it. The Milan comparison (\cref{sec:res-target}) shows that
+this residual under-prediction comes from the target, not from the
+predictors: training on CLMS instead turns it into a small over-prediction.
+
+\paragraph{Overall accuracy is similar across cities.} The best map of each
+city reaches an RMSE of 25.9--28.4\pp{} and \Rsq{} of 0.617--0.643, or
+0.605 in HCMC when the level-matched zero-shot map is set aside. With
+comparable predictors and a GHSL target, the Vietnamese local models (\Rsq{}
+0.617 and 0.605 for AlphaEarth) score slightly higher than their Milan
+GHSL-trained counterpart (0.533), although differences in the distribution
+of plot values between cities limit direct comparison of absolute scores.
+
+\end{document}
