@@ -1,0 +1,307 @@
+% Discussion section (5.1-5.7) of the journal paper; \input by main.tex.
+%
+% Built on the Results (results.tex) and on the conclusions and limitations
+% of the final report (Final_correct_ results/IMD_Mapping_report 1.pdf,
+% 2026-10-23). Interpretations beyond the report are worded as hypotheses.
+% \litneeded{...} marks where published work still has to be found and cited;
+% no reference has been added that is not already in refs.bib.
+
+\section{Discussion}
+\label{sec:discussion}
+
+% ---------------------------------------------------------------------------
+\subsection{Do AlphaEarth embeddings replace Sentinel-2?}
+\label{sec:disc-replace}
+
+The answer depends on how much clear Sentinel-2 imagery a city has. In
+Milan, where 30 near cloud-free dates passed the screening, the Sentinel-2
+stack and percentile composites outperformed AlphaEarth by 0.03--0.04 in
+\Rsq{} and QWK, and both agreed with the photo-interpreted plots better than
+CLMS itself (\cref{sec:res-milan}). In Hanoi and HCMC, where only three or
+four dates passed a looser screening and the HCMC stack reduces to a single
+image, AlphaEarth gave the best locally retrained map in both cities, ahead
+of every Sentinel-2 composite (\cref{sec:res-hanoi,sec:res-hcmc}). Where
+Sentinel-2 can be composed richly, it remains the stronger predictor; where
+cloud cover limits it, the embeddings take the lead.
+
+A likely reason is the content of the embeddings. Each AlphaEarth vector
+summarises a full year of Sentinel-2, Sentinel-1, Landsat and other
+observations \cite{brown2025alphaearth}, so it is not restricted to the few
+clear optical dates that a local composite can use. The radar contribution in
+particular is insensitive to cloud, which would explain why the embeddings
+hold their accuracy in the monsoon climates of Hanoi and HCMC while the
+Sentinel-2 composites lose theirs. This explanation is consistent with the
+results but is not tested directly here: the study does not separate the
+contribution of the individual sensors inside the embedding.
+
+AlphaEarth was also the most stable predictor across settings. Its \Rsq{} for
+local models ranged only from 0.590 to 0.617 across the three cities
+(\cref{sec:res-cross}), it lost least when the training target was degraded
+from CLMS to GHSL (+1.83\pp{} RMSE, against +3.31\pp{} for the stack;
+\cref{tab:target-change}), and it needs no city-specific choice of dates,
+cloud thresholds or compositing method. The same 64 bands are available for
+every pixel and year, which makes a workflow built on them directly
+portable. What the embeddings give up is the extra accuracy that a
+well-composed, multi-date Sentinel-2 input achieves where the imagery allows
+it.
+
+The comparison between cross-validation and independent validation adds a
+caution. In Milan AlphaEarth had the highest cross-validation error against
+CLMS (\cref{tab:cv}) but ranked above the S2 median against the EarthLabel
+plots (\cref{tab:milan-val}). Reproducing a reference product closely is not
+the same as mapping imperviousness accurately, and predictors should be
+compared against independent ground truth rather than against the product
+used for training.
+
+AlphaEarth is therefore not a general replacement for Sentinel-2 but a
+strong default: it is the better choice where clear optical imagery is
+scarce and the simpler one everywhere, while multi-date Sentinel-2
+composites remain worth building where many clear dates exist.
+\litneeded{published comparisons of AlphaEarth or other geospatial
+foundation-model embeddings with Sentinel-2 composites, for imperviousness
+or related continuous urban variables}
+
+% ---------------------------------------------------------------------------
+\subsection{Why local retraining matters}
+\label{sec:disc-local}
+
+Local retraining was the single largest improvement in the Vietnamese
+cities. For AlphaEarth it raised \Rsq{} from 0.425 to 0.617 in Hanoi and from
+0.224 to 0.605 in HCMC, and it reduced the bias from strong over-prediction
+($-$16.2 and $-$21.7\pp) to moderate under-prediction (+6.0 and +11.1\pp;
+\cref{tab:hanoi-val,tab:hcmc-val}). This gain was obtained with GHSL, a
+target that in Milan performed clearly worse than CLMS
+(\cref{sec:res-target}). A locally fitted model trained on an imperfect
+global label thus outperformed a model trained on a better label in another
+city.
+
+The relationship between the predictors and imperviousness is evidently not
+the same in Milan and in the Vietnamese cities. Several differences can
+contribute: roofing materials and their spectral signatures, the density
+and mix of buildings, roads and vegetation in the urban fabric, the
+phenology of tropical rather than temperate vegetation, and the soil and
+moisture conditions of pervious surfaces. A random forest learns the
+mapping from predictors to imperviousness in the feature space it was
+trained on and cannot adapt it to conditions it has not seen. Local training
+points, even if labelled with GHSL, place the model in the right part of
+that space.
+
+Local retraining also requires little. The training points come from a
+global product, GHSL, and the predictors from a global archive, so the
+locally retrained workflow can be repeated for any city without local
+reference data. Its remaining error is mostly the systematic
+under-prediction inherited from the roof-only target (\cref{sec:disc-label}),
+which is more tractable than the large and unpredictable offsets of
+zero-shot transfer.
+\litneeded{studies on the spatial transferability of random forest or other
+machine-learning models for impervious surface or land-cover mapping across
+cities or climate zones}
+
+% ---------------------------------------------------------------------------
+\subsection{Training-label quality versus predictor quality}
+\label{sec:disc-label}
+
+The Milan experiment isolates the training target and shows that it
+matters more than the predictor. Replacing CLMS with GHSL lowered \Rsq{} by
+0.057--0.101 for the same predictor, more than the largest difference
+between any two predictors trained on the same target (0.054;
+\cref{sec:res-target}). It also turned a small over-prediction into an
+under-prediction of 7.7--8.3\pp. With GHSL as the target, the four
+predictors performed almost identically (\Rsq{} 0.516--0.533): the target,
+not the predictor, set the ceiling.
+
+The problem with GHSL as a training target is a mismatch of definition
+rather than random error. GHSL measures roofed built-up surface and excludes
+roads and open pavements by design \cite{pesaresi2023ghsl}, whereas CLMS
+\cite{clms2018imd} and the EarthLabel photo-interpretation both count every
+sealed surface. A model trained on GHSL therefore learns that roads, car
+parks and squares are pervious. This explains the spatial pattern of
+\cref{fig:ghsl-clms}, with GHSL-trained maps below CLMS in the dense urban
+core where such surfaces are common, and the consistent under-prediction of
+GHSL itself by 17.6--19.0\pp{} in all three cities (\cref{tab:cross}).
+
+GHSL-trained models nevertheless improved substantially on GHSL, raising
+\Rsq{} from 0.234 to 0.516--0.533 in Milan and roughly halving the bias. A
+plausible explanation is that a pixel-level regression cannot reproduce the
+sharp building outlines of GHSL from 10\,m predictors. Roads and pavements
+next to buildings share much of their spectral and contextual signature,
+so the model assigns them part of the imperviousness of the buildings
+around them. This partial recovery is a side effect, not a correction, and
+it leaves a residual under-prediction of 6--11\pp{} in every GHSL-trained
+map.
+
+The practical consequence is that effort spent on the training target is
+likely to return more than effort spent on predictors. In Milan, the
+difference between the best and worst predictor was smaller than the cost
+of the weaker label; in Vietnam, where only the weaker label exists, a
+sealed-surface target comparable to CLMS would be expected to remove much
+of the remaining bias. The residual bias of the GHSL-trained maps is also
+systematic, and a small set of photo-interpreted plots, such as the
+EarthLabel plots used here, could be used to estimate and correct it. That
+correction was not tested in this study.
+\litneeded{literature on label noise and label definition mismatch in
+training data for remote-sensing regression; prior assessments of GHSL
+against sealed-surface references}
+
+% ---------------------------------------------------------------------------
+\subsection{Why zero-shot transfer succeeds or fails}
+\label{sec:disc-zeroshot}
+
+Zero-shot transfer from Milan failed for AlphaEarth in both Vietnamese
+cities and for the Sentinel-2 median in Hanoi. In every case the failure
+was dominated by a level shift: the zero-shot maps lay 29--45\pp{} above
+GHSL over the raster (\cref{tab:viet-diff}) and over-predicted the
+photo-interpreted plots by 16--22\pp{}, except the S2 median in HCMC.
+
+The shift has several possible sources. The first is a shift in the
+predictors: the distribution of embedding values or reflectances in Hanoi
+and HCMC differs from that in Milan, and a random forest, whose predictions
+are averages of training values, maps unfamiliar inputs onto the Milan
+cases they most resemble. The second is a shift in the relationship
+itself, as discussed in \cref{sec:disc-local}: the same spectral or
+embedding signature need not mean the same imperviousness in a temperate
+European city and in a tropical Asian one. The third applies to Sentinel-2
+only: the median model was trained on a composite of 30 Milan dates spread
+over the year and applied to composites of three or four Vietnamese dates
+from different seasons, so even identical surfaces would yield different
+median values. AlphaEarth is free of this compositing mismatch, yet its
+zero-shot maps were the worst in both cities. The shift therefore lies
+mainly in the predictor--imperviousness relationship and not only in how
+the inputs are composed.
+
+The zero-shot maps nonetheless retained some information. The AlphaEarth
+zero-shot map in Hanoi reached an overall accuracy of 0.827 at the 50\%
+threshold, while placing only 3.3\% of the plots on their exact ordinal
+level (\cref{tab:hanoi-val}). It separated mostly impervious from mostly
+pervious plots, but at a systematically inflated level. This suggests that
+a zero-shot model could be made useful by recalibrating its level with a
+small number of local reference points, an option not evaluated here.
+
+Transfer succeeded, in the sense of a high score, only for the Sentinel-2
+median in HCMC. As the next section argues, that success does not reflect
+a transferable model.
+\litneeded{work on domain shift and domain adaptation in Earth-observation
+regression, and on the transferability of foundation-model embeddings
+across regions}
+
+% ---------------------------------------------------------------------------
+\subsection{The HCMC anomaly / apparent Sentinel-2 zero-shot advantage}
+\label{sec:disc-hcmc}
+
+In HCMC the Sentinel-2 median zero-shot map was the best of all maps on
+every metric, with \Rsq{} 0.643 and QWK 0.782 (\cref{tab:hcmc-val}). Taken
+alone, this result would suggest that Sentinel-2 transfers across
+continents better than AlphaEarth and better than local retraining. The
+Hanoi results rule this out. The same model, applied in the same way, was
+the weakest of the five Hanoi maps on \Rsq{} (0.416).
+
+The explanation is the level the model carries over from Milan
+(\cref{fig:level}). At the validation plots it predicts a mean of 61.0\% in
+Hanoi and 57.9\% in HCMC, while the photo-interpreted means are 44.4\% and
+50.2\%. Its over-prediction is therefore 16.61\pp{} in Hanoi but only
+7.64\pp{} in HCMC. The continuous and agreement metrics used here, \Rsq{}
+computed against the 1:1 line, $\kappa$ and QWK, all penalise a level
+offset, so a map whose offset happens to be small scores well. The locally
+retrained HCMC maps, in turn, under-predicted by 10.8--11.4\pp, more than
+in Hanoi, which narrows their advantage further. The HCMC ranking reflects a
+coincidence of levels in one city, not mapping skill.
+
+Two lessons follow for the evaluation of transfer. First, a transfer
+experiment validated in a single target city can be misleading, because the
+agreement between the source level and the target level is itself a matter
+of chance; testing in more than one target city, as here, exposes it.
+Second, the bias should be reported alongside agreement metrics, and
+comparisons of the mean predicted level with the reference
+(\cref{fig:level}) should accompany the error statistics, so that a good
+score obtained through a matching level can be told apart from a good
+map.
+
+% ---------------------------------------------------------------------------
+\subsection{Implications for operational IMD mapping where local reference
+data are scarce}
+\label{sec:disc-operational}
+
+Hanoi and HCMC have no imperviousness product, and this situation is common
+outside Europe and North America. The results point to a practical
+workflow for such cities.
+
+\begin{enumerate}
+  \item \emph{Train locally rather than transfer.} A model trained in a
+  well-mapped city should not be applied unchanged to a city in a different
+  region and climate. Zero-shot transfer from Milan produced
+  over-predictions of 16--22\pp{} and was unreliable even where it scored
+  well (\cref{sec:disc-zeroshot,sec:disc-hcmc}).
+  \item \emph{Use a global product as the training target, and expect its
+  bias.} GHSL makes local retraining possible anywhere, and locally trained
+  models reached \Rsq{} 0.55--0.62 in both Vietnamese cities. Because GHSL
+  omits roads and pavements, the maps will under-predict sealed-surface
+  imperviousness, by 6--11\pp{} in this study.
+  \item \emph{Prefer AlphaEarth where clear imagery is scarce.} In cloudy
+  tropical cities, AlphaEarth gave the best local maps without any
+  selection of dates or compositing. Where many clear Sentinel-2 dates
+  exist, a multi-date Sentinel-2 composite can add accuracy.
+  \item \emph{Collect a small independent reference set.} The 450
+  photo-interpreted EarthLabel plots per city were enough to rank the maps,
+  expose the level matching in HCMC and quantify the bias of every map.
+  Such a set costs far less than a full reference product and could also
+  serve to correct the systematic bias of GHSL-trained maps
+  (\cref{sec:disc-label}).
+\end{enumerate}
+
+The whole workflow, from sampling to tuning, prediction and export, runs in
+Google Earth Engine \cite{gorelick2017gee}, so it can be repeated for other
+cities without local computing infrastructure. The code and the predicted
+maps are openly available \cite{brovelli2026zenodo}. For the purposes that
+motivated this study, Local Climate Zone mapping and urban heat island
+analysis, the locally retrained AlphaEarth maps are the most suitable
+product available for Hanoi and HCMC, provided their under-prediction of
+roads and pavements is taken into account.
+\litneeded{the needs for imperviousness inputs in LCZ mapping and urban heat
+island studies, and the availability of imperviousness products outside
+Europe}
+
+% ---------------------------------------------------------------------------
+\subsection{Limitations}
+\label{sec:limitations}
+
+\paragraph{Label mismatch.} CLMS measures sealed surface and GHSL roofed
+surface (\cref{sec:disc-label}). The Vietnamese models were trained on GHSL
+only, so they learn a target that leaves out roads and pavements, and their
+accuracy is bounded by that choice rather than by the predictors.
+
+\paragraph{Temporal scope.} The study is restricted to 2018 and does not
+address change over time. Whether the conclusions hold for other years,
+and whether the embeddings or composites support consistent multi-year
+monitoring, remains untested.
+
+\paragraph{Geographic extent.} Three cities, one European and two
+Vietnamese, are not a sufficient basis for general claims about
+transferability. The zero-shot test runs in one direction only, from Milan
+to Hanoi and HCMC, in a single year. The Sentinel-2 median zero-shot model
+is also trained on a composite of 30 Milan dates but applied to composites
+of only three or four dates in Vietnam.
+
+\paragraph{Valid mask.} Training points and validation plots are drawn only
+where every predictor has a value. Apart from water, identified with ESA
+WorldCover \cite{zanaga2022worldcover}, the mask removes pixels that are
+cloud or shadow on a stack date (up to 1.8\% of the study area). The maps
+are not tested on those pixels, where the stack maps have no value.
+
+\paragraph{Model and reference design.} A single model family, the random
+forest \cite{breiman2001rf}, is used throughout; other regressors, or
+models that use the spatial context of a pixel, could rank the predictors
+differently. The random forest also averages training values in its
+predictions, which pulls them away from the extremes of 0 and 100\%; this
+is a likely reason why almost every trained map has a lower exact ordinal
+agreement than the benchmark product of its city. The EarthLabel plot
+value is quantised to ninths (steps of 11.1\pp), which sets a floor on the
+continuous error that any map can reach. The ground truth is the finalised
+dual-labeller interpretation, except for 22 replacement plots (6 in Milan,
+16 in Hanoi) labelled jointly.
+
+\paragraph{Statistical uncertainty.} With 450 plots per city, some of the
+differences between maps are small: 0.008 in \Rsq{} between the stack and the
+percentile composite in Milan, 0.013 in $\kappa$ between AlphaEarth and the
+stack in Hanoi. No confidence intervals are reported. A bootstrap over the
+plots would show which of these differences are robust, and the narrowest
+ones should be read as ties.

@@ -1,39 +1,13 @@
-% Results section (4.1-4.6) of the journal paper, following paper/OUTLINE.md.
+% Results section (4.1-4.6) of the journal paper; \input by main.tex.
 %
 % Every number comes from the final report and validation tables on OneDrive
 % (Final_correct_ results/IMD_Mapping_report 1.pdf and validation_combined.docx,
 % 2026-10-23), not from the older report/IMD_Mapping_report.tex.
 %
-% Figures are placeholders (\figfrom) naming the figure of the final report to
-% copy in; replace each with \includegraphics once the final figure files are
-% in paper/figs/. Cross-references to Sections 2-3 and 5 (sec:data,
-% sec:method, sec:validation, sec:discussion, sec:limitations) resolve once
-% this file is \input into the full paper.
-%
-% Standalone build: compiles with pdfLaTeX (Overleaf default).
-\documentclass[11pt,a4paper]{article}
+% Figures are placeholders (\figfrom, defined in main.tex) naming the figure of
+% the final report to copy in; replace each with \includegraphics once the
+% final figure files are in paper/figs/.
 
-\usepackage[margin=2.2cm]{geometry}
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage{amsmath}
-\usepackage{booktabs}
-\usepackage{multirow}
-\usepackage{graphicx}
-\usepackage{xcolor}
-\usepackage[font=small,labelfont=bf]{caption}
-\usepackage[colorlinks,linkcolor=blue!50!black,citecolor=blue!50!black]{hyperref}
-\usepackage[capitalise,nameinlink]{cleveref}
-
-\newcommand{\Rsq}{$R^2$}
-\newcommand{\pp}{\,pp}
-% Placeholder box for a figure still to be copied from the final report.
-\newcommand{\figfrom}[1]{\fbox{\parbox[c][3.2cm][c]{0.8\textwidth}{\centering
-  \small\itshape Placeholder: #1}}}
-
-\begin{document}
-
-\setcounter{section}{3}
 \section{Results}
 \label{sec:results}
 
@@ -664,5 +638,3 @@ comparable predictors and a GHSL target, the Vietnamese local models (\Rsq{}
 0.617 and 0.605 for AlphaEarth) score slightly higher than their Milan
 GHSL-trained counterpart (0.533), although differences in the distribution
 of plot values between cities limit direct comparison of absolute scores.
-
-\end{document}

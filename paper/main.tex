@@ -1,0 +1,56 @@
+% Journal paper: Urban Imperviousness Mapping with AlphaEarth Embeddings and
+% Sentinel-2. Structure follows paper/OUTLINE.md (Prof. Brovelli).
+%
+% Sections drafted so far: Results (results.tex) and Discussion
+% (discussion.tex). Sections 1-3 and 6 are still to be written; the labels
+% sec:data, sec:method and sec:validation they will define are already
+% referenced by the drafted sections.
+%
+% Compiles with pdfLaTeX (Overleaf default): upload main.tex, results.tex,
+% discussion.tex and refs.bib together.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2.2cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage[numbers,square,sort&compress]{natbib}
+\bibliographystyle{unsrtnat}
+\usepackage[colorlinks,linkcolor=blue!50!black,citecolor=blue!50!black,
+            urlcolor=blue!50!black]{hyperref}
+\usepackage[capitalise,nameinlink]{cleveref}
+
+\newcommand{\Rsq}{$R^2$}
+\newcommand{\pp}{\,pp}
+% Placeholder box for a figure still to be copied from the final report.
+\newcommand{\figfrom}[1]{\fbox{\parbox[c][3.2cm][c]{0.8\textwidth}{\centering
+  \small\itshape Placeholder: #1}}}
+% Marks a point where supporting literature still has to be found and cited.
+\newcommand{\litneeded}[1]{\textcolor{red}{[cite: #1]}}
+
+\title{Urban Imperviousness Mapping with AlphaEarth Embeddings and
+Sentinel-2: Local Performance, Cross-City Transfer and Training-Label
+Effects}
+\author{Maria Antonia Brovelli, Matej {\v{Z}}gela, Keerthana Kirubakaran and
+Xiao Tan\\[2pt]\small Politecnico di Milano}
+\date{}
+
+\begin{document}
+\maketitle
+
+% Sections 1-3 to be written.
+\setcounter{section}{3}
+
+\input{results}
+\input{discussion}
+
+% Section 6, Conclusions, to be written.
+
+\bibliography{refs}
+
+\end{document}
