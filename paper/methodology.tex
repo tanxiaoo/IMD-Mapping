@@ -1,0 +1,454 @@
+% Methodology section (3.1-3.9) of the journal paper; \input by main.tex.
+%
+% Content from the final report (Final_correct_ results/IMD_Mapping_report 1.pdf,
+% 2026-10-23, Sections 2.4 and 3), checked against gee_models.py (Earth Engine
+% smileRandomForest in REGRESSION mode) and 05_Independent_Validation.ipynb
+% (levels = value rounded to the nearest ninth; binary threshold >= 50%).
+% Figures are \figfrom placeholders naming the final-report figure to copy in.
+
+\section{Methodology}
+\label{sec:method}
+
+\begin{figure}[htbp]
+  \centering
+  \figfrom{final report Fig.~6 --- workflow, five steps and one model}
+  \caption{Workflow. Training targets (CLMS, GHSL) and predictors (AlphaEarth
+  embeddings, Sentinel-2 composites) enter at sampling and extraction; a
+  random forest is tuned, trained and applied in Google Earth Engine; the
+  EarthLabel plots enter only at the final, independent validation.}
+  \label{fig:workflow}
+\end{figure}
+
+The workflow (\cref{fig:workflow}) uses one model, a random forest
+\cite{breiman2001rf}, and the same sequence of steps for every city,
+training target and predictor set: stratified sampling inside a common valid
+mask, extraction of the predictors at the sample points, tuning by spatially
+blocked cross-validation, prediction of the full 10\,m map, and validation
+against independent photo-interpreted plots. Tuning, training and
+prediction all run in Google Earth Engine \cite{gorelick2017gee} through its
+Python API, so each map is produced by exactly the model that was tuned. The
+code is openly available, and the predicted rasters and input data are
+deposited on Zenodo \cite{brovelli2026zenodo}.
+
+% ---------------------------------------------------------------------------
+\subsection{Training-sample generation}
+\label{sec:sampling}
+
+Sample points must cover the study area, represent the full range of
+imperviousness, and fall where every predictor has a value.
+
+\paragraph{Valid mask.} A pixel is valid when it is not water in ESA
+WorldCover \cite{zanaga2022worldcover} and every predictor of the city has a
+value there: the AlphaEarth embedding, the Sentinel-2 median (and, in Milan,
+percentile) composite, and the Sentinel-2 stack. The stack keeps each date
+as separate bands and is not gap-filled (\cref{sec:compositing}), so a pixel
+that is cloud or shadow on any stack date has no stack value. All points
+are drawn from valid pixels only, so every predictor has a value at every
+point and all models of a city are trained on the same points.
+\Cref{tab:mask} gives the share of each study area removed by the mask:
+water accounts for most of it, the stack for the remainder in Milan and
+Hanoi, and the median composite and AlphaEarth remove nothing.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Share of each study area removed by the valid mask (\%). A pixel
+  removed for more than one reason is counted once, in the first column that
+  applies, from left to right.}
+  \label{tab:mask}
+  \begin{tabular}{lccccc}
+    \toprule
+    City & Water & S2 stack & S2 median & AlphaEarth & Total \\
+    \midrule
+    Milan & 0.78 & 1.82 & 0.00 & 0.00 & 2.61 \\
+    Hanoi & 6.52 & 1.51 & 0.00 & 0.00 & 8.03 \\
+    HCMC  & 8.94 & 0.00 & 0.00 & 0.00 & 8.94 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Stratified sampling.} The training target is divided into seven
+imperviousness classes: C0 (0\%), C1 (1--20\%), C2 (21--40\%), C3 (41--60\%),
+C4 (61--80\%), C5 (81--99\%) and C6 (100\%). Within the valid mask, 500
+points are drawn at random from each class, giving a balanced set of
+3{,}500 points per city and target (\cref{fig:points}). Stratification
+prevents the sample from being dominated by the most frequent values,
+typically 0\% and 100\%, and guarantees that intermediate imperviousness is
+represented. In Milan, sampling is done separately for CLMS and for GHSL,
+since the two products differ pixel by pixel; in Hanoi and HCMC the points
+are drawn from GHSL, the only target available.
+
+\begin{figure}[htbp]
+  \centering
+  \figfrom{final report Fig.~7 --- Milan, the 3{,}500 sample points of each
+  training target, coloured by IMD class}
+  \caption{Milan: the 3{,}500 sample points of each training target (CLMS,
+  GHSL), coloured by imperviousness class.}
+  \label{fig:points}
+\end{figure}
+
+\paragraph{Predictor extraction.} At every point the predictor values are
+extracted once and stored: the 64 AlphaEarth bands, and the Sentinel-2
+composite bands (10 for the median, 50 for the percentile composite, and 10
+per date for the stack: 40 in Milan, 30 in Hanoi and 10 in HCMC). Each point
+thus carries its predictors and its imperviousness value from the training
+target, and every model of a city reads the same table.
+
+% ---------------------------------------------------------------------------
+\subsection{Spatial train/test split}
+\label{sec:split}
+
+No train/test split is made: all 3{,}500 points of a city and training
+target are used to tune and to train the model. A test set held out from the
+same points would measure agreement with the training product, CLMS or GHSL,
+and not with the actual imperviousness on the ground. Accuracy is instead
+measured against the independent EarthLabel plots (\cref{sec:validation}),
+which are photo-interpreted, never used in training and shared by every map
+of a city. The spatial structure of the data is handled within the training
+set, through spatially blocked cross-validation (\cref{sec:cv}), which keeps
+points from being tested by a model trained on their own neighbourhood.
+
+% ---------------------------------------------------------------------------
+\subsection{Spatial-block cross-validation and block-size sensitivity}
+\label{sec:cv}
+
+Neighbouring pixels are spatially autocorrelated, so a random
+cross-validation would test points against models trained on their
+immediate neighbours and overstate skill. The hyperparameters are therefore
+chosen by spatially blocked five-fold cross-validation
+(\cref{fig:fivefold}). The points are grouped into square spatial blocks,
+the blocks are shuffled with a fixed seed and assigned to five folds, and in
+each of five rounds the model is trained on four folds and tested on the
+fifth.
+
+\begin{figure}[htbp]
+  \centering
+  \figfrom{final report Fig.~8 --- spatially blocked five-fold
+  cross-validation at the three block sizes}
+  \caption{Spatially blocked five-fold cross-validation, on a synthetic point
+  field, at block sizes of 500, 1{,}000 and 2{,}000\,m. Each block belongs to
+  one fold; each round tests on one fold and trains on the other four.}
+  \label{fig:fivefold}
+\end{figure}
+
+\paragraph{Block-size sensitivity.} Because the appropriate spatial scale of
+the blocks is not known in advance, the cross-validation is repeated with
+blocks of 500, 1{,}000 and 2{,}000\,m. Block size is treated as part of the
+search: every hyperparameter setting is scored at every block size, and the
+spread of the scores across block sizes measures how sensitive model
+selection is to this choice (reported in \cref{tab:cv}).
+
+\paragraph{Hyperparameter search.} Forty settings are drawn at random
+(seed 42) from the grid in \cref{tab:grid}. Each setting is scored at each of
+the three block sizes, giving 120 combinations per model, and the
+combination with the lowest mean RMSE over the five rounds is selected.
+Training and scoring run on the Earth Engine servers with the same random
+forest implementation that produces the maps.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Random forest hyperparameter grid. Forty settings are drawn at
+  random from it; each is scored at three block sizes. $p$ is the number of
+  predictor bands.}
+  \label{tab:grid}
+  \begin{tabular}{ll}
+    \toprule
+    Hyperparameter & Values \\
+    \midrule
+    Number of trees & 100, 200, 300, 500 \\
+    Bands tried at each split & $\sqrt{p}$, $\log_2 p$, $0.3\,p$, $0.5\,p$ \\
+    Minimum points in a leaf & 1, 2, 4 \\
+    Maximum nodes per tree & unlimited, 250, 500, 1{,}000 \\
+    Block size (cross-validation) & 500, 1{,}000, 2{,}000\,m \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Out-of-fold error.} With the selected setting and block size,
+every point is predicted by the model trained without its fold. The RMSE of
+these out-of-fold predictions is the cross-validation error of the model.
+It is measured against the model's own training target and serves only for
+model selection; it is not an accuracy result.
+
+% ---------------------------------------------------------------------------
+\subsection{Sentinel-2 compositing strategies}
+\label{sec:compositing}
+
+Sentinel-2 Level-2A surface reflectance \cite{esa2018s2,drusch2012sentinel2}
+(\texttt{COPERNICUS/S2\_SR\_HARMONIZED}) is used with ten bands: B2, B3, B4,
+B5, B6, B7, B8, B8A, B11 and B12. Dates are screened per city by their cloud
+percentage over the area of interest and their valid percentage, the share
+of pixels left once cloud and no-data pixels are excluded
+(\cref{tab:dates}).
+
+\begin{itemize}
+  \item \emph{Milan, strict screening} (cloud below 20\%, valid above 90\%):
+  30 dates, from 23 March to 8 December 2018. No date in January, February or
+  May passed.
+  \item \emph{Hanoi and HCMC, loose screening} (cloud below 35\%, valid above
+  80\%): four dates for Hanoi and three for HCMC. The looser thresholds are
+  needed because few dates in the monsoon climate pass the Milan criteria.
+\end{itemize}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \setlength{\tabcolsep}{5pt}
+  \caption{Sentinel-2 dates used per city in 2018, with cloud and valid
+  percentage over the area of interest. Dates marked $\ast$ form the stack
+  composite of Hanoi and HCMC (the clearest dates of each city).
+  % TODO: mark the four Milan stack dates as in the final report's Table 1.
+  }
+  \label{tab:dates}
+  \begin{tabular}{lcc@{\hspace{14pt}}lcc@{\hspace{14pt}}lcc}
+    \toprule
+    \multicolumn{6}{c}{Milan} & \multicolumn{3}{c}{Hanoi and HCMC} \\
+    \cmidrule(lr){1-6}\cmidrule(lr){7-9}
+    Date & Cloud & Valid & Date & Cloud & Valid & Date & Cloud & Valid \\
+    \midrule
+    2018-03-23 & 0.0 & 100.0 & 2018-09-04 & 3.4 & 96.5 & \multicolumn{3}{l}{\emph{Hanoi}} \\
+    2018-04-17 & 2.3 & 97.7 & 2018-09-09 & 1.9 & 98.0 & 2018-01-19$^\ast$ & 0.0 & 100.0 \\
+    2018-04-22 & 0.0 & 100.0 & 2018-09-14 & 1.8 & 98.2 & 2018-03-10 & 16.8 & 83.2 \\
+    2018-06-01 & 3.2 & 96.6 & 2018-09-19 & 6.0 & 94.0 & 2018-10-31$^\ast$ & 0.0 & 100.0 \\
+    2018-06-16 & 1.5 & 98.4 & 2018-09-24 & 7.3 & 92.6 & 2018-12-20$^\ast$ & 1.4 & 98.3 \\
+    2018-06-21 & 7.8 & 92.1 & 2018-09-29 & 0.3 & 99.7 & \multicolumn{3}{l}{\emph{HCMC}} \\
+    2018-07-01 & 4.2 & 95.7 & 2018-10-04 & 0.3 & 99.7 & 2018-02-12$^\ast$ & 0.0 & 100.0 \\
+    2018-07-06 & 7.8 & 92.1 & 2018-10-09 & 5.2 & 93.7 & 2018-12-24 & 16.7 & 81.2 \\
+    2018-07-26 & 6.0 & 93.9 & 2018-10-14 & 0.8 & 99.2 & 2018-12-29 & 14.2 & 84.7 \\
+    2018-07-31 & 1.3 & 98.6 & 2018-10-19 & 2.1 & 97.6 & & & \\
+    2018-08-05 & 0.2 & 99.7 & 2018-10-24 & 0.0 & 100.0 & & & \\
+    2018-08-10 & 9.1 & 90.7 & 2018-11-18 & 1.6 & 98.2 & & & \\
+    2018-08-15 & 1.6 & 98.2 & 2018-11-28 & 1.2 & 98.3 & & & \\
+    2018-08-20 & 4.3 & 95.6 & 2018-12-03 & 3.0 & 96.5 & & & \\
+    2018-08-30 & 1.5 & 98.5 & 2018-12-08 & 0.0 & 100.0 & & & \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+From the screened dates three composites are built for Milan, and two, the
+median and the stack, for Hanoi and HCMC. For a given pixel and band, the 30
+Milan dates give 30 reflectance values (\cref{fig:onepixel}); the composites
+differ in how many of these values they keep.
+
+\begin{itemize}
+  \item \emph{Median} keeps one value per band, the middle of the screened
+  dates: 10 bands. It is simple and robust to residual cloud, but it hides
+  how the pixel changes through the year.
+  \item \emph{Percentile} keeps five values per band that describe the
+  spread of the dates: the 10th, 25th, 50th, 75th and 90th percentiles,
+  50 bands. A pixel that is stable through the year gets five close values; a
+  pixel that changes gets widely spread ones. It is built for Milan only,
+  where enough dates exist to estimate the percentiles.
+  \item \emph{Stack} keeps whole dates unchanged, with no combining: 10
+  bands per date. In Milan it uses four near cloud-free dates spread from
+  March to October (40 bands), so the model sees each pixel at four moments
+  of the year; in Hanoi it uses the three clearest dates (30 bands), and in
+  HCMC a single clear date (10 bands). Nothing is gap-filled: a pixel that is
+  cloud or shadow on any stack date has no stack value.
+\end{itemize}
+
+\begin{figure}[htbp]
+  \centering
+  \figfrom{final report Fig.~5 --- one pixel, one band: its 30 Milan values,
+  median and percentiles}
+  \caption{One pixel and one band: its 30 values from the 30 Milan dates
+  (dots). The median composite keeps the middle value (p50); the percentile
+  composite keeps p10, p25, p50, p75 and p90.}
+  \label{fig:onepixel}
+\end{figure}
+
+The AlphaEarth predictor needs no compositing: the annual 2018 embedding
+(\texttt{GOOGLE/SATELLITE\_EMBEDDING/V1/ANNUAL}) already summarises a full
+year of Sentinel-2, Sentinel-1, Landsat and other observations in 64 bands
+per 10\,m pixel \cite{brown2025alphaearth}, and is used directly.
+
+% ---------------------------------------------------------------------------
+\subsection{Random Forest modelling}
+\label{sec:rf}
+
+All models are random forest regressors \cite{breiman2001rf}, implemented
+with Earth Engine's \texttt{smileRandomForest} in regression mode. Random
+forests handle many correlated predictors, such as the 64 embedding axes or
+the 50 percentile bands, without feature selection, and are widely used for
+imperviousness and land-cover regression from satellite data.
+\litneeded{random forest applications to impervious surface or
+imperviousness density estimation}
+
+Each model is tuned as described in \cref{sec:cv}. The final model is then
+trained on all 3{,}500 points with the selected setting (bootstrap fraction
+1.0, fixed seed). Each model is stored as a record of its training points,
+predictor bands, settings and seed, from which Earth Engine rebuilds the
+identical forest; the zero-shot maps (\cref{sec:zeroshot}) are produced from
+these records.
+
+\paragraph{Raster prediction.} The selected forest is applied to every 10\,m
+pixel of the area of interest to produce a continuous imperviousness map,
+with water masked. Milan maps are produced in WGS~84 / UTM zone 32N
+(EPSG:32632) and the Vietnamese maps in WGS~84 / UTM zone 48N (EPSG:32648).
+In Milan there are eight maps: four predictor sets (S2 stack, S2 percentile,
+S2 median and AlphaEarth), each trained once on CLMS and once on GHSL
+(\cref{tab:maps}). Because the stack is not gap-filled, a stack map has no
+value where any of its dates is cloudy.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Predicted maps per city. ``Local'' models are trained on points
+  from the city itself; ``zero-shot'' maps apply the Milan CLMS-trained model
+  unchanged.}
+  \label{tab:maps}
+  \begin{tabular}{lllc}
+    \toprule
+    City & Training & Predictors & Maps \\
+    \midrule
+    Milan & Local, CLMS & S2 stack, S2 percentile, S2 median, AlphaEarth & 4 \\
+    Milan & Local, GHSL & S2 stack, S2 percentile, S2 median, AlphaEarth & 4 \\
+    Hanoi, HCMC & Local, GHSL & S2 stack, S2 median, AlphaEarth & 3 each \\
+    Hanoi, HCMC & Zero-shot (Milan CLMS) & S2 median, AlphaEarth & 2 each \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ---------------------------------------------------------------------------
+\subsection{Local retraining}
+\label{sec:local}
+
+In Hanoi and HCMC, a new model is trained for each predictor set on points
+from the city itself, following \cref{sec:sampling,sec:cv,sec:rf}: 3{,}500
+stratified points drawn from GHSL inside the city's valid mask, predictors
+extracted at those points, and a random forest tuned by blocked
+cross-validation and trained on all points. Three locally retrained maps are
+produced per city, with AlphaEarth, the S2 median and the S2 stack. Local
+retraining requires no local reference data beyond the global GHSL product,
+so it can be applied to any city; its cost is that the model learns GHSL's
+roof-only definition of imperviousness.
+
+% ---------------------------------------------------------------------------
+\subsection{Zero-shot cross-city transfer}
+\label{sec:zeroshot}
+
+Zero-shot transfer tests whether a model trained in one city can map another
+without any local training. The Milan models trained on CLMS, the better of
+the two targets, are applied unchanged to Hanoi and HCMC, with no
+retraining, recalibration or local points. This is done for two predictor
+sets:
+
+\begin{itemize}
+  \item \emph{AlphaEarth}: the 64 embedding bands have the same meaning in
+  every city, so the Milan model is applied to the Vietnamese 2018
+  embeddings directly.
+  \item \emph{S2 median}: the Milan model, trained on the median of 30 Milan
+  dates, is applied to the median of the three or four screened dates of each
+  Vietnamese city, with the same ten bands.
+\end{itemize}
+
+The stack has no zero-shot map: its bands are tied to the dates chosen for
+each city, and the number of dates differs (four in Milan, three in Hanoi,
+one in HCMC), so the Milan stack model cannot be applied elsewhere. The
+percentile composite is not built for the Vietnamese cities, which have too
+few dates. Together with local retraining, this gives five maps per
+Vietnamese city (\cref{tab:maps}).
+
+% ---------------------------------------------------------------------------
+\subsection{Independent EarthLabel validation}
+\label{sec:validation}
+
+Every map is validated against an independent reference: 450 EarthLabel
+plots per city, 1{,}350 in total, photo-interpreted with the EarthLabel
+annotation tool (\url{https://github.com/tanxiaoo/earth-label}). No model
+sees them during training or tuning.
+
+\paragraph{Plot design.} Each plot is a 10\,m\,$\times$\,10\,m square that
+coincides exactly with one pixel of the predicted maps, so each plot is
+compared with one map value. The plot is subdivided into nine sub-cells, and
+each sub-cell is photo-interpreted as impervious or pervious
+(\cref{fig:earthlabel}). The plot value is the share of impervious
+sub-cells; two impervious sub-cells out of nine, for example, give 22.2\%.
+Plot values therefore take one of ten levels, 0/9 to 9/9.
+
+\begin{figure}[htbp]
+  \centering
+  \figfrom{final report Fig.~9 --- one EarthLabel plot and its nine
+  sub-cells}
+  \caption{One EarthLabel plot. The plot covers one 10\,m pixel; its nine
+  sub-cells are photo-interpreted one by one, and the share of impervious
+  sub-cells becomes the plot value.}
+  \label{fig:earthlabel}
+\end{figure}
+
+\paragraph{Plot sampling.} Like the training points, the plots are drawn
+only inside the valid mask of \cref{sec:sampling}, stratified by the
+imperviousness class of the reference map. The plots and the training points
+therefore cover the same area, every map has a value at every plot, and all
+maps of a city are scored on the same 450 plots.
+
+\paragraph{Labelling.} The ground truth is the finalised interpretation of
+two independent labellers, except for 22 replacement plots (6 in Milan, 16
+in Hanoi) that were labelled jointly.
+
+\paragraph{Benchmarks.} Besides the predicted maps, the reference products
+themselves are scored against the same plots as maps in their own right:
+CLMS and GHSL in Milan, and GHSL in Hanoi and HCMC. This places each
+predicted map relative to the product it was trained on.
+
+% ---------------------------------------------------------------------------
+\subsection{Continuous, binary and ordinal metrics}
+\label{sec:metrics}
+
+Each map is compared with the plots in three ways (\cref{fig:techniques}),
+which together capture the magnitude, the impervious/pervious separation
+and the level structure of the errors.
+
+\begin{figure}[htbp]
+  \centering
+  \figfrom{final report Fig.~10 --- the three validation techniques A, B
+  and C}
+  \caption{The three validation techniques: A compares the continuous
+  values, B thresholds them at 50\%, C places them on ten ordinal levels.}
+  \label{fig:techniques}
+\end{figure}
+
+\begin{itemize}
+  \item \emph{A, continuous error.} The raw predicted percentage is compared
+  with the photo-interpreted percentage, with no threshold: RMSE, MAE, bias
+  and \Rsq.
+  \item \emph{B, binary at 50\%.} Both values are classified as impervious
+  (at or above 50\%) or pervious: overall accuracy (OA) and Cohen's $\kappa$.
+  \item \emph{C, ordinal, 10 levels.} Both values are rounded to the nearest
+  of the ten plot levels (0/9 to 9/9), with no impervious/pervious threshold:
+  exact overall accuracy, overall accuracy within one level (OA $\pm$1), and
+  the quadratic weighted kappa (QWK), which counts a two-level error as worse
+  than a one-level error.
+\end{itemize}
+
+The metrics are defined as
+\begin{gather*}
+  \mathrm{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i-\hat y_i)^2}, \qquad
+  \mathrm{MAE} = \frac{1}{n}\sum_{i=1}^{n}\lvert y_i-\hat y_i\rvert, \\
+  \mathrm{Bias} = \frac{1}{n}\sum_{i=1}^{n}(y_i-\hat y_i), \qquad
+  R^2 = 1-\frac{\sum_i (y_i-\hat y_i)^2}{\sum_i (y_i-\bar y)^2}, \\
+  \kappa = \frac{p_o-p_e}{1-p_e}, \qquad
+  \mathrm{QWK} = 1-\frac{\sum_{i,j} w_{ij}O_{ij}}{\sum_{i,j} w_{ij}E_{ij}},
+  \qquad w_{ij} = \left(\frac{i-j}{k}\right)^2,
+\end{gather*}
+where $n$ is the number of plots (450 per city), $y_i$ the photo-interpreted
+value, $\hat y_i$ the predicted value and $\bar y$ the mean photo-interpreted
+value; $p_o$ and $p_e$ are the observed and chance-expected agreement;
+$O_{ij}$ and $E_{ij}$ are the observed and expected numbers of plots at level
+$i$ in the reference and level $j$ in the map, and $k=9$. OA is the share of
+plots on which map and reference agree; OA $\pm$1 also counts plots whose
+levels differ by one.
+
+RMSE, MAE and bias are in percentage points (pp) of imperviousness on the
+0--100 scale; lower is better for RMSE and MAE, and zero is best for bias.
+Bias is observed $-$ predicted, so a positive bias means the map
+under-predicts. \Rsq{} is computed against the 1:1 line, so it penalises a
+systematic offset as well as scatter. \Rsq, $\kappa$ and QWK are
+dimensionless, and higher is better. To rank the maps of a city, each map is
+ranked on \Rsq, $\kappa$ and QWK, and the maps are ordered by their mean
+rank.
+
+In addition to the plot-based validation, each predicted map is compared
+with its benchmark product over the whole raster, as the mean, mean absolute
+and standard deviation of the difference, predicted $-$ benchmark.
