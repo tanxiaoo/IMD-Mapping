@@ -232,8 +232,8 @@ dates, whereas the composites that preserve the seasonal spread or individual
 dates outperform AlphaEarth, whose 64 bands also summarise a full year.
 
 The stack and the percentile composite agree with the photo-interpreted
-plots better than CLMS itself on \Rsq, $\kappa$ and QWK, and match or beat
-it on RMSE. CLMS keeps the lowest MAE (15.2\pp), the smallest bias
+plots better than CLMS itself on \Rsq, $\kappa$ and QWK, and have a lower
+RMSE. CLMS keeps the lowest MAE (15.2\pp), the smallest bias
 (+0.6\pp) and the highest exact and $\pm$1-level ordinal accuracies (0.558
 and 0.682). The predicted maps therefore track the ground-truth ranking of
 imperviousness as well as or better than CLMS, while CLMS more often hits
@@ -444,8 +444,8 @@ above GHSL, with mean differences of +33.65\pp{} for AlphaEarth and
 reduces this to +7.64\pp{} for AlphaEarth, +10.31\pp{} for the S2 median and
 +10.37\pp{} for the S2 stack. Part of the zero-shot excess is expected, since
 the Milan models were trained on CLMS, which includes roads and pavements
-that GHSL omits; but its size, three to four times that of the locally
-retrained maps, points to a level shift between the cities.
+that GHSL omits; but its size, between three and more than four times
+that of the locally retrained maps, points to a level shift between the cities.
 
 \begin{table}[htbp]
   \centering
@@ -536,7 +536,7 @@ difference to +7.64\pp{} for AlphaEarth, +9.18\pp{} for the S2 median and
     Predicted map & RMSE & MAE & Bias & \Rsq & OA & $\kappa$
       & OA exact & OA $\pm$1 & QWK \\
     \midrule
-    S2 median, zero-shot      & \textbf{27.4} & \textbf{18.0} & $-$7.6 & \textbf{0.643} & \textbf{0.847} & \textbf{0.691} & \textbf{0.378} & \textbf{0.633} & \textbf{0.782} \\
+    S2 median, zero-shot      & \textbf{27.4} & \textbf{18.0} & \textbf{$-$7.6} & \textbf{0.643} & \textbf{0.847} & \textbf{0.691} & \textbf{0.378} & \textbf{0.633} & \textbf{0.782} \\
     AlphaEarth, local retrain & 28.8 & 22.3 & +11.1 & 0.605 & 0.833 & 0.669 & 0.264 & 0.422 & 0.731 \\
     S2 stack, local retrain   & 29.9 & 23.7 & +10.8 & 0.574 & 0.813 & 0.630 & 0.200 & 0.422 & 0.701 \\
     S2 median, local retrain  & 30.8 & 24.4 & +11.4 & 0.546 & 0.793 & 0.591 & 0.224 & 0.438 & 0.687 \\
@@ -557,7 +557,7 @@ The two zero-shot maps diverge sharply. AlphaEarth zero-shot is the weakest
 map in HCMC, below GHSL itself, with \Rsq{} 0.224, $\kappa$ 0.351, QWK 0.435
 and a bias of $-$21.7\pp. The S2 median zero-shot map, by contrast, is the
 best map overall, with RMSE 27.4\pp, \Rsq{} 0.643, $\kappa$ 0.691 and QWK
-0.782, and it leads on every metric except bias.
+0.782, and it leads on every metric, including the smallest bias.
 
 \paragraph{The HCMC zero-shot result reflects level matching, not
 transfer.} The S2 median zero-shot map carries the imperviousness level it
@@ -633,7 +633,8 @@ is the best locally trained map in both Vietnamese cities and the best
 GHSL-trained map in Milan. Sentinel-2 depends more on the available
 imagery: with 30 clear Milan dates, the stack and percentile composites
 outperform AlphaEarth, but with only three or four usable dates in Vietnam
-(one for the HCMC stack), every Sentinel-2 map trails AlphaEarth, by 0.026
+(one for the HCMC stack), every locally trained Sentinel-2 map trails
+AlphaEarth, by 0.026
 to 0.059 in \Rsq. The advantage of the embeddings is largest where
 Sentinel-2 compositing is most constrained by cloud cover.
 
