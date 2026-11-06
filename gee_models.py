@@ -21,7 +21,7 @@ parallel, the same choice as scikit-learn (CV RMSE 13.21 vs 13.22).
 Each model is kept as a JSON record beside its map: the feature table, bands,
 label, Earth Engine settings and seed, the tuning table, the CV metrics and the
 forest's own importances (``explain()``). Training is deterministic, so
-:func:`load_model` rebuilds the identical forest from it (zero-shot, or later
+:func:`load_model` rebuilds the identical forest from it (direct cross-city transfer, or later
 analysis). A classifier asset is not used: Earth Engine reloads a regression
 forest asset without its trees.
 """
@@ -218,12 +218,17 @@ def predict_points(clf, X, bands, chunk=500):
     return np.clip(pred, 0, 100)
 
 
-def model_record(best, table, cv, source, city, predictor, bands, label, n_points):
+def model_record(best, table, cv, source, city, predictor, bands, label, n_points,
+                 label_source=None):
     """Everything that defines the forest: with the feature table it names,
     :func:`load_model` rebuilds the identical forest (training is deterministic
-    for fixed points, settings and seed)."""
+    for fixed points, settings and seed). ``source`` is the point set,
+    ``label_source`` the product of the target when it is another one."""
+    table_id = {"source": source, "city": city, "predictor": predictor}
+    if label_source is not None and label_source != source:
+        table_id["label_source"] = label_source
     return {"engine": "Earth Engine smileRandomForest (REGRESSION)",
-            "feature_table": {"source": source, "city": city, "predictor": predictor},
+            "feature_table": table_id,
             "label": label, "bands": list(bands), "n_points": int(n_points),
             "max_features": best["max_features"], "block": best["block"],
             "earth_engine_kwargs": ee_kwargs(best), "cv": cv, "tuning": table}
@@ -252,7 +257,7 @@ def load_model(json_path):
     with open(json_path) as f:
         record = json.load(f)
     t = record["feature_table"]
-    gdf, _ = sf.load_features(t["source"], t["city"], t["predictor"])
+    gdf, _ = sf.load_features(t["source"], t["city"], t["predictor"], t.get("label_source"))
     assert len(gdf) == record["n_points"], f"{json_path}: point count changed"
     bands, label = record["bands"], record["label"]
     fc = ee.FeatureCollection([

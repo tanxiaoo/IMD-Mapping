@@ -218,8 +218,13 @@ def valid_points(points, values, name):
     return keep
 
 
-def table_name(source, city, predictor):
-    return f"{source}_{city}_{predictor}"
+def table_name(source, city, predictor, label=None):
+    """``{SOURCE}_{CITY}_{PREDICTOR}``; a table whose label comes from another
+    product than the one its points were stratified on is
+    ``{SOURCE}pts_{LABEL}_{CITY}_{PREDICTOR}`` (see :func:`relabel_features`)."""
+    if label is None or label == source:
+        return f"{source}_{city}_{predictor}"
+    return f"{source}pts_{label}_{city}_{predictor}"
 
 
 def extract_at_points(image, projection, gdf, band_names, chunk_size=500, tile_scale=4):
@@ -289,14 +294,19 @@ def write_features(points, values, band_names, source, city, predictor, meta=Non
     return out
 
 
-def load_features(source, city, predictor):
+def load_features(source, city, predictor, label=None):
     """One feature table and its sidecar: ``(gdf, meta)``.
+
+    ``source`` is the point set (the product it was stratified on); ``label``
+    the product the target values come from, when it is another one (only
+    ``load_features('CLMS', 'Milan', p, label='GHSL')``, written by
+    :func:`relabel_features`).
 
     Checks that the table still matches its point set (each ``pid`` at its own
     location with its own split), so a stale table fails here rather than
     training on the wrong rows.
     """
-    name = table_name(source, city, predictor)
+    name = table_name(source, city, predictor, label)
     path = FEATURES_DIR / f"{name}.gpkg"
     if not path.exists():
         raise FileNotFoundError(
@@ -318,3 +328,54 @@ def split_index(gdf):
     """Row positions of the training and test points ('buffer' is in neither)."""
     s = gdf["split"].to_numpy()
     return np.where(s == "train")[0], np.where(s == "test")[0]
+
+
+def relabel_features(source, label, city, predictor):
+    """The ``source`` point set's feature table with ``label`` values as target.
+
+    Isolates the effect of the training label: the same points and the same
+    band values, only the target changes. Keeps ``pid``, ``split``, the
+    geometry and exactly the sidecar's ``band_names``; the original label
+    columns are dropped, so no value of the ``source`` product is left in the
+    table. The new label is read from the ``label`` product at each point and
+    classed with :func:`reclass_imd_7`, the same rule as :func:`stratified_sample`
+    (float32, nodata and values outside 0-100 refused). The classes are no
+    longer balanced; the sidecar records their counts.
+
+    Written as ``{source}pts_{label}_{city}_{predictor}``; read with
+    ``load_features(source, city, predictor, label=label)``.
+    """
+    import rasterio
+
+    gdf, meta = load_features(source, city, predictor)
+    bands = list(meta["band_names"])
+    ref_path, lab = REFERENCE[(label, city)]
+    with rasterio.open(ref_path) as r:
+        xy = gdf.to_crs(r.crs)
+        vals = np.array([v[0] for v in r.sample(zip(xy.geometry.x, xy.geometry.y))], dtype="float32")
+        if r.nodata is not None:
+            vals[vals == r.nodata] = np.nan
+    vals[(vals < 0) | (vals > 100)] = np.nan
+    if np.isnan(vals).any():
+        raise RuntimeError(f"{label} has no value at {int(np.isnan(vals).sum())} {source} points.")
+    cls = reclass_imd_7(vals).astype(int)
+    assert (cls >= 0).all()
+
+    out = gpd.GeoDataFrame(
+        {lab: vals.astype("float64"), f"{lab}_class": cls,
+         "split": gdf["split"].to_numpy(), "pid": gdf["pid"].to_numpy(),
+         **{b: gdf[b].to_numpy(dtype="float32") for b in bands}},
+        geometry=gdf.geometry.to_numpy(), crs=gdf.crs)
+    expected = {lab, f"{lab}_class", "split", "pid", "geometry", *bands}
+    assert set(out.columns) == expected, set(out.columns) ^ expected
+    name = table_name(source, city, predictor, label)
+    out.to_file(FEATURES_DIR / f"{name}.gpkg", driver="GPKG")
+    counts = {int(k): int(v) for k, v in out[f"{lab}_class"].value_counts().sort_index().items()}
+    sidecar = {**meta, "label": lab, "label_source": label, "points_source": source,
+               "label_raster": str(Path(ref_path).relative_to(REPO).as_posix()),
+               "label_class_counts": counts, "n_points": len(out),
+               "relabelled_from": table_name(source, city, predictor)}
+    with open(FEATURES_DIR / f"{name}.json", "w") as f:
+        json.dump(sidecar, f, indent=2, default=str)
+    print(f"  wrote {name}: {len(out)} points, {len(bands)} bands, {lab} classes {counts}")
+    return out

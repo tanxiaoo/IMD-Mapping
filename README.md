@@ -16,8 +16,8 @@ climate zone mapping and urban heat island analysis in the **LCZ-UHI-GEO** and *
 ## Contributions
 
 1. **Compare Sentinel-2 and AlphaEarth** for local 10 m imperviousness mapping.
-2. **Evaluate both local retraining and zero-shot transfer** across Milan,
-   Hanoi and Ho Chi Minh City.
+2. **Evaluate both local retraining and direct cross-city transfer** across
+   Milan, Hanoi and Ho Chi Minh City.
 3. **Assess how the choice of training target** affects mapping accuracy.
 
 ### Predictors
@@ -40,19 +40,30 @@ changes:
 
 ### Transfer
 
-Milan models are applied to Hanoi and HCMC two ways: *zero-shot*, with no local
-data at all, and *locally retrained*, using a sample of local labels. The gap
-between them is what a city gains by collecting its own training data.
-The zero-shot model is the Milan one trained on CLMS, as in the Zgela report;
-scored against GHS-BUILT-S in Vietnam, it is a different-source comparison
-(`MILAN_TARGET` in notebooks 02 and 03).
+Milan models are applied to Hanoi and HCMC two ways: by *direct cross-city
+transfer*, the Milan model applied unchanged with no local data at all, and
+*locally retrained*, using a sample of local GHSL labels. Three Milan models
+are transferred (`TRANSFER_SOURCES` in notebooks 02 and 03), as *(training
+points, label)*:
+
+| Milan model | compared with | isolates |
+|---|---|---|
+| GHSL points, GHSL label | the local model (also GHSL) | the location: how much is lost by transferring instead of retraining |
+| CLMS points, CLMS label | the local model | transferring a model trained on a better sealed-surface product (label and location both change) |
+| CLMS points, GHSL label | GHSL points, GHSL label | the sampling strategy |
+| CLMS points, GHSL label | CLMS points, CLMS label | the training label |
 
 ### Training target
 
-Milan is modelled twice, against CLMS and against GHS-BUILT-S (GHSL). The two measure
-different things: CLMS maps sealed surface including roads, GHSL maps roofed
-built-up area without them. Comparing the two separates what the method
-achieves from what the training reference already decides.
+Milan is modelled against CLMS and against GHS-BUILT-S (GHSL) **at the same
+points**: one set of CLMS-stratified training locations, with both products'
+values read at exactly those points, so the label is the only thing that
+changes. The two products measure different things: CLMS maps sealed surface
+including roads, GHSL maps roofed built-up area without them. Comparing the
+two separates what the method achieves from what the training reference
+already decides. A third set of Milan models, trained on GHSL-stratified
+points, is the source of the GHSL transfer and of the sampling-sensitivity
+comparison.
 
 Everything is evaluated against 450 independently photo-interpreted **EarthLabel** plots per city, which no model ever saw during training.
 
@@ -78,7 +89,10 @@ are the pipeline that produced the maps and the numbers those two report on.
 04_Benchmark_Difference.ipynb                   difference against the benchmark, whole map vs training product
 05_Independent_Validation.ipynb                 independent validation, 450 EarthLabel plots/city
 
+output_paths.py                                 every output path, and the registry of every map
 sample_features.py                              point sets, feature tables, the fixed split
+validation_metrics.py                           validation metrics (balanced / area-weighted), stratified paired bootstrap
+interpreter_agreement.py                        agreement of the two EarthLabel interpreters
 s2_utils.py                                     shared cloud masks + composite builder
 gee_models.py                                   RF tuned, scored and built in Earth Engine; model records
 gee_export.py                                   export to Drive and download, automatically
@@ -86,7 +100,8 @@ gee_init.py                                     reads the GEE project id from .e
 ```
 
 Run them in order: extract (00, 00b, once), model (01-01d), transfer (02, 03,
-03b), validate (04, 05).
+03b), validate (04, 05, `interpreter_agreement.py`). 01c and 01d train either
+point set (`POINTS = 'ghsl'` or `'clms'`; the label is always GHSL there).
 
 **No train/test split on `main`.** Every model is tuned by spatial-block CV
 and fitted on all its points; accuracy is that spatial CV (out-of-fold for the
@@ -125,6 +140,9 @@ data/
     sample_points_all_GHSL_HCMC.gpkg
   sample_features/                    written by 00 / 00b, read by 01-03b
     {CLMS,GHSL}_Milan_{embedding,S2median,S2stack,S2percentile}.gpkg
+    CLMSpts_GHSL_Milan_{embedding,S2median,S2stack,S2percentile}.gpkg
+                                      the CLMS table with GHSL read at the same
+                                      points as the label (relabel_features)
     GHSL_{Hanoi,HCMC}_{embedding,S2median,S2stack}.gpkg
                                       the point set's points that this predictor
                                       has a value at, with label and split, plus
@@ -141,41 +159,49 @@ Everything here is in the Zenodo archive. The two reference products can also
 be downloaded from their own sources, listed under **Data sources** below, and
 the EarthLabel plots can be re-made with the annotation tool linked there.
 
-**`output/` — one directory per run,** named `city / label source / predictor`.
-The notebooks create it as they go, so you do not have to; the finished rasters
-are also in the Zenodo archive if you would rather not rerun them.
+**`output/` — one directory per run,** named `city / training points / label /
+predictor` for Milan and `city / predictor / scenario` for Hanoi and HCMC. All
+paths come from `output_paths.py`. The notebooks create it as they go; every
+raster name says city, predictor, scenario and source, so a copied file keeps
+its identity.
 
 ```
 output/
-  milan/                              the eight Milan runs
-    clms/                             trained against CLMS
-      embedding/                      each run directory holds the
-      median/                           predicted raster, the fitted
-      percentile/                       model, its metadata JSON and
-      stack/                            the run's figures and CSVs
-    ghsl/                             the same four, against GHSL
-      embedding/  median/  percentile/  stack/
+  milan/                              the twelve Milan runs
+    clms_points/                      the CLMS-stratified points
+      clms/                             CLMS label (maps 1-4)
+        embedding/  median/  percentile/  stack/
+                                          IMD_Milan_10m_<pred>_CLMSpts_CLMS.tif,
+                                          model_rf.json, tuning and OOF CSVs
+      ghsl/                             GHSL read at the same points (maps 5-8)
+    ghsl_points/                      the GHSL-stratified points
+      ghsl/                             GHSL label (maps 9-12)
 
   transfer_vietnam/
-    hanoi/                            one city: rasters and samples
-      embedding/                        IMD_Hanoi_10m_zeroshot.tif
-      median/                           IMD_Hanoi_10m_localrf.tif
-      stack_manual/                     local retrain only, no zero-shot --
-                                          Milan's stack model has 40 bands,
-                                          Hanoi/HCMC's don't match it
-    hcmc/
-      embedding/  median/  stack_manual/
+    hanoi/                            one city
+      embedding/  median/
+        local/                          IMD_Hanoi_10m_<pred>_local.tif, model_rf.json
+        transfer_ghsl_points_ghsl/      IMD_Hanoi_10m_<pred>_transfer_MilanGHSLpts_GHSL.tif
+        transfer_clms_points_clms/      IMD_Hanoi_10m_<pred>_transfer_MilanCLMSpts_CLMS.tif
+        transfer_clms_points_ghsl/      IMD_Hanoi_10m_<pred>_transfer_MilanCLMSpts_GHSL.tif
+        fig_scatter_Hanoi.png           the city's scenarios side by side
+      stack/local/                      local retrain only -- Milan's stack model
+                                          has 40 bands, Hanoi/HCMC's don't match it
+    hcmc/                             the same
     hanoi_and_hcmc/                   both cities: the comparison
-      embedding/                        transferability_comparison.csv
-      median/                           per_class_metrics.csv, figures
+      embedding/  median/  stack/       transferability_comparison.csv, figures
 
   benchmark_difference/               notebook 04, each whole map against
                                         its training product
   validation_independent/             notebook 05, against EarthLabel
-    Milan_2018/                         per_raster/<map>/ and
-    Hanoi_2018/                         comparison/ per city
-    HCMC_2018/
+    <City>_2018/
+      points_extracted.csv              reference and every map at the 450 plots
+      stratum_areas.csv                 area of each stratum, W_h
+      balanced/  area_weighted/         techniques A, B, C and the ranking
+      bootstrap/                        iterations, intervals, paired differences
+      per_raster/<map>/                 confusion matrices
     cross_city/                       the three cities together
+  interpreter_agreement/              interpreter_agreement.py
 ```
 
 A file describing one city goes under that city; a file comparing two goes
@@ -189,7 +215,10 @@ under one city hides the other city's results inside it.
 
 **Sampling.** 500 points in each of the seven density classes, giving a
 balanced 3500, so sparse classes are not swamped by the dominant one. Drawn
-separately for CLMS and GHSL, since the two products differ pixel by pixel.
+from CLMS and, separately, from GHSL. The CLMS vs GHSL comparison uses the
+CLMS-stratified points for both labels, where the GHSL classes are no longer
+balanced; the GHSL-stratified points train the Milan model transferred to
+Hanoi and HCMC.
 
 **Train/test split.** The 3500 points are split using 1 km spatial blocks,
 whole blocks to one side or the other. A 250m buffer around the test blocks
@@ -273,8 +302,8 @@ The predicted maps for all three cities, together with the inputs under
 > [doi:10.5281/zenodo.22874238](https://doi.org/10.5281/zenodo.22874238)
 
 1.8 GB in total: the Milan embedding and Sentinel-2 models, the IMD maps for
-Milan, Hanoi and HCMC, and the zero-shot and locally retrained Vietnam
-outputs.
+Milan, Hanoi and HCMC, and the directly transferred and locally retrained
+Vietnam outputs.
 
 The project code is published at
 [github.com/gisgeolab/IMD](https://github.com/gisgeolab/IMD); the predicted
