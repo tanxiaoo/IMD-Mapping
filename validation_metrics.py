@@ -12,9 +12,13 @@ Conventions
   ``balanced``       every plot counts once, so each of the six strata (75 plots
                      each) carries 1/6: performance across the whole
                      imperviousness gradient;
-  ``area_weighted``  each plot carries W_h / n_h, W_h the share of the city's
-                     valid area in its stratum and n_h the stratum's plot count:
-                     performance representative of the city.
+  ``area_weighted``  each plot carries W_h * N_i / sum_j N_j, W_h the share of
+                     the city's valid area in its stratum, N_i the valid pixels
+                     of the plot's stratum in its 250 m sampling tile and the
+                     sum over the stratum's plots: performance representative
+                     of the city. The plots were drawn one candidate per
+                     (tile, stratum), so a pixel's chance of selection is
+                     proportional to 1 / N_i; the N_i factor undoes it.
   Without weights every function reproduces the unweighted metric exactly.
 - Confusion matrices are weighted counts. With area weights normalised to sum
   to the number of plots they are "equivalent plots"; divided by that number
@@ -168,17 +172,18 @@ def level_confusion(g, p, w=None, k=K_LEVELS):
 
 
 # ── Stratum areas and weights ────────────────────────────────────────────────
-def stratum_areas(stratum_tif, mask_tif):
-    """Pixels and km2 of each stratum C0-C5 inside the combined valid mask, and
-    W_h, the share of the masked area. The mask is resampled (nearest) onto the
-    stratum grid when the grids differ."""
+TILE_M = 250.0                    # sampling tile of earthlabel_point_creation.ipynb
+
+
+def _masked_strata(stratum_tif, mask_tif):
+    """The stratum raster, the combined valid mask on its grid (nearest
+    resampling when the grids differ) and the grid's transform and CRS."""
     import rasterio
     from rasterio.warp import Resampling, reproject
 
     with rasterio.open(stratum_tif) as s:
         st = s.read(1); nod = s.nodata
         grid = dict(transform=s.transform, crs=s.crs, shape=s.shape)
-        px_km2 = abs(s.transform.a * s.transform.e) / 1e6
     with rasterio.open(mask_tif) as m:
         if (m.transform, m.crs, m.shape) == (grid["transform"], grid["crs"], grid["shape"]):
             mask = m.read(1)
@@ -188,18 +193,55 @@ def stratum_areas(stratum_tif, mask_tif):
                       dst_transform=grid["transform"], dst_crs=grid["crs"],
                       src_nodata=None, dst_nodata=0, resampling=Resampling.nearest)
     valid = (mask == 1) & (st != nod) if nod is not None else (mask == 1)
+    return st, valid, grid["transform"], grid["crs"]
+
+
+def stratum_areas(stratum_tif, mask_tif):
+    """Pixels and km2 of each stratum C0-C5 inside the combined valid mask, and
+    W_h, the share of the masked area. The mask is resampled (nearest) onto the
+    stratum grid when the grids differ."""
+    st, valid, T, _ = _masked_strata(stratum_tif, mask_tif)
+    px_km2 = abs(T.a * T.e) / 1e6
     counts = np.bincount(st[valid].astype(int), minlength=N_STRATA)[:N_STRATA]
     assert counts.sum() == valid.sum(), "masked pixels outside the six strata"
     return pd.DataFrame({"stratum": STRATA, "pixels": counts.astype(np.int64),
                          "area_km2": counts * px_km2, "W_h": counts / counts.sum()})
 
 
-def plot_weights(strata, W):
-    """Area weight of each plot, W_h / n_h, normalised to sum to the plot count.
-    ``strata`` is each plot's stratum label, ``W`` maps a label to W_h."""
+def tile_pixel_counts(stratum_tif, mask_tif, lon, lat, strata):
+    """N_i of each plot: the valid pixels (inside the combined valid mask) of
+    the plot's stratum in its 250 m sampling tile. Tiles are those of
+    earthlabel_point_creation.ipynb: floor((x - left) / 250) and
+    floor((y - bottom) / 250) of the pixel centre, on the stratum grid."""
+    from pyproj import Transformer
+
+    st, valid, T, crs = _masked_strata(stratum_tif, mask_tif)
+    H, W = st.shape
+    bottom = T.f + H * T.e
+    xs, ys = Transformer.from_crs("EPSG:4326", crs, always_xy=True).transform(
+        np.asarray(lon, float), np.asarray(lat, float))
+    cols = np.floor((xs - T.c) / T.a).astype(int)
+    rows = np.floor((ys - T.f) / T.e).astype(int)
+    h_lab = pd.Series(np.asarray(strata)).str.replace("IMD_Class_", "").astype(int).to_numpy()
+    gx_all = np.floor((T.c + (np.arange(W) + 0.5) * T.a - T.c) / TILE_M).astype(int)
+    gy_all = np.floor((T.f + (np.arange(H) + 0.5) * T.e - bottom) / TILE_M).astype(int)
+    out = np.empty(len(cols), np.int64)
+    for k, (r, c, h) in enumerate(zip(rows, cols, h_lab)):
+        assert valid[r, c] and st[r, c] == h, f"plot {k} not on a valid pixel of its stratum"
+        cc = np.flatnonzero(gx_all == gx_all[c]); rr = np.flatnonzero(gy_all == gy_all[r])
+        win = (st[rr[0]:rr[-1] + 1, cc[0]:cc[-1] + 1] == h) & valid[rr[0]:rr[-1] + 1, cc[0]:cc[-1] + 1]
+        out[k] = int(win.sum())
+    return out
+
+
+def plot_weights(strata, W, N):
+    """Area weight of each plot, W_h * N_i / sum_j N_j (sum over the plots of
+    the same stratum), normalised to sum to the plot count. ``strata`` is each
+    plot's stratum label, ``W`` maps a label to W_h, ``N`` is each plot's tile
+    pixel count N_i (tile_pixel_counts)."""
     strata = pd.Series(np.asarray(strata))
-    n_h = strata.map(strata.value_counts())
-    w = strata.map(W).to_numpy(float) / n_h.to_numpy(float)
+    N = pd.Series(np.asarray(N, float))
+    w = strata.map(W).to_numpy(float) * (N / N.groupby(strata.values).transform("sum")).to_numpy(float)
     return w * len(w) / w.sum()
 
 
@@ -234,19 +276,21 @@ def stratified_indices(strata, B, seed):
 def bootstrap(df, maps, W, B=1000, seed=42):
     """Per iteration and map, the nine metrics under both schemes.
 
-    ``df`` has ``gt_imperv_pct``, ``gt_density_class`` and ``pred_<map>``
-    columns. Returns {scheme: DataFrame(iter, map, *METRICS)}. The resampled
+    ``df`` has ``gt_imperv_pct``, ``gt_density_class``, ``tile_pixels`` (N_i)
+    and ``pred_<map>`` columns. The area weights are recomputed from the
+    resampled plots in every iteration. Returns {scheme: DataFrame(iter, map, *METRICS)}. The resampled
     plot IDs are the same for every map within an iteration (paired).
     """
     g_all = df["gt_imperv_pct"].to_numpy(float)
     st_all = df["gt_density_class"].to_numpy()
+    n_all = df["tile_pixels"].to_numpy(float)
     sizes = pd.Series(st_all).value_counts()
     rows = {s: [] for s in SCHEMES}
     for it, idx in enumerate(stratified_indices(st_all, B, seed)):
         st = st_all[idx]
         assert (pd.Series(st).value_counts().reindex(sizes.index) == sizes).all()
         g = g_all[idx]
-        w_area = plot_weights(st, W)
+        w_area = plot_weights(st, W, n_all[idx])
         for m in maps:
             p = df[f"pred_{m}"].to_numpy(float)[idx]
             rows["balanced"].append({"iter": it, "map": m, **nine_metrics(g, p)})
@@ -257,7 +301,7 @@ def bootstrap(df, maps, W, B=1000, seed=42):
 def point_estimates(df, maps, W):
     """The nine metrics on the original plots, both schemes: {scheme: DataFrame}."""
     g = df["gt_imperv_pct"].to_numpy(float)
-    w_area = plot_weights(df["gt_density_class"], W)
+    w_area = plot_weights(df["gt_density_class"], W, df["tile_pixels"])
     out = {}
     for s, w in (("balanced", None), ("area_weighted", w_area)):
         out[s] = pd.DataFrame([{"map": m, **nine_metrics(g, df[f"pred_{m}"].to_numpy(float), w)}
