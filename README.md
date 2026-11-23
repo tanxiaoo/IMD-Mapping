@@ -375,9 +375,7 @@ products listed under [Data sources](#data-sources) keep their own licences.
 
 ## Acknowledgements
 
-We acknowledge Copernicus/EEA (CLMS), EC JRC (GHS-BUILT-S), ESA (Sentinel-2)
-and Google (AlphaEarth) for the satellite data and reference products, and
-Mohammad Ammar Mughees for the EarthLabel annotation tool.
+We acknowledge the Copernicus Land Monitoring Service and the European Environment Agency (CLMS), the European Commission Joint Research Centre (GHSL), the European Space Agency (Sentinel-2) and Google (AlphaEarth) for providing the satellite data and reference products, and Mohammad Ammar Mughees for the EarthLabel annotation tool.
 
 ## Funding
 
