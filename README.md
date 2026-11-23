@@ -379,8 +379,6 @@ We acknowledge Copernicus/EEA (CLMS), EC JRC (GHS-BUILT-S), ESA (Sentinel-2)
 and Google (AlphaEarth) for the satellite data and reference products, and
 Mohammad Ammar Mughees for the EarthLabel annotation tool.
 
-This study was funded by the Italian Space Agency (ASI) and the Ministry of
-University and Research (MUR) - contract n. 2024-5-E.0 - CUP n.
-I53D24000060005. It is also part of the LCZ-UHI-GEO project (ID PGR12284),
-funded by the Italian Ministry of Foreign Affairs and International Cooperation
-(MAECI) and Vietnam's Ministry of Science and Technology (MOST).
+## Funding
+
+This study was funded by the Italian Space Agency (ASI) and the Ministry of University and Research (MUR) - contract n. 2024-5-E.0 - CUP n. I53D24000060005. It is also part of the LCZ-UHI-GEO project (ID PGR12284), funded by the Italian Ministry of Foreign Affairs and International Cooperation (MAECI) and Vietnam’s Ministry of Science and Technology (MOST).
