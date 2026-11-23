@@ -166,3 +166,8 @@ desktop.ini
 # Everything under report/ -- the deck sources, the LaTeX auxiliaries, the
 # .bbl and .blg BibTeX writes beside report.tex -- is already covered by the
 # `report/` rule above, which keeps only the three deliverables.
+
+# ── README assets ─────────────────────────────────────────────────────────────
+# The figures the README shows. The blanket *.png above would swallow them.
+!assets/
+!assets/**

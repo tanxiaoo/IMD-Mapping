@@ -7,65 +7,112 @@ Maria Antonia Brovelli, Matej Žgela, Keerthana Kirubakaran, Xiao Tan
 · Politecnico di Milano
 
 Impervious surface density (IMD) is the proportion of a pixel covered by
-impervious material such as buildings, roads, pavement. Mapping it at 10 m for Milan,
-Hanoi and Ho Chi Minh City in 2018.
+impervious material such as buildings, roads and pavement. This repository maps
+it at 10 m for Milan, Hanoi and Ho Chi Minh City (HCMC) in 2018.
 
 Hanoi and HCMC have no IMD product at all. The maps are needed to support local
-climate zone mapping and urban heat island analysis in the **LCZ-UHI-GEO** and **Space it up!** project.
+climate zone mapping and urban heat island analysis in the **LCZ-UHI-GEO** and
+**Space it up!** projects.
+
+![Workflow: the input datasets and their roles (top) and the five processing steps (bottom)](assets/workflow.png)
+
+Every map comes from the same five steps: (1) training-sample generation,
+(2) predictor extraction, (3) random forest tuning and training, (4) raster
+prediction and (5) independent validation. CLMS and GHSL provide the training
+labels, Sentinel-2 and AlphaEarth the predictors, and ESA WorldCover the water
+mask. The EarthLabel plots are used only in step 5 and never for training or
+tuning.
 
 ## Contributions
 
 1. **Compare Sentinel-2 and AlphaEarth** for local 10 m imperviousness mapping.
-2. **Evaluate both local retraining and direct cross-city transfer** across
-   Milan, Hanoi and Ho Chi Minh City.
-3. **Assess how the choice of training target** affects mapping accuracy.
+2. **Evaluate both local training and direct cross-city transfer** across
+   Milan, Hanoi and HCMC.
+3. **Assess how the choice of training label** affects mapping accuracy.
 
 ### Predictors
 
 AlphaEarth is one annual product: a single image per year, ready to use.
 Sentinel-2 is not. It passes over each city many times a year, so 2018 gives
-dozens of images, each with its own clouds and gaps. To get one annual layer
-out of them, we screen for cloud and valid pixels and then combine the
-remaining dates into a composite, and we do that three ways. Those three,
-plus AlphaEarth, are the four predictor sets below. They are compared on Milan
+dozens of images, each with its own clouds and gaps. To get one set of model
+inputs out of them, each date is screened for cloud and valid pixels over the
+area of interest, and the remaining dates are combined in three ways. Those
+three, plus AlphaEarth, are the four predictor sets. They are compared on Milan
 with everything else kept the same, so the input is the only thing that
 changes:
 
 | Predictor | What it is |
 |---|---|
-| AlphaEarth embeddings | 64 learned bands from [Google Satellite Embedding V1](https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_SATELLITE_EMBEDDING_V1_ANNUAL), encoding a year of Sentinel-1/2, Landsat and more per 10 m pixel |
-| Sentinel-2 median | 10 reflectance bands, per-pixel median of cloud-free 2018 dates |
-| Sentinel-2 percentile | five percentiles per band, capturing within-year variation |
-| Sentinel-2 stack | four near-cloud-free dates evenly spaced from March to October, kept as separate bands rather than combined |
+| AlphaEarth embeddings | 64 bands from [Google Satellite Embedding V1](https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_SATELLITE_EMBEDDING_V1_ANNUAL), summarising a year of Sentinel-2, Sentinel-1, Landsat and other observations per 10 m pixel |
+| S2 median | per-pixel median of the clear 2018 dates, 10 bands |
+| S2 percentile | 10th, 25th, 50th, 75th and 90th percentiles of each band, 50 bands (Milan only) |
+| S2 Stack | a few clear dates kept as separate bands, 10 per date: four in Milan, three in Hanoi, one in HCMC |
 
-### Transfer
+Hanoi and HCMC have too few clear dates for a percentile composite, so they use
+AlphaEarth, the S2 median and the S2 Stack. The dates are listed under
+[Sentinel-2 dates](#sentinel-2-dates).
 
-Milan models are applied to Hanoi and HCMC two ways: by *direct cross-city
-transfer*, the Milan model applied unchanged with no local data at all, and
-*locally retrained*, using a sample of local GHSL labels. Three Milan models
-are transferred (`TRANSFER_SOURCES` in notebooks 02 and 03), as *(training
-points, label)*:
+### Training label
 
-| Milan model | compared with | isolates |
+Milan is modelled against CLMS and against GHS-BUILT-S (GHSL). The two products
+measure different things: CLMS maps sealed surface including roads, GHSL maps
+roofed built-up area without them. Two sets of 3,500 points are drawn in Milan,
+one stratified on CLMS and one on GHSL, and they give three training
+configurations:
+
+| Configuration | Training points | Training label | Used for |
+|---|---|---|---|
+| (a) | CLMS-stratified | CLMS | comparing the predictors |
+| (b) | CLMS-stratified | GHSL, read at the same points | comparing the training labels: (a) and (b) differ in the label alone |
+| (c) | GHSL-stratified | GHSL | the sampling strategy, (b) against (c), and the source of the GHSL transfer |
+
+Comparing (a) and (b) separates what the method achieves from what the
+training label already decides. Hanoi and HCMC lie outside CLMS coverage, so
+their local models are trained on GHSL alone, at GHSL-stratified points.
+
+### Local training and direct transfer
+
+Maps are produced in two scenarios. In *local training*, the model is trained
+on samples from the city being mapped. In *direct cross-city transfer*, a Milan
+model is applied unchanged to the predictors of Hanoi or HCMC, without any
+training samples or labels from the target city. All three Milan configurations
+are transferred (`TRANSFER_SOURCES` in notebooks 02 and 03), for AlphaEarth and
+the S2 median only: the S2 Stack bands are tied to each city's dates, and the
+percentile composite exists only for Milan.
+
+| Transfer of | compared with | isolates |
 |---|---|---|
-| GHSL points, GHSL label | the local model (also GHSL) | the location: how much is lost by transferring instead of retraining |
-| CLMS points, CLMS label | the local model | transferring a model trained on a better sealed-surface product (label and location both change) |
-| CLMS points, GHSL label | GHSL points, GHSL label | the sampling strategy |
-| CLMS points, GHSL label | CLMS points, CLMS label | the training label |
+| (c) GHSL label, GHSL points | the local model (also GHSL, GHSL points) | the location: what is lost by transferring instead of retraining |
+| (a) CLMS label, CLMS points | the local model | whether a sealed-surface label helps transfer |
+| (b) GHSL label, CLMS points | the transfer of (c) | the sampling strategy |
 
-### Training target
+This gives twelve maps for Milan (four predictors × three configurations) and
+nine for each Vietnamese city (three local, six transferred).
 
-Milan is modelled against CLMS and against GHS-BUILT-S (GHSL) **at the same
-points**: one set of CLMS-stratified training locations, with both products'
-values read at exactly those points, so the label is the only thing that
-changes. The two products measure different things: CLMS maps sealed surface
-including roads, GHSL maps roofed built-up area without them. Comparing the
-two separates what the method achieves from what the training reference
-already decides. A third set of Milan models, trained on GHSL-stratified
-points, is the source of the GHSL transfer and of the sampling-sensitivity
-comparison.
+Every map is evaluated against the same 450 independently photo-interpreted
+**EarthLabel** plots of its city, which no model saw during training or tuning.
 
-Everything is evaluated against 450 independently photo-interpreted **EarthLabel** plots per city, which no model ever saw during training.
+## Terminology
+
+The chapter, the code and the file names use these terms for the same things.
+
+| Term | Meaning | In code and file names |
+|---|---|---|
+| training label | the product a model is trained against, CLMS or GHSL | `<label>` folder: `clms`, `ghsl`; map key suffix `_CLMS`, `_GHSL` |
+| training points | the 3,500 points, stratified on CLMS or on GHSL | `<points>_points` folder; `CLMSpts`, `GHSLpts` in map keys |
+| configuration (a), (b), (c) | the three Milan combinations of points and label | `clms_points/clms`, `clms_points/ghsl`, `ghsl_points/ghsl` |
+| AlphaEarth embeddings | the 64-band annual embedding | `embedding` |
+| S2 median, S2 percentile, S2 Stack | the three Sentinel-2 predictor sets | `median` / `S2median`, `percentile` / `S2percentile`, `stack` / `S2stack` |
+| local training | a model trained in the city it maps | `local` |
+| direct cross-city transfer (direct transfer) | a Milan model applied unchanged to Hanoi or HCMC | `transfer_<points>_points_<label>`, map key `..._transfer_GHSLpts_GHSL` |
+| combined valid mask | land pixels with a valid value in every predictor set; points and plots are drawn inside it | |
+| EarthLabel plots | the independent photo-interpreted reference data, 450 per city | `data/earthlabel/` |
+| independent validation | a map compared with the EarthLabel plots (notebook 05) | `validation_independent/` |
+| difference against the benchmark | a whole map compared with its own training product (notebook 04); not a validation | `benchmark_difference/` |
+| balanced metrics | every plot weighted equally | `balanced/` |
+| area-weighted metrics | every plot weighted by the area it represents | `area_weighted/` |
+| bias | observed minus predicted; positive means the map under-predicts | |
+| mean difference | predicted minus reference; positive means the map is above the reference. The opposite sign of bias | |
 
 ## What is here
 
@@ -77,42 +124,46 @@ are the pipeline that produced the maps and the numbers those two report on.
 00_S2_Extraction_Milan_2018.ipynb               Milan: date screening + every feature table (run once)
 00b_S2_Extraction_Vietnam_2018.ipynb            the same for Hanoi and HCMC (median + stack)
 
-01_IMD_Prediction_Milan_blockCV_embedding_CLMS.ipynb   Milan, embeddings, CLMS
-01b_IMD_Prediction_Milan_blockCV_S2_CLMS.ipynb         Milan, Sentinel-2, CLMS
-01c_IMD_Prediction_Milan_blockCV_embedding_GHSL.ipynb  Milan, embeddings, GHSL
-01d_IMD_Prediction_Milan_blockCV_S2_GHSL.ipynb         Milan, Sentinel-2, GHSL
+01_IMD_Prediction_Milan_blockCV_embedding_CLMS.ipynb   Milan, AlphaEarth, configuration (a)
+01b_IMD_Prediction_Milan_blockCV_S2_CLMS.ipynb         Milan, Sentinel-2, configuration (a)
+01c_IMD_Prediction_Milan_blockCV_embedding_GHSL.ipynb  Milan, AlphaEarth, configurations (b) and (c)
+01d_IMD_Prediction_Milan_blockCV_S2_GHSL.ipynb         Milan, Sentinel-2, configurations (b) and (c)
 
-02_Transferability_Vietnam_embedding.ipynb      Hanoi / HCMC transfer, embeddings
-03_Transferability_Vietnam_S2_median.ipynb      the same, Sentinel-2 median
-03b_Transferability_Vietnam_S2_stack_manual.ipynb   the same, Sentinel-2 manual stack (local retrain only)
+02_Transferability_Vietnam_embedding.ipynb      Hanoi / HCMC, AlphaEarth: local training and direct transfer
+03_Transferability_Vietnam_S2_median.ipynb      the same, S2 median
+03b_Transferability_Vietnam_S2_stack_manual.ipynb   S2 Stack (local training only)
 
 04_Benchmark_Difference.ipynb                   difference against the benchmark, whole map vs training product
 05_Independent_Validation.ipynb                 independent validation, 450 EarthLabel plots/city
 
 output_paths.py                                 every output path, and the registry of every map
-sample_features.py                              point sets, feature tables, the fixed split
-validation_metrics.py                           validation metrics (balanced / area-weighted), stratified paired bootstrap
+sample_features.py                              point sets and feature tables
+validation_metrics.py                           balanced and area-weighted metrics, stratified paired bootstrap
 interpreter_agreement.py                        agreement of the two EarthLabel interpreters
 s2_utils.py                                     shared cloud masks + composite builder
-gee_models.py                                   RF tuned, scored and built in Earth Engine; model records
+gee_models.py                                   random forest tuned, scored and built in Earth Engine; model records
 gee_export.py                                   export to Drive and download, automatically
 gee_init.py                                     reads the GEE project id from .env
 ```
 
-Run them in order: extract (00, 00b, once), model (01-01d), transfer (02, 03,
+Run them in order: extract (00, 00b, once), model (01–01d), transfer (02, 03,
 03b), validate (04, 05, `interpreter_agreement.py`). 01c and 01d train either
-point set (`POINTS = 'ghsl'` or `'clms'`; the label is always GHSL there).
+point set (`POINTS = 'clms'` for configuration (b), `'ghsl'` for (c); the label
+is always GHSL there).
 
-**No train/test split on `main`.** Every model is tuned by spatial-block CV
-and fitted on all its points; accuracy is that spatial CV (out-of-fold for the
-Vietnam local models) and the independent EarthLabel validation (05). The
-design with a held-out test set is kept on branch `train-test-split`. The 00 notebooks write every point's band values to
-`data/sample_features/`; every later notebook reads its table from there.
-Each table keeps the points its predictor has a value at (a point on water, or
-with no clear Sentinel-2 observation, is dropped from that table only; the
-stack is not gap-filled), and the train/test split comes from the point set,
-so a point is train or test for every predictor alike. Each table's `.json`
-records how many points it dropped. How the GHSL Milan raster and points were made is in git history
+**No train/test split.** Every model is tuned by spatially blocked
+cross-validation and then fitted on all its points. Accuracy comes from the
+independent validation against the EarthLabel plots (05); the cross-validation
+scores (out-of-fold RMSE against the training label) are used for tuning only.
+An earlier design with a held-out test set is kept on branch
+`train-test-split`; the feature tables still carry its `split` column, which
+`main` ignores.
+
+The 00 notebooks write every point's band values to `data/sample_features/`,
+and every later notebook reads its table from there. Each table keeps the
+points its predictor has a value at (the stack is not gap-filled), and its
+`.json` records the bands, the dates and how many points were dropped. How the
+GHSL Milan raster and points were made is in git history
 (`ghsl_data_preparation.ipynb`, removed in favour of the 00 notebooks).
 
 ### Where things live
@@ -133,7 +184,7 @@ data/
   GHSL_2018_Hanoi_UTM48N.tif
   GHSL_2018_HCMC_UTM48N.tif
   sample_points/                      the point sets, drawn by 00 / 00b: 500 per
-                                      class from pixels valid in every predictor
+                                      class inside the combined valid mask
     sample_points_all_CLMS_Milan.gpkg
     sample_points_all_GHSL_Milan.gpkg
     sample_points_all_GHSL_Hanoi.gpkg
@@ -145,8 +196,8 @@ data/
                                       points as the label (relabel_features)
     GHSL_{Hanoi,HCMC}_{embedding,S2median,S2stack}.gpkg
                                       the point set's points that this predictor
-                                      has a value at, with label and split, plus
-                                      its bands; a .json holds bands and dates
+                                      has a value at, with the label, plus its
+                                      bands; a .json holds bands and dates
   earthlabel/                         450 photo-interpreted plots per city
     milan_imd_2018_results_cells.csv
     hanoi_imd_2018_results_cells.csv
@@ -169,13 +220,14 @@ its identity.
 output/
   milan/                              the twelve Milan runs
     clms_points/                      the CLMS-stratified points
-      clms/                             CLMS label (maps 1-4)
+      clms/                             configuration (a), CLMS label (maps 1-4)
         embedding/  median/  percentile/  stack/
                                           IMD_Milan_10m_<pred>_CLMSpts_CLMS.tif,
-                                          model_rf.json, tuning and OOF CSVs
-      ghsl/                             GHSL read at the same points (maps 5-8)
+                                          model_rf.json, hyperparameter_tuning.csv,
+                                          oof_predictions.csv
+      ghsl/                             configuration (b), GHSL at the same points (maps 5-8)
     ghsl_points/                      the GHSL-stratified points
-      ghsl/                             GHSL label (maps 9-12)
+      ghsl/                             configuration (c), GHSL label (maps 9-12)
 
   transfer_vietnam/
     hanoi/                            one city
@@ -185,7 +237,7 @@ output/
         transfer_clms_points_clms/      IMD_Hanoi_10m_<pred>_transfer_MilanCLMSpts_CLMS.tif
         transfer_clms_points_ghsl/      IMD_Hanoi_10m_<pred>_transfer_MilanCLMSpts_GHSL.tif
         fig_scatter_Hanoi.png           the city's scenarios side by side
-      stack/local/                      local retrain only -- Milan's stack model
+      stack/local/                      local training only -- Milan's stack model
                                           has 40 bands, Hanoi/HCMC's don't match it
     hcmc/                             the same
     hanoi_and_hcmc/                   both cities: the comparison
@@ -197,7 +249,7 @@ output/
     <City>_2018/
       points_extracted.csv              reference and every map at the 450 plots
       stratum_areas.csv                 area of each stratum, W_h
-      balanced/  area_weighted/         techniques A, B, C and the ranking
+      balanced/  area_weighted/         methods A, B, C and the ranking
       bootstrap/                        iterations, intervals, paired differences
       per_raster/<map>/                 confusion matrices
     cross_city/                       the three cities together
@@ -213,37 +265,1142 @@ under one city hides the other city's results inside it.
 
 ## Method in brief
 
-**Sampling.** 500 points in each of the seven density classes, giving a
-balanced 3500, so sparse classes are not swamped by the dominant one. Drawn
-from CLMS and, separately, from GHSL. The CLMS vs GHSL comparison uses the
-CLMS-stratified points for both labels, where the GHSL classes are no longer
-balanced; the GHSL-stratified points train the Milan model transferred to
-Hanoi and HCMC.
+**Training samples.** All layers are aligned to a common 10 m grid in the local
+UTM projection; the training labels are reprojected with bilinear resampling,
+the 20 m Sentinel-2 bands and the water mask with nearest neighbour. The water
+mask (ESA WorldCover permanent water) and the valid-data masks of the predictor
+sets form the combined valid mask. The training label is grouped into seven
+classes, C0 (0%), C1 (1–20%), C2 (21–40%), C3 (41–60%), C4 (61–80%), C5
+(81–99%) and C6 (100%), and 500 points are drawn at random from each class
+inside the mask (seed 42), giving a balanced 3,500, so sparse classes are not
+swamped by the dominant one.
 
-**Train/test split.** The 3500 points are split using 1 km spatial blocks,
-whole blocks to one side or the other. A 250m buffer around the test blocks
-then removes training points lying too close to a test point, 37 of them for
-CLMS, leaving **2449 train and 1014 test**. Splitting on blocks rather than
-on points keeps a pixel's neighbours out of the other half, which ordinary
-random splitting does not.
+**Random forest.** Regression forests built with `smileRandomForest` in Google
+Earth Engine (see [Software](#software)). Hyperparameters are selected by
+spatially blocked 5-fold cross-validation: the points are grouped into square
+blocks, whole blocks are assigned at random to the folds, and three block sizes
+(500, 1,000 and 2,000 m) are tested. The setting and block size with the lowest
+mean fold RMSE against the training label are selected, and the final model is
+trained on all 3,500 points. The block sizes are a sensitivity test of the
+tuning, not an estimate of the distance needed for spatial independence. See
+[Random forest hyperparameters](#random-forest-hyperparameters).
 
-**Cross-validation.** The 2449 training points are regrouped into spatial
-blocks and the blocks assigned at random to five folds. Tuning repeats at
-three block sizes (500m, 1000m and 2000m) and the setting with the lowest
-mean RMSE is selected. For AlphaEarth on Milan that was 1000m.
+**Prediction.** The selected model is applied to every 10 m pixel of the area
+of interest, giving a continuous 0–100% map; water is excluded from every map.
 
-**Model.** Random forest, tuned in scikit-learn under spatial folds,
-then retrained server-side in Earth Engine and exported as a 10m raster. The
-selected trees and depth differ per run and are recorded in each run's
-`model_metadata_*.json`.
+**Independent validation.** 450 EarthLabel plots per city, drawn by stratified
+sampling with spatial balancing in six strata (C0–C5, with C5 and C6 merged),
+75 per stratum. Each plot is one 10 m pixel divided into nine photo-interpreted
+sub-cells, so its value is one of ten levels, 0/9 to 9/9. Three methods compare
+map and reference: (A) continuous error (RMSE, MAE, bias, R²), (B) binary at
+50% (overall accuracy, Cohen's κ) and (C) ordinal over the ten levels (exact
+agreement, agreement within one level, quadratic weighted κ). Each is computed
+twice: *balanced*, every plot weighted equally, and *area-weighted*, every plot
+weighted by the area it represents (`validation_metrics.plot_weights`).
+Confidence intervals and paired differences between maps come from a stratified
+bootstrap of 1,000 iterations.
 
-**Validation.** Maps are ranked against the EarthLabel plots on three measures:
-R² on the raw predicted percentage, Cohen's κ at a 50 % cut-off, and quadratic
-weighted κ over ten fraction levels; RMSE, MAE, overall accuracy and F1 are
-reported alongside. Each plot is one 10m pixel subdivided into nine
-photo-interpreted sub-cells.
+## Software
 
-Run in Google Earth Engine via its Python API, with tuning in scikit-learn.
+The random forest is Earth Engine's `ee.Classifier.smileRandomForest` in
+`REGRESSION` output mode, called through the Earth Engine Python API
+(`earthengine-api`). Tuning, cross-validation, final training and prediction
+all run server-side in Earth Engine (`gee_models.py`), so the exported maps are
+the tuned models themselves. Each run's model record, `model_rf.json`, holds the
+points, label, bands, the Earth Engine arguments and seed, the tuning table and
+the cross-validation scores.
+
+scikit-learn is used only to draw the 40 settings reproducibly from the search
+space (`ParameterSampler`, seed 42) and for metric helpers in notebooks 02 and
+03; no scikit-learn model is fitted. Everything else is Python (pandas, NumPy,
+GeoPandas, rasterio, matplotlib); the full list is in `requirements.txt`.
+
+## Sentinel-2 dates
+
+Collection `COPERNICUS/S2_SR_HARMONIZED`, 2018, bands B2, B3, B4, B5, B6, B7,
+B8, B8A, B11 and B12. Each date is scored over the area of interest rather than
+from scene metadata. *Cloud %* is the share of pixels classified as cloud,
+cloud shadow or cirrus in the scene classification layer; *valid %* is the
+share kept by the full validity mask, which also removes no-data, saturated and
+defective pixels. Milan uses strict thresholds; Hanoi and HCMC, where few dates
+pass them, relaxed ones. All listed dates enter the S2 median (and in Milan the
+S2 percentile); ✓ marks the dates of the S2 Stack, which in Hanoi and HCMC are
+the dates with at least 85% valid pixels. Values are read from the
+`per_date_stats` of each feature table's `.json`.
+
+**Milan** (cloud ≤ 20%, valid ≥ 90%): 30 dates
+
+| Date | Cloud % | Valid % | S2 Stack |
+|---|---:|---:|:---:|
+| 2018-03-23 | 0.03 | 99.97 | ✓ |
+| 2018-04-17 | 2.26 | 97.69 |  |
+| 2018-04-22 | 0.01 | 99.99 |  |
+| 2018-06-01 | 3.24 | 96.62 |  |
+| 2018-06-16 | 1.50 | 98.39 | ✓ |
+| 2018-06-21 | 7.84 | 92.07 |  |
+| 2018-07-01 | 4.53 | 95.36 |  |
+| 2018-07-06 | 7.78 | 92.07 |  |
+| 2018-07-26 | 5.96 | 93.91 |  |
+| 2018-07-31 | 1.27 | 98.64 |  |
+| 2018-08-05 | 0.25 | 99.73 | ✓ |
+| 2018-08-10 | 9.13 | 90.69 |  |
+| 2018-08-15 | 1.62 | 98.23 |  |
+| 2018-08-20 | 4.32 | 95.58 |  |
+| 2018-08-30 | 1.15 | 98.80 |  |
+| 2018-09-04 | 3.36 | 96.52 |  |
+| 2018-09-09 | 1.90 | 98.03 |  |
+| 2018-09-14 | 1.76 | 98.17 |  |
+| 2018-09-19 | 6.78 | 93.18 |  |
+| 2018-09-24 | 7.26 | 92.62 |  |
+| 2018-09-29 | 0.01 | 99.99 |  |
+| 2018-10-04 | 0.00 | 100.00 |  |
+| 2018-10-09 | 5.21 | 93.72 |  |
+| 2018-10-14 | 0.76 | 99.23 |  |
+| 2018-10-19 | 2.07 | 97.59 |  |
+| 2018-10-24 | 0.00 | 99.99 | ✓ |
+| 2018-11-18 | 1.55 | 98.15 |  |
+| 2018-11-28 | 0.63 | 99.24 |  |
+| 2018-12-03 | 2.95 | 96.51 |  |
+| 2018-12-08 | 0.00 | 100.00 |  |
+
+**Hanoi** (cloud ≤ 35%, valid ≥ 80%): 4 dates
+
+| Date | Cloud % | Valid % | S2 Stack |
+|---|---:|---:|:---:|
+| 2018-01-19 | 0.00 | 100.00 | ✓ |
+| 2018-03-10 | 16.75 | 83.24 |  |
+| 2018-10-31 | 0.00 | 100.00 | ✓ |
+| 2018-12-20 | 1.37 | 98.28 | ✓ |
+
+**HCMC** (cloud ≤ 35%, valid ≥ 80%): 3 dates
+
+| Date | Cloud % | Valid % | S2 Stack |
+|---|---:|---:|:---:|
+| 2018-02-12 | 0.01 | 99.99 | ✓ |
+| 2018-12-24 | 16.69 | 81.24 |  |
+| 2018-12-29 | 14.23 | 84.74 |  |
+
+## Random forest hyperparameters
+
+### Names
+
+The chapter describes the hyperparameters in words; the code and the tables
+below use Earth Engine's argument names.
+
+| Chapter | `smileRandomForest` argument | Notes |
+|---|---|---|
+| number of trees | `numberOfTrees` | |
+| number of variables per split | `variablesPerSplit` | searched as `max_features` (√n, log₂ n, or a fraction of the n bands, rounded down) and converted to a band count per predictor set |
+| minimum leaf population | `minLeafPopulation` | |
+| maximum number of nodes per tree | `maxNodes` | *unlimited* means the argument is not set |
+| (fixed) | `bagFraction` = 1.0, `seed` = 42 | not searched |
+
+### Search space
+
+| Hyperparameter | Values |
+|---|---|
+| `numberOfTrees` | 100, 200, 300, 500 |
+| `variablesPerSplit` (as `max_features`) | √n, log₂ n, 0.3 n, 0.5 n |
+| `minLeafPopulation` | 1, 2, 4 |
+| `maxNodes` | 250, 500, 1000, unlimited |
+| block size | 500, 1000, 2000 m |
+
+Forty settings are drawn at random from the space (`PARAM_SPACE`, `N_ITER` and
+`SEED` in `gee_models.py`), and each is scored at each of the three block sizes:
+120 five-fold cross-validations per model. With the same seed, the same forty
+settings are drawn for every model; only `variablesPerSplit` differs, because it
+depends on the number of bands.
+
+<details>
+<summary>The forty settings</summary>
+
+| Setting | numberOfTrees | max_features | minLeafPopulation | maxNodes |
+|---:|---:|---:|---:|---:|
+| 0 | 200 | 0.5 | 4 | unlimited |
+| 1 | 100 | 0.5 | 2 | 500 |
+| 2 | 100 | 0.3 | 2 | 250 |
+| 3 | 500 | 0.5 | 4 | 500 |
+| 4 | 200 | log2 | 2 | 500 |
+| 5 | 200 | 0.3 | 4 | 1000 |
+| 6 | 500 | log2 | 1 | unlimited |
+| 7 | 300 | log2 | 2 | unlimited |
+| 8 | 100 | log2 | 2 | unlimited |
+| 9 | 200 | sqrt | 4 | unlimited |
+| 10 | 300 | 0.3 | 2 | 250 |
+| 11 | 100 | log2 | 2 | 500 |
+| 12 | 300 | log2 | 2 | 250 |
+| 13 | 200 | log2 | 2 | 250 |
+| 14 | 200 | sqrt | 4 | 1000 |
+| 15 | 300 | 0.3 | 2 | unlimited |
+| 16 | 200 | sqrt | 1 | 1000 |
+| 17 | 200 | log2 | 4 | 250 |
+| 18 | 500 | log2 | 1 | 500 |
+| 19 | 100 | log2 | 4 | 250 |
+| 20 | 500 | 0.3 | 1 | 1000 |
+| 21 | 300 | sqrt | 4 | 1000 |
+| 22 | 300 | log2 | 4 | 500 |
+| 23 | 300 | sqrt | 1 | 500 |
+| 24 | 500 | log2 | 2 | 250 |
+| 25 | 500 | log2 | 2 | 500 |
+| 26 | 100 | 0.3 | 1 | unlimited |
+| 27 | 300 | log2 | 1 | 1000 |
+| 28 | 100 | log2 | 1 | 250 |
+| 29 | 200 | 0.5 | 4 | 500 |
+| 30 | 300 | log2 | 2 | 500 |
+| 31 | 300 | log2 | 4 | 1000 |
+| 32 | 500 | log2 | 2 | unlimited |
+| 33 | 300 | 0.5 | 2 | 250 |
+| 34 | 300 | 0.3 | 1 | 1000 |
+| 35 | 200 | sqrt | 2 | unlimited |
+| 36 | 200 | 0.5 | 1 | 500 |
+| 37 | 300 | 0.5 | 4 | 500 |
+| 38 | 200 | log2 | 4 | 1000 |
+| 39 | 300 | 0.3 | 4 | 250 |
+</details>
+
+### Selected hyperparameters
+
+The setting and block size with the lowest mean fold RMSE, for each of the 18
+locally trained models. The direct-transfer maps reuse the Milan models
+unchanged. *Out-of-fold RMSE* pools the out-of-fold predictions of all 3,500
+points at the selected block size, so it differs slightly from the mean fold
+RMSE in the tables below. Both are against the training label, in percentage
+points, and are tuning scores, not accuracy.
+
+| City | Configuration | Predictor | Bands | Block (m) | numberOfTrees | variablesPerSplit | minLeafPopulation | maxNodes | CV RMSE (pp) |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| Milan | (a) CLMS label, CLMS points | AlphaEarth | 64 | 2000 | 500 | 32 (0.5) | 4 | 500 | 13.24 |
+| Milan | (a) CLMS label, CLMS points | S2 median | 10 | 500 | 500 | 5 (0.5) | 4 | 500 | 10.79 |
+| Milan | (a) CLMS label, CLMS points | S2 percentile | 50 | 1000 | 500 | 25 (0.5) | 4 | 500 | 9.11 |
+| Milan | (a) CLMS label, CLMS points | S2 Stack | 40 | 500 | 500 | 12 (0.3) | 1 | 1000 | 10.51 |
+| Milan | (b) GHSL label, CLMS points | AlphaEarth | 64 | 500 | 200 | 19 (0.3) | 4 | 1000 | 16.14 |
+| Milan | (b) GHSL label, CLMS points | S2 median | 10 | 2000 | 200 | 5 (0.5) | 4 | 500 | 17.32 |
+| Milan | (b) GHSL label, CLMS points | S2 percentile | 50 | 500 | 500 | 15 (0.3) | 1 | 1000 | 16.73 |
+| Milan | (b) GHSL label, CLMS points | S2 Stack | 40 | 500 | 500 | 20 (0.5) | 4 | 500 | 16.68 |
+| Milan | (c) GHSL label, GHSL points | AlphaEarth | 64 | 500 | 500 | 19 (0.3) | 1 | 1000 | 18.70 |
+| Milan | (c) GHSL label, GHSL points | S2 median | 10 | 1000 | 300 | 3 (sqrt) | 4 | 1000 | 18.67 |
+| Milan | (c) GHSL label, GHSL points | S2 percentile | 50 | 1000 | 200 | 15 (0.3) | 4 | 1000 | 18.16 |
+| Milan | (c) GHSL label, GHSL points | S2 Stack | 40 | 2000 | 500 | 5 (log2) | 1 | unlimited | 18.20 |
+| Hanoi | local training, GHSL | AlphaEarth | 64 | 2000 | 500 | 32 (0.5) | 4 | 500 | 22.54 |
+| Hanoi | local training, GHSL | S2 median | 10 | 500 | 200 | 5 (0.5) | 4 | 500 | 24.01 |
+| Hanoi | local training, GHSL | S2 Stack | 30 | 500 | 500 | 9 (0.3) | 1 | 1000 | 24.05 |
+| HCMC | local training, GHSL | AlphaEarth | 64 | 1000 | 500 | 19 (0.3) | 1 | 1000 | 21.55 |
+| HCMC | local training, GHSL | S2 median | 10 | 2000 | 500 | 5 (0.5) | 4 | 500 | 23.24 |
+| HCMC | local training, GHSL | S2 Stack | 10 | 2000 | 300 | 5 (0.5) | 4 | 500 | 23.08 |
+
+### Tuning results
+
+Best mean fold RMSE (pp) at each block size; bold marks the selected block.
+*Range* is the spread between the three, 0.03–0.50 pp across the 18 models, so
+the choice of block size has little effect on the selected model.
+
+| City | Configuration | Predictor | 500 m | 1000 m | 2000 m | Range |
+|---|---|---|---:|---:|---:|---:|
+| Milan | (a) CLMS label, CLMS points | AlphaEarth | 13.24 | 13.25 | **13.21** | 0.04 |
+| Milan | (a) CLMS label, CLMS points | S2 median | **10.78** | 10.81 | 10.80 | 0.03 |
+| Milan | (a) CLMS label, CLMS points | S2 percentile | 9.17 | **9.11** | 9.17 | 0.07 |
+| Milan | (a) CLMS label, CLMS points | S2 Stack | **10.50** | 10.50 | 10.53 | 0.03 |
+| Milan | (b) GHSL label, CLMS points | AlphaEarth | **16.14** | 16.20 | 16.30 | 0.16 |
+| Milan | (b) GHSL label, CLMS points | S2 median | 17.38 | 17.45 | **17.30** | 0.15 |
+| Milan | (b) GHSL label, CLMS points | S2 percentile | **16.73** | 16.78 | 16.76 | 0.05 |
+| Milan | (b) GHSL label, CLMS points | S2 Stack | **16.68** | 16.74 | 16.73 | 0.06 |
+| Milan | (c) GHSL label, GHSL points | AlphaEarth | **18.68** | 18.74 | 18.70 | 0.06 |
+| Milan | (c) GHSL label, GHSL points | S2 median | 18.74 | **18.65** | 18.81 | 0.16 |
+| Milan | (c) GHSL label, GHSL points | S2 percentile | 18.18 | **18.15** | 18.21 | 0.06 |
+| Milan | (c) GHSL label, GHSL points | S2 Stack | 18.21 | 18.23 | **18.19** | 0.04 |
+| Hanoi | local training, GHSL | AlphaEarth | 22.48 | 22.89 | **22.45** | 0.44 |
+| Hanoi | local training, GHSL | S2 median | **23.96** | 24.45 | 23.98 | 0.50 |
+| Hanoi | local training, GHSL | S2 Stack | **24.04** | 24.43 | 24.06 | 0.39 |
+| HCMC | local training, GHSL | AlphaEarth | 21.54 | **21.51** | 21.65 | 0.13 |
+| HCMC | local training, GHSL | S2 median | 23.39 | 23.32 | **23.28** | 0.10 |
+| HCMC | local training, GHSL | S2 Stack | 23.21 | 23.20 | **23.12** | 0.09 |
+
+**Full tuning results.** Mean ± standard deviation of the fold RMSE (pp) for
+every setting and block size; bold marks the selected one. The settings are
+numbered as in [Search space](#search-space). Each run directory also keeps the
+table as `hyperparameter_tuning.csv`.
+
+<details>
+<summary>Milan · (a) CLMS label, CLMS points · AlphaEarth (64 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 32 | 13.25 ± 0.61 | 13.29 ± 0.43 | 13.23 ± 0.57 |
+| 1 | 32 | 13.60 ± 0.57 | 13.56 ± 0.45 | 13.47 ± 0.51 |
+| 2 | 19 | 14.03 ± 0.63 | 14.03 ± 0.36 | 13.96 ± 0.44 |
+| 3 | 32 | 13.24 ± 0.59 | 13.25 ± 0.40 | **13.21 ± 0.54** |
+| 4 | 6 | 14.02 ± 0.58 | 13.94 ± 0.37 | 13.87 ± 0.40 |
+| 5 | 19 | 13.39 ± 0.62 | 13.37 ± 0.39 | 13.25 ± 0.52 |
+| 6 | 6 | 13.68 ± 0.61 | 13.65 ± 0.37 | 13.60 ± 0.45 |
+| 7 | 6 | 13.72 ± 0.59 | 13.65 ± 0.38 | 13.60 ± 0.46 |
+| 8 | 6 | 13.85 ± 0.60 | 13.69 ± 0.36 | 13.64 ± 0.46 |
+| 9 | 8 | 13.58 ± 0.63 | 13.54 ± 0.41 | 13.53 ± 0.48 |
+| 10 | 19 | 13.97 ± 0.60 | 13.97 ± 0.36 | 13.91 ± 0.43 |
+| 11 | 6 | 14.10 ± 0.60 | 14.00 ± 0.32 | 13.90 ± 0.39 |
+| 12 | 6 | 14.50 ± 0.55 | 14.46 ± 0.27 | 14.39 ± 0.33 |
+| 13 | 6 | 14.53 ± 0.58 | 14.47 ± 0.30 | 14.39 ± 0.35 |
+| 14 | 8 | 13.58 ± 0.63 | 13.54 ± 0.41 | 13.53 ± 0.48 |
+| 15 | 19 | 13.35 ± 0.65 | 13.31 ± 0.38 | 13.29 ± 0.56 |
+| 16 | 8 | 13.54 ± 0.60 | 13.56 ± 0.39 | 13.51 ± 0.51 |
+| 17 | 6 | 14.32 ± 0.57 | 14.29 ± 0.30 | 14.26 ± 0.34 |
+| 18 | 6 | 13.96 ± 0.56 | 13.93 ± 0.34 | 13.87 ± 0.37 |
+| 19 | 6 | 14.38 ± 0.57 | 14.27 ± 0.27 | 14.29 ± 0.37 |
+| 20 | 19 | 13.32 ± 0.65 | 13.29 ± 0.41 | 13.26 ± 0.53 |
+| 21 | 8 | 13.57 ± 0.63 | 13.55 ± 0.40 | 13.52 ± 0.49 |
+| 22 | 6 | 13.73 ± 0.59 | 13.69 ± 0.39 | 13.67 ± 0.45 |
+| 23 | 8 | 13.79 ± 0.55 | 13.80 ± 0.37 | 13.75 ± 0.43 |
+| 24 | 6 | 14.47 ± 0.55 | 14.46 ± 0.26 | 14.39 ± 0.32 |
+| 25 | 6 | 13.96 ± 0.56 | 13.93 ± 0.34 | 13.87 ± 0.37 |
+| 26 | 19 | 13.45 ± 0.69 | 13.41 ± 0.34 | 13.37 ± 0.57 |
+| 27 | 6 | 13.72 ± 0.59 | 13.65 ± 0.38 | 13.60 ± 0.46 |
+| 28 | 6 | 14.58 ± 0.60 | 14.49 ± 0.28 | 14.41 ± 0.33 |
+| 29 | 32 | 13.25 ± 0.61 | 13.29 ± 0.43 | 13.23 ± 0.57 |
+| 30 | 6 | 14.00 ± 0.54 | 13.93 ± 0.35 | 13.87 ± 0.39 |
+| 31 | 6 | 13.73 ± 0.59 | 13.69 ± 0.39 | 13.67 ± 0.45 |
+| 32 | 6 | 13.68 ± 0.61 | 13.65 ± 0.37 | 13.60 ± 0.45 |
+| 33 | 32 | 13.93 ± 0.57 | 13.90 ± 0.42 | 13.82 ± 0.44 |
+| 34 | 19 | 13.35 ± 0.65 | 13.31 ± 0.38 | 13.29 ± 0.56 |
+| 35 | 8 | 13.54 ± 0.60 | 13.56 ± 0.39 | 13.51 ± 0.51 |
+| 36 | 32 | 13.52 ± 0.56 | 13.49 ± 0.43 | 13.40 ± 0.53 |
+| 37 | 32 | 13.25 ± 0.61 | 13.26 ± 0.43 | 13.23 ± 0.56 |
+| 38 | 6 | 13.75 ± 0.60 | 13.71 ± 0.37 | 13.70 ± 0.45 |
+| 39 | 19 | 13.79 ± 0.58 | 13.79 ± 0.39 | 13.69 ± 0.44 |
+
+</details>
+
+<details>
+<summary>Milan · (a) CLMS label, CLMS points · S2 median (10 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 5 | 10.79 ± 0.50 | 10.82 ± 0.52 | 10.80 ± 0.51 |
+| 1 | 5 | 11.07 ± 0.49 | 11.06 ± 0.50 | 11.03 ± 0.49 |
+| 2 | 3 | 11.47 ± 0.49 | 11.51 ± 0.42 | 11.44 ± 0.49 |
+| 3 | 5 | **10.78 ± 0.47** | 10.81 ± 0.53 | 10.81 ± 0.53 |
+| 4 | 3 | 11.12 ± 0.49 | 11.14 ± 0.46 | 11.10 ± 0.50 |
+| 5 | 3 | 10.90 ± 0.53 | 10.90 ± 0.49 | 10.90 ± 0.55 |
+| 6 | 3 | 10.88 ± 0.53 | 10.87 ± 0.50 | 10.86 ± 0.55 |
+| 7 | 3 | 10.89 ± 0.53 | 10.88 ± 0.50 | 10.87 ± 0.56 |
+| 8 | 3 | 10.93 ± 0.53 | 10.95 ± 0.45 | 10.90 ± 0.55 |
+| 9 | 3 | 10.90 ± 0.53 | 10.90 ± 0.49 | 10.90 ± 0.55 |
+| 10 | 3 | 11.46 ± 0.47 | 11.44 ± 0.44 | 11.42 ± 0.49 |
+| 11 | 3 | 11.14 ± 0.50 | 11.17 ± 0.44 | 11.12 ± 0.50 |
+| 12 | 3 | 11.46 ± 0.47 | 11.44 ± 0.44 | 11.42 ± 0.49 |
+| 13 | 3 | 11.46 ± 0.46 | 11.47 ± 0.43 | 11.42 ± 0.49 |
+| 14 | 3 | 10.90 ± 0.53 | 10.90 ± 0.49 | 10.90 ± 0.55 |
+| 15 | 3 | 10.89 ± 0.53 | 10.88 ± 0.50 | 10.87 ± 0.56 |
+| 16 | 3 | 10.90 ± 0.52 | 10.90 ± 0.50 | 10.88 ± 0.55 |
+| 17 | 3 | 11.35 ± 0.47 | 11.34 ± 0.45 | 11.31 ± 0.50 |
+| 18 | 3 | 11.11 ± 0.50 | 11.10 ± 0.47 | 11.08 ± 0.50 |
+| 19 | 3 | 11.36 ± 0.51 | 11.38 ± 0.45 | 11.31 ± 0.52 |
+| 20 | 3 | 10.88 ± 0.53 | 10.87 ± 0.50 | 10.86 ± 0.55 |
+| 21 | 3 | 10.89 ± 0.53 | 10.89 ± 0.50 | 10.89 ± 0.55 |
+| 22 | 3 | 10.90 ± 0.53 | 10.90 ± 0.50 | 10.90 ± 0.55 |
+| 23 | 3 | 11.12 ± 0.50 | 11.11 ± 0.47 | 11.10 ± 0.50 |
+| 24 | 3 | 11.45 ± 0.47 | 11.43 ± 0.44 | 11.41 ± 0.48 |
+| 25 | 3 | 11.11 ± 0.50 | 11.10 ± 0.47 | 11.08 ± 0.50 |
+| 26 | 3 | 10.93 ± 0.53 | 10.95 ± 0.45 | 10.90 ± 0.55 |
+| 27 | 3 | 10.89 ± 0.53 | 10.88 ± 0.50 | 10.87 ± 0.56 |
+| 28 | 3 | 11.47 ± 0.49 | 11.51 ± 0.42 | 11.44 ± 0.49 |
+| 29 | 5 | 10.80 ± 0.50 | 10.83 ± 0.52 | 10.81 ± 0.51 |
+| 30 | 3 | 11.12 ± 0.50 | 11.11 ± 0.47 | 11.10 ± 0.50 |
+| 31 | 3 | 10.89 ± 0.53 | 10.89 ± 0.50 | 10.89 ± 0.55 |
+| 32 | 3 | 10.88 ± 0.53 | 10.87 ± 0.50 | 10.86 ± 0.55 |
+| 33 | 5 | 11.42 ± 0.45 | 11.41 ± 0.48 | 11.39 ± 0.45 |
+| 34 | 3 | 10.89 ± 0.53 | 10.88 ± 0.50 | 10.87 ± 0.56 |
+| 35 | 3 | 10.90 ± 0.52 | 10.90 ± 0.50 | 10.88 ± 0.55 |
+| 36 | 5 | 11.05 ± 0.47 | 11.05 ± 0.49 | 11.03 ± 0.46 |
+| 37 | 5 | 10.79 ± 0.47 | 10.83 ± 0.53 | 10.81 ± 0.51 |
+| 38 | 3 | 10.90 ± 0.53 | 10.90 ± 0.49 | 10.90 ± 0.55 |
+| 39 | 3 | 11.34 ± 0.48 | 11.32 ± 0.45 | 11.31 ± 0.50 |
+
+</details>
+
+<details>
+<summary>Milan · (a) CLMS label, CLMS points · S2 percentile (50 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 25 | 9.18 ± 0.60 | 9.12 ± 0.41 | 9.19 ± 0.24 |
+| 1 | 25 | 9.44 ± 0.57 | 9.41 ± 0.38 | 9.48 ± 0.23 |
+| 2 | 15 | 9.76 ± 0.56 | 9.76 ± 0.38 | 9.77 ± 0.27 |
+| 3 | 25 | 9.17 ± 0.63 | **9.11 ± 0.40** | 9.20 ± 0.25 |
+| 4 | 5 | 9.58 ± 0.64 | 9.55 ± 0.32 | 9.62 ± 0.38 |
+| 5 | 15 | 9.20 ± 0.64 | 9.14 ± 0.40 | 9.17 ± 0.25 |
+| 6 | 5 | 9.32 ± 0.67 | 9.28 ± 0.35 | 9.34 ± 0.37 |
+| 7 | 5 | 9.33 ± 0.67 | 9.30 ± 0.35 | 9.36 ± 0.36 |
+| 8 | 5 | 9.35 ± 0.63 | 9.32 ± 0.38 | 9.41 ± 0.34 |
+| 9 | 7 | 9.29 ± 0.67 | 9.23 ± 0.32 | 9.30 ± 0.33 |
+| 10 | 15 | 9.74 ± 0.57 | 9.72 ± 0.40 | 9.76 ± 0.26 |
+| 11 | 5 | 9.59 ± 0.62 | 9.58 ± 0.34 | 9.64 ± 0.35 |
+| 12 | 5 | 9.96 ± 0.58 | 9.94 ± 0.32 | 9.95 ± 0.35 |
+| 13 | 5 | 9.96 ± 0.56 | 9.95 ± 0.31 | 9.96 ± 0.36 |
+| 14 | 7 | 9.29 ± 0.67 | 9.23 ± 0.32 | 9.30 ± 0.33 |
+| 15 | 15 | 9.19 ± 0.64 | 9.15 ± 0.38 | 9.22 ± 0.25 |
+| 16 | 7 | 9.25 ± 0.66 | 9.27 ± 0.35 | 9.27 ± 0.31 |
+| 17 | 5 | 9.79 ± 0.61 | 9.78 ± 0.29 | 9.82 ± 0.36 |
+| 18 | 5 | 9.56 ± 0.65 | 9.53 ± 0.32 | 9.58 ± 0.37 |
+| 19 | 5 | 9.81 ± 0.59 | 9.80 ± 0.31 | 9.84 ± 0.36 |
+| 20 | 15 | 9.18 ± 0.65 | 9.14 ± 0.37 | 9.21 ± 0.26 |
+| 21 | 7 | 9.27 ± 0.65 | 9.21 ± 0.33 | 9.30 ± 0.33 |
+| 22 | 5 | 9.37 ± 0.67 | 9.32 ± 0.31 | 9.38 ± 0.37 |
+| 23 | 7 | 9.48 ± 0.64 | 9.48 ± 0.33 | 9.50 ± 0.31 |
+| 24 | 5 | 9.94 ± 0.58 | 9.92 ± 0.31 | 9.93 ± 0.35 |
+| 25 | 5 | 9.56 ± 0.65 | 9.53 ± 0.32 | 9.58 ± 0.37 |
+| 26 | 15 | 9.24 ± 0.64 | 9.21 ± 0.37 | 9.23 ± 0.27 |
+| 27 | 5 | 9.33 ± 0.67 | 9.30 ± 0.35 | 9.36 ± 0.36 |
+| 28 | 5 | 9.97 ± 0.55 | 9.98 ± 0.34 | 9.97 ± 0.33 |
+| 29 | 25 | 9.18 ± 0.61 | 9.12 ± 0.41 | 9.20 ± 0.24 |
+| 30 | 5 | 9.57 ± 0.65 | 9.54 ± 0.32 | 9.61 ± 0.37 |
+| 31 | 5 | 9.36 ± 0.67 | 9.31 ± 0.32 | 9.38 ± 0.37 |
+| 32 | 5 | 9.32 ± 0.67 | 9.28 ± 0.35 | 9.34 ± 0.37 |
+| 33 | 25 | 9.72 ± 0.55 | 9.68 ± 0.43 | 9.78 ± 0.27 |
+| 34 | 15 | 9.19 ± 0.64 | 9.15 ± 0.38 | 9.22 ± 0.25 |
+| 35 | 7 | 9.25 ± 0.66 | 9.27 ± 0.35 | 9.27 ± 0.31 |
+| 36 | 25 | 9.43 ± 0.59 | 9.37 ± 0.38 | 9.47 ± 0.25 |
+| 37 | 25 | 9.17 ± 0.62 | 9.12 ± 0.41 | 9.20 ± 0.26 |
+| 38 | 5 | 9.36 ± 0.66 | 9.31 ± 0.30 | 9.38 ± 0.38 |
+| 39 | 15 | 9.59 ± 0.57 | 9.57 ± 0.38 | 9.61 ± 0.30 |
+
+</details>
+
+<details>
+<summary>Milan · (a) CLMS label, CLMS points · S2 Stack (40 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 20 | 10.53 ± 0.50 | 10.54 ± 0.30 | 10.57 ± 0.40 |
+| 1 | 20 | 10.69 ± 0.50 | 10.74 ± 0.31 | 10.80 ± 0.32 |
+| 2 | 12 | 11.14 ± 0.42 | 11.15 ± 0.36 | 11.18 ± 0.29 |
+| 3 | 20 | 10.51 ± 0.51 | 10.50 ± 0.30 | 10.55 ± 0.37 |
+| 4 | 5 | 10.85 ± 0.46 | 10.82 ± 0.29 | 10.87 ± 0.26 |
+| 5 | 12 | 10.55 ± 0.52 | 10.55 ± 0.32 | 10.59 ± 0.34 |
+| 6 | 5 | 10.60 ± 0.50 | 10.61 ± 0.34 | 10.62 ± 0.30 |
+| 7 | 5 | 10.60 ± 0.49 | 10.59 ± 0.32 | 10.64 ± 0.31 |
+| 8 | 5 | 10.66 ± 0.44 | 10.64 ± 0.31 | 10.66 ± 0.29 |
+| 9 | 6 | 10.64 ± 0.50 | 10.65 ± 0.35 | 10.66 ± 0.32 |
+| 10 | 12 | 11.10 ± 0.42 | 11.12 ± 0.34 | 11.13 ± 0.27 |
+| 11 | 5 | 10.87 ± 0.43 | 10.84 ± 0.29 | 10.87 ± 0.24 |
+| 12 | 5 | 11.25 ± 0.39 | 11.23 ± 0.30 | 11.28 ± 0.23 |
+| 13 | 5 | 11.26 ± 0.40 | 11.23 ± 0.30 | 11.29 ± 0.22 |
+| 14 | 6 | 10.64 ± 0.50 | 10.65 ± 0.35 | 10.66 ± 0.32 |
+| 15 | 12 | 10.52 ± 0.51 | 10.52 ± 0.32 | 10.53 ± 0.33 |
+| 16 | 6 | 10.63 ± 0.50 | 10.56 ± 0.36 | 10.65 ± 0.32 |
+| 17 | 5 | 11.12 ± 0.43 | 11.12 ± 0.32 | 11.14 ± 0.27 |
+| 18 | 5 | 10.83 ± 0.46 | 10.83 ± 0.31 | 10.83 ± 0.26 |
+| 19 | 5 | 11.16 ± 0.43 | 11.16 ± 0.35 | 11.17 ± 0.29 |
+| 20 | 12 | **10.50 ± 0.51** | 10.51 ± 0.31 | 10.55 ± 0.31 |
+| 21 | 6 | 10.63 ± 0.50 | 10.63 ± 0.36 | 10.66 ± 0.32 |
+| 22 | 5 | 10.66 ± 0.50 | 10.64 ± 0.34 | 10.69 ± 0.33 |
+| 23 | 6 | 10.82 ± 0.49 | 10.79 ± 0.33 | 10.84 ± 0.29 |
+| 24 | 5 | 11.24 ± 0.39 | 11.25 ± 0.32 | 11.26 ± 0.23 |
+| 25 | 5 | 10.83 ± 0.46 | 10.83 ± 0.31 | 10.83 ± 0.26 |
+| 26 | 12 | 10.59 ± 0.51 | 10.57 ± 0.34 | 10.59 ± 0.37 |
+| 27 | 5 | 10.60 ± 0.49 | 10.59 ± 0.32 | 10.64 ± 0.31 |
+| 28 | 5 | 11.29 ± 0.37 | 11.25 ± 0.31 | 11.29 ± 0.19 |
+| 29 | 20 | 10.53 ± 0.50 | 10.54 ± 0.30 | 10.57 ± 0.40 |
+| 30 | 5 | 10.84 ± 0.46 | 10.82 ± 0.29 | 10.85 ± 0.27 |
+| 31 | 5 | 10.66 ± 0.50 | 10.64 ± 0.34 | 10.69 ± 0.34 |
+| 32 | 5 | 10.60 ± 0.50 | 10.61 ± 0.34 | 10.62 ± 0.30 |
+| 33 | 20 | 11.09 ± 0.42 | 11.11 ± 0.34 | 11.13 ± 0.28 |
+| 34 | 12 | 10.52 ± 0.51 | 10.52 ± 0.32 | 10.53 ± 0.33 |
+| 35 | 6 | 10.63 ± 0.50 | 10.56 ± 0.35 | 10.65 ± 0.32 |
+| 36 | 20 | 10.68 ± 0.48 | 10.74 ± 0.31 | 10.74 ± 0.34 |
+| 37 | 20 | 10.51 ± 0.51 | 10.51 ± 0.31 | 10.57 ± 0.38 |
+| 38 | 5 | 10.68 ± 0.49 | 10.65 ± 0.35 | 10.69 ± 0.34 |
+| 39 | 12 | 10.96 ± 0.46 | 10.98 ± 0.33 | 11.02 ± 0.29 |
+
+</details>
+
+<details>
+<summary>Milan · (b) GHSL label, CLMS points · AlphaEarth (64 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 32 | 16.17 ± 0.35 | 16.26 ± 0.72 | 16.35 ± 0.54 |
+| 1 | 32 | 16.21 ± 0.39 | 16.31 ± 0.76 | 16.43 ± 0.51 |
+| 2 | 19 | 16.33 ± 0.42 | 16.37 ± 0.72 | 16.52 ± 0.51 |
+| 3 | 32 | 16.17 ± 0.36 | 16.24 ± 0.73 | 16.33 ± 0.54 |
+| 4 | 6 | 16.29 ± 0.36 | 16.32 ± 0.72 | 16.43 ± 0.55 |
+| 5 | 19 | **16.14 ± 0.37** | 16.21 ± 0.75 | 16.32 ± 0.53 |
+| 6 | 6 | 16.24 ± 0.35 | 16.27 ± 0.71 | 16.37 ± 0.56 |
+| 7 | 6 | 16.24 ± 0.33 | 16.29 ± 0.72 | 16.39 ± 0.54 |
+| 8 | 6 | 16.33 ± 0.35 | 16.35 ± 0.72 | 16.45 ± 0.51 |
+| 9 | 8 | 16.21 ± 0.32 | 16.29 ± 0.71 | 16.37 ± 0.52 |
+| 10 | 19 | 16.28 ± 0.37 | 16.33 ± 0.73 | 16.45 ± 0.55 |
+| 11 | 6 | 16.34 ± 0.36 | 16.35 ± 0.71 | 16.46 ± 0.53 |
+| 12 | 6 | 16.44 ± 0.36 | 16.50 ± 0.70 | 16.58 ± 0.55 |
+| 13 | 6 | 16.48 ± 0.37 | 16.51 ± 0.71 | 16.60 ± 0.54 |
+| 14 | 8 | 16.21 ± 0.32 | 16.29 ± 0.71 | 16.37 ± 0.52 |
+| 15 | 19 | 16.16 ± 0.36 | 16.20 ± 0.73 | 16.32 ± 0.54 |
+| 16 | 8 | 16.27 ± 0.35 | 16.25 ± 0.73 | 16.36 ± 0.47 |
+| 17 | 6 | 16.37 ± 0.37 | 16.37 ± 0.73 | 16.48 ± 0.53 |
+| 18 | 6 | 16.26 ± 0.36 | 16.28 ± 0.72 | 16.39 ± 0.57 |
+| 19 | 6 | 16.39 ± 0.38 | 16.42 ± 0.73 | 16.50 ± 0.54 |
+| 20 | 19 | 16.16 ± 0.33 | 16.20 ± 0.73 | 16.30 ± 0.54 |
+| 21 | 8 | 16.21 ± 0.31 | 16.26 ± 0.71 | 16.35 ± 0.52 |
+| 22 | 6 | 16.27 ± 0.34 | 16.30 ± 0.73 | 16.38 ± 0.51 |
+| 23 | 8 | 16.25 ± 0.36 | 16.26 ± 0.75 | 16.33 ± 0.49 |
+| 24 | 6 | 16.44 ± 0.37 | 16.47 ± 0.71 | 16.57 ± 0.56 |
+| 25 | 6 | 16.26 ± 0.36 | 16.28 ± 0.72 | 16.39 ± 0.57 |
+| 26 | 19 | 16.22 ± 0.41 | 16.27 ± 0.73 | 16.42 ± 0.48 |
+| 27 | 6 | 16.24 ± 0.33 | 16.29 ± 0.72 | 16.39 ± 0.54 |
+| 28 | 6 | 16.53 ± 0.37 | 16.55 ± 0.68 | 16.63 ± 0.52 |
+| 29 | 32 | 16.17 ± 0.35 | 16.26 ± 0.72 | 16.35 ± 0.54 |
+| 30 | 6 | 16.26 ± 0.34 | 16.30 ± 0.72 | 16.41 ± 0.56 |
+| 31 | 6 | 16.27 ± 0.34 | 16.30 ± 0.73 | 16.38 ± 0.51 |
+| 32 | 6 | 16.24 ± 0.35 | 16.27 ± 0.71 | 16.37 ± 0.56 |
+| 33 | 32 | 16.30 ± 0.36 | 16.40 ± 0.76 | 16.50 ± 0.53 |
+| 34 | 19 | 16.16 ± 0.36 | 16.20 ± 0.73 | 16.32 ± 0.54 |
+| 35 | 8 | 16.27 ± 0.35 | 16.25 ± 0.73 | 16.36 ± 0.47 |
+| 36 | 32 | 16.17 ± 0.37 | 16.32 ± 0.75 | 16.37 ± 0.53 |
+| 37 | 32 | 16.18 ± 0.35 | 16.27 ± 0.73 | 16.36 ± 0.54 |
+| 38 | 6 | 16.29 ± 0.34 | 16.30 ± 0.74 | 16.41 ± 0.51 |
+| 39 | 19 | 16.20 ± 0.35 | 16.24 ± 0.75 | 16.37 ± 0.55 |
+
+</details>
+
+<details>
+<summary>Milan · (b) GHSL label, CLMS points · S2 median (10 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 5 | 17.40 ± 0.31 | 17.55 ± 0.38 | 17.30 ± 0.58 |
+| 1 | 5 | 17.49 ± 0.28 | 17.56 ± 0.41 | 17.41 ± 0.54 |
+| 2 | 3 | 17.51 ± 0.32 | 17.56 ± 0.42 | 17.45 ± 0.54 |
+| 3 | 5 | 17.38 ± 0.36 | 17.51 ± 0.35 | 17.30 ± 0.55 |
+| 4 | 3 | 17.42 ± 0.31 | 17.49 ± 0.42 | 17.37 ± 0.58 |
+| 5 | 3 | 17.39 ± 0.29 | 17.46 ± 0.40 | 17.31 ± 0.58 |
+| 6 | 3 | 17.38 ± 0.31 | 17.48 ± 0.41 | 17.34 ± 0.58 |
+| 7 | 3 | 17.38 ± 0.30 | 17.48 ± 0.41 | 17.35 ± 0.58 |
+| 8 | 3 | 17.47 ± 0.33 | 17.50 ± 0.46 | 17.40 ± 0.54 |
+| 9 | 3 | 17.39 ± 0.29 | 17.46 ± 0.40 | 17.31 ± 0.58 |
+| 10 | 3 | 17.45 ± 0.31 | 17.53 ± 0.40 | 17.42 ± 0.57 |
+| 11 | 3 | 17.47 ± 0.33 | 17.51 ± 0.46 | 17.41 ± 0.54 |
+| 12 | 3 | 17.45 ± 0.31 | 17.53 ± 0.40 | 17.42 ± 0.57 |
+| 13 | 3 | 17.45 ± 0.31 | 17.54 ± 0.40 | 17.43 ± 0.56 |
+| 14 | 3 | 17.39 ± 0.29 | 17.46 ± 0.40 | 17.31 ± 0.58 |
+| 15 | 3 | 17.38 ± 0.30 | 17.48 ± 0.41 | 17.35 ± 0.58 |
+| 16 | 3 | 17.40 ± 0.31 | 17.47 ± 0.42 | 17.35 ± 0.58 |
+| 17 | 3 | 17.44 ± 0.30 | 17.50 ± 0.41 | 17.35 ± 0.57 |
+| 18 | 3 | 17.40 ± 0.31 | 17.49 ± 0.42 | 17.35 ± 0.57 |
+| 19 | 3 | 17.49 ± 0.29 | 17.53 ± 0.46 | 17.40 ± 0.56 |
+| 20 | 3 | 17.38 ± 0.31 | 17.48 ± 0.41 | 17.34 ± 0.58 |
+| 21 | 3 | 17.38 ± 0.29 | 17.45 ± 0.39 | 17.31 ± 0.57 |
+| 22 | 3 | 17.38 ± 0.29 | 17.45 ± 0.39 | 17.31 ± 0.57 |
+| 23 | 3 | 17.41 ± 0.30 | 17.49 ± 0.41 | 17.37 ± 0.58 |
+| 24 | 3 | 17.45 ± 0.33 | 17.53 ± 0.42 | 17.40 ± 0.56 |
+| 25 | 3 | 17.40 ± 0.31 | 17.49 ± 0.42 | 17.35 ± 0.57 |
+| 26 | 3 | 17.47 ± 0.33 | 17.50 ± 0.46 | 17.40 ± 0.54 |
+| 27 | 3 | 17.38 ± 0.30 | 17.48 ± 0.41 | 17.35 ± 0.58 |
+| 28 | 3 | 17.51 ± 0.32 | 17.56 ± 0.42 | 17.45 ± 0.54 |
+| 29 | 5 | 17.40 ± 0.31 | 17.55 ± 0.38 | **17.30 ± 0.58** |
+| 30 | 3 | 17.41 ± 0.30 | 17.49 ± 0.41 | 17.37 ± 0.58 |
+| 31 | 3 | 17.38 ± 0.29 | 17.45 ± 0.39 | 17.31 ± 0.57 |
+| 32 | 3 | 17.38 ± 0.31 | 17.48 ± 0.41 | 17.34 ± 0.58 |
+| 33 | 5 | 17.48 ± 0.35 | 17.56 ± 0.39 | 17.41 ± 0.54 |
+| 34 | 3 | 17.38 ± 0.30 | 17.48 ± 0.41 | 17.35 ± 0.58 |
+| 35 | 3 | 17.40 ± 0.31 | 17.47 ± 0.42 | 17.35 ± 0.58 |
+| 36 | 5 | 17.46 ± 0.29 | 17.54 ± 0.42 | 17.37 ± 0.55 |
+| 37 | 5 | 17.39 ± 0.35 | 17.51 ± 0.37 | 17.31 ± 0.57 |
+| 38 | 3 | 17.39 ± 0.29 | 17.46 ± 0.40 | 17.31 ± 0.58 |
+| 39 | 3 | 17.44 ± 0.30 | 17.49 ± 0.41 | 17.35 ± 0.56 |
+
+</details>
+
+<details>
+<summary>Milan · (b) GHSL label, CLMS points · S2 percentile (50 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 25 | 16.79 ± 0.43 | 16.82 ± 0.40 | 16.81 ± 0.52 |
+| 1 | 25 | 16.86 ± 0.43 | 16.96 ± 0.48 | 16.89 ± 0.53 |
+| 2 | 15 | 16.95 ± 0.40 | 17.01 ± 0.41 | 16.97 ± 0.52 |
+| 3 | 25 | 16.75 ± 0.42 | 16.79 ± 0.39 | 16.79 ± 0.53 |
+| 4 | 5 | 16.85 ± 0.35 | 16.96 ± 0.36 | 16.88 ± 0.53 |
+| 5 | 15 | 16.74 ± 0.42 | 16.84 ± 0.34 | 16.78 ± 0.53 |
+| 6 | 5 | 16.80 ± 0.36 | 16.85 ± 0.34 | 16.80 ± 0.55 |
+| 7 | 5 | 16.81 ± 0.36 | 16.87 ± 0.35 | 16.83 ± 0.55 |
+| 8 | 5 | 16.89 ± 0.33 | 16.96 ± 0.31 | 16.90 ± 0.49 |
+| 9 | 7 | 16.75 ± 0.36 | 16.84 ± 0.35 | 16.79 ± 0.58 |
+| 10 | 15 | 16.92 ± 0.41 | 16.95 ± 0.38 | 16.94 ± 0.55 |
+| 11 | 5 | 16.92 ± 0.33 | 17.01 ± 0.33 | 16.92 ± 0.50 |
+| 12 | 5 | 16.98 ± 0.36 | 17.05 ± 0.37 | 17.00 ± 0.55 |
+| 13 | 5 | 16.98 ± 0.34 | 17.08 ± 0.38 | 17.01 ± 0.53 |
+| 14 | 7 | 16.75 ± 0.36 | 16.84 ± 0.35 | 16.79 ± 0.58 |
+| 15 | 15 | 16.74 ± 0.41 | 16.78 ± 0.34 | 16.77 ± 0.56 |
+| 16 | 7 | 16.75 ± 0.38 | 16.87 ± 0.34 | 16.78 ± 0.55 |
+| 17 | 5 | 16.92 ± 0.35 | 16.98 ± 0.38 | 16.95 ± 0.54 |
+| 18 | 5 | 16.85 ± 0.37 | 16.90 ± 0.35 | 16.84 ± 0.55 |
+| 19 | 5 | 16.97 ± 0.36 | 17.01 ± 0.38 | 16.96 ± 0.50 |
+| 20 | 15 | **16.73 ± 0.41** | 16.79 ± 0.35 | 16.76 ± 0.56 |
+| 21 | 7 | 16.76 ± 0.37 | 16.82 ± 0.35 | 16.77 ± 0.57 |
+| 22 | 5 | 16.79 ± 0.35 | 16.86 ± 0.35 | 16.82 ± 0.57 |
+| 23 | 7 | 16.82 ± 0.38 | 16.89 ± 0.32 | 16.80 ± 0.55 |
+| 24 | 5 | 16.98 ± 0.36 | 17.03 ± 0.36 | 16.98 ± 0.55 |
+| 25 | 5 | 16.85 ± 0.37 | 16.90 ± 0.35 | 16.84 ± 0.55 |
+| 26 | 15 | 16.79 ± 0.43 | 16.86 ± 0.36 | 16.80 ± 0.53 |
+| 27 | 5 | 16.81 ± 0.36 | 16.87 ± 0.35 | 16.83 ± 0.55 |
+| 28 | 5 | 17.03 ± 0.34 | 17.11 ± 0.35 | 17.03 ± 0.51 |
+| 29 | 25 | 16.79 ± 0.43 | 16.82 ± 0.40 | 16.81 ± 0.52 |
+| 30 | 5 | 16.86 ± 0.36 | 16.92 ± 0.36 | 16.87 ± 0.55 |
+| 31 | 5 | 16.79 ± 0.35 | 16.86 ± 0.35 | 16.82 ± 0.57 |
+| 32 | 5 | 16.80 ± 0.36 | 16.85 ± 0.34 | 16.80 ± 0.55 |
+| 33 | 25 | 16.96 ± 0.42 | 16.97 ± 0.46 | 16.94 ± 0.53 |
+| 34 | 15 | 16.74 ± 0.41 | 16.78 ± 0.34 | 16.77 ± 0.56 |
+| 35 | 7 | 16.75 ± 0.38 | 16.87 ± 0.34 | 16.78 ± 0.55 |
+| 36 | 25 | 16.82 ± 0.45 | 16.89 ± 0.46 | 16.86 ± 0.52 |
+| 37 | 25 | 16.77 ± 0.42 | 16.80 ± 0.39 | 16.77 ± 0.53 |
+| 38 | 5 | 16.82 ± 0.35 | 16.87 ± 0.37 | 16.84 ± 0.55 |
+| 39 | 15 | 16.83 ± 0.42 | 16.91 ± 0.37 | 16.83 ± 0.55 |
+
+</details>
+
+<details>
+<summary>Milan · (b) GHSL label, CLMS points · S2 Stack (40 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 20 | 16.71 ± 0.33 | 16.76 ± 0.41 | 16.78 ± 0.54 |
+| 1 | 20 | 16.85 ± 0.37 | 16.85 ± 0.45 | 16.85 ± 0.56 |
+| 2 | 12 | 16.90 ± 0.36 | 16.96 ± 0.37 | 16.98 ± 0.58 |
+| 3 | 20 | **16.68 ± 0.32** | 16.75 ± 0.42 | 16.73 ± 0.53 |
+| 4 | 5 | 16.85 ± 0.29 | 16.85 ± 0.43 | 16.81 ± 0.57 |
+| 5 | 12 | 16.70 ± 0.32 | 16.78 ± 0.39 | 16.77 ± 0.51 |
+| 6 | 5 | 16.77 ± 0.30 | 16.78 ± 0.42 | 16.76 ± 0.55 |
+| 7 | 5 | 16.77 ± 0.29 | 16.79 ± 0.41 | 16.76 ± 0.58 |
+| 8 | 5 | 16.81 ± 0.33 | 16.86 ± 0.38 | 16.85 ± 0.63 |
+| 9 | 6 | 16.72 ± 0.34 | 16.77 ± 0.40 | 16.75 ± 0.53 |
+| 10 | 12 | 16.87 ± 0.36 | 16.94 ± 0.41 | 16.94 ± 0.55 |
+| 11 | 5 | 16.85 ± 0.34 | 16.91 ± 0.40 | 16.89 ± 0.61 |
+| 12 | 5 | 16.96 ± 0.34 | 16.99 ± 0.42 | 16.95 ± 0.59 |
+| 13 | 5 | 16.98 ± 0.33 | 17.01 ± 0.43 | 16.96 ± 0.59 |
+| 14 | 6 | 16.72 ± 0.34 | 16.77 ± 0.40 | 16.75 ± 0.53 |
+| 15 | 12 | 16.71 ± 0.34 | 16.79 ± 0.42 | 16.80 ± 0.53 |
+| 16 | 6 | 16.73 ± 0.31 | 16.76 ± 0.41 | 16.80 ± 0.55 |
+| 17 | 5 | 16.89 ± 0.33 | 16.90 ± 0.40 | 16.89 ± 0.55 |
+| 18 | 5 | 16.82 ± 0.30 | 16.82 ± 0.43 | 16.80 ± 0.55 |
+| 19 | 5 | 16.88 ± 0.35 | 16.93 ± 0.37 | 16.90 ± 0.56 |
+| 20 | 12 | 16.71 ± 0.34 | 16.77 ± 0.42 | 16.75 ± 0.52 |
+| 21 | 6 | 16.72 ± 0.36 | 16.75 ± 0.41 | 16.76 ± 0.54 |
+| 22 | 5 | 16.77 ± 0.30 | 16.77 ± 0.39 | 16.80 ± 0.56 |
+| 23 | 6 | 16.76 ± 0.31 | 16.78 ± 0.43 | 16.84 ± 0.54 |
+| 24 | 5 | 16.96 ± 0.33 | 16.97 ± 0.42 | 16.95 ± 0.55 |
+| 25 | 5 | 16.82 ± 0.30 | 16.82 ± 0.43 | 16.80 ± 0.55 |
+| 26 | 12 | 16.76 ± 0.34 | 16.83 ± 0.36 | 16.84 ± 0.55 |
+| 27 | 5 | 16.77 ± 0.29 | 16.79 ± 0.41 | 16.76 ± 0.58 |
+| 28 | 5 | 16.99 ± 0.37 | 17.06 ± 0.39 | 17.03 ± 0.63 |
+| 29 | 20 | 16.71 ± 0.33 | 16.76 ± 0.41 | 16.78 ± 0.54 |
+| 30 | 5 | 16.82 ± 0.30 | 16.84 ± 0.42 | 16.80 ± 0.58 |
+| 31 | 5 | 16.77 ± 0.30 | 16.77 ± 0.39 | 16.80 ± 0.56 |
+| 32 | 5 | 16.77 ± 0.30 | 16.78 ± 0.42 | 16.76 ± 0.55 |
+| 33 | 20 | 16.90 ± 0.36 | 16.95 ± 0.42 | 16.95 ± 0.56 |
+| 34 | 12 | 16.71 ± 0.34 | 16.79 ± 0.42 | 16.80 ± 0.53 |
+| 35 | 6 | 16.73 ± 0.31 | 16.76 ± 0.41 | 16.80 ± 0.55 |
+| 36 | 20 | 16.78 ± 0.33 | 16.84 ± 0.43 | 16.81 ± 0.55 |
+| 37 | 20 | 16.69 ± 0.32 | 16.74 ± 0.41 | 16.76 ± 0.56 |
+| 38 | 5 | 16.78 ± 0.32 | 16.80 ± 0.40 | 16.80 ± 0.55 |
+| 39 | 12 | 16.79 ± 0.31 | 16.85 ± 0.40 | 16.83 ± 0.54 |
+
+</details>
+
+<details>
+<summary>Milan · (c) GHSL label, GHSL points · AlphaEarth (64 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 32 | 18.73 ± 0.70 | 18.78 ± 0.66 | 18.74 ± 0.66 |
+| 1 | 32 | 18.95 ± 0.63 | 19.00 ± 0.74 | 18.97 ± 0.61 |
+| 2 | 19 | 19.12 ± 0.55 | 19.14 ± 0.80 | 19.14 ± 0.68 |
+| 3 | 32 | 18.70 ± 0.68 | 18.74 ± 0.64 | 18.73 ± 0.64 |
+| 4 | 6 | 18.89 ± 0.60 | 18.94 ± 0.67 | 18.91 ± 0.60 |
+| 5 | 19 | 18.72 ± 0.65 | 18.75 ± 0.68 | 18.74 ± 0.57 |
+| 6 | 6 | 18.75 ± 0.66 | 18.78 ± 0.62 | 18.79 ± 0.53 |
+| 7 | 6 | 18.74 ± 0.65 | 18.80 ± 0.62 | 18.78 ± 0.52 |
+| 8 | 6 | 18.77 ± 0.62 | 18.85 ± 0.63 | 18.85 ± 0.54 |
+| 9 | 8 | 18.79 ± 0.58 | 18.77 ± 0.62 | 18.74 ± 0.57 |
+| 10 | 19 | 19.05 ± 0.55 | 19.10 ± 0.77 | 19.07 ± 0.66 |
+| 11 | 6 | 18.91 ± 0.58 | 19.01 ± 0.70 | 18.96 ± 0.64 |
+| 12 | 6 | 19.18 ± 0.53 | 19.21 ± 0.68 | 19.20 ± 0.59 |
+| 13 | 6 | 19.19 ± 0.52 | 19.21 ± 0.69 | 19.19 ± 0.60 |
+| 14 | 8 | 18.79 ± 0.58 | 18.77 ± 0.62 | 18.74 ± 0.57 |
+| 15 | 19 | 18.69 ± 0.61 | 18.76 ± 0.65 | 18.70 ± 0.59 |
+| 16 | 8 | 18.76 ± 0.60 | 18.77 ± 0.63 | 18.77 ± 0.57 |
+| 17 | 6 | 19.13 ± 0.51 | 19.12 ± 0.70 | 19.09 ± 0.58 |
+| 18 | 6 | 18.90 ± 0.61 | 18.92 ± 0.67 | 18.94 ± 0.60 |
+| 19 | 6 | 19.16 ± 0.52 | 19.13 ± 0.73 | 19.11 ± 0.57 |
+| 20 | 19 | **18.68 ± 0.64** | 18.75 ± 0.65 | 18.70 ± 0.60 |
+| 21 | 8 | 18.75 ± 0.60 | 18.75 ± 0.64 | 18.72 ± 0.55 |
+| 22 | 6 | 18.79 ± 0.59 | 18.81 ± 0.63 | 18.79 ± 0.53 |
+| 23 | 8 | 18.87 ± 0.57 | 18.91 ± 0.69 | 18.90 ± 0.62 |
+| 24 | 6 | 19.18 ± 0.54 | 19.19 ± 0.68 | 19.21 ± 0.59 |
+| 25 | 6 | 18.90 ± 0.61 | 18.92 ± 0.67 | 18.94 ± 0.60 |
+| 26 | 19 | 18.73 ± 0.61 | 18.78 ± 0.67 | 18.79 ± 0.59 |
+| 27 | 6 | 18.74 ± 0.65 | 18.80 ± 0.62 | 18.78 ± 0.52 |
+| 28 | 6 | 19.17 ± 0.49 | 19.27 ± 0.71 | 19.25 ± 0.65 |
+| 29 | 32 | 18.73 ± 0.70 | 18.78 ± 0.66 | 18.74 ± 0.66 |
+| 30 | 6 | 18.89 ± 0.61 | 18.94 ± 0.66 | 18.92 ± 0.59 |
+| 31 | 6 | 18.79 ± 0.59 | 18.81 ± 0.63 | 18.79 ± 0.53 |
+| 32 | 6 | 18.75 ± 0.66 | 18.78 ± 0.62 | 18.79 ± 0.53 |
+| 33 | 32 | 19.13 ± 0.64 | 19.16 ± 0.83 | 19.12 ± 0.67 |
+| 34 | 19 | 18.69 ± 0.61 | 18.76 ± 0.65 | 18.70 ± 0.59 |
+| 35 | 8 | 18.76 ± 0.60 | 18.77 ± 0.63 | 18.77 ± 0.57 |
+| 36 | 32 | 18.95 ± 0.64 | 18.99 ± 0.75 | 18.89 ± 0.64 |
+| 37 | 32 | 18.71 ± 0.71 | 18.79 ± 0.65 | 18.73 ± 0.64 |
+| 38 | 6 | 18.81 ± 0.59 | 18.81 ± 0.65 | 18.80 ± 0.53 |
+| 39 | 19 | 18.93 ± 0.61 | 19.01 ± 0.80 | 18.96 ± 0.66 |
+
+</details>
+
+<details>
+<summary>Milan · (c) GHSL label, GHSL points · S2 median (10 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 5 | 18.84 ± 0.81 | 18.68 ± 0.73 | 18.88 ± 0.18 |
+| 1 | 5 | 19.01 ± 0.81 | 18.87 ± 0.70 | 18.96 ± 0.17 |
+| 2 | 3 | 19.03 ± 0.81 | 18.95 ± 0.71 | 19.03 ± 0.25 |
+| 3 | 5 | 18.79 ± 0.83 | 18.68 ± 0.71 | 18.87 ± 0.17 |
+| 4 | 3 | 18.84 ± 0.80 | 18.79 ± 0.66 | 18.94 ± 0.23 |
+| 5 | 3 | 18.75 ± 0.86 | 18.67 ± 0.74 | 18.83 ± 0.17 |
+| 6 | 3 | 18.75 ± 0.80 | 18.67 ± 0.73 | 18.85 ± 0.17 |
+| 7 | 3 | 18.76 ± 0.80 | 18.70 ± 0.71 | 18.86 ± 0.17 |
+| 8 | 3 | 18.83 ± 0.82 | 18.75 ± 0.74 | 18.91 ± 0.17 |
+| 9 | 3 | 18.75 ± 0.86 | 18.67 ± 0.74 | 18.83 ± 0.17 |
+| 10 | 3 | 18.97 ± 0.80 | 18.92 ± 0.65 | 19.01 ± 0.26 |
+| 11 | 3 | 18.90 ± 0.82 | 18.83 ± 0.70 | 18.96 ± 0.22 |
+| 12 | 3 | 18.97 ± 0.80 | 18.92 ± 0.65 | 19.01 ± 0.26 |
+| 13 | 3 | 18.97 ± 0.81 | 18.93 ± 0.66 | 19.03 ± 0.26 |
+| 14 | 3 | 18.75 ± 0.86 | 18.67 ± 0.74 | 18.83 ± 0.17 |
+| 15 | 3 | 18.76 ± 0.80 | 18.70 ± 0.71 | 18.86 ± 0.17 |
+| 16 | 3 | 18.75 ± 0.80 | 18.71 ± 0.71 | 18.87 ± 0.17 |
+| 17 | 3 | 18.93 ± 0.86 | 18.87 ± 0.68 | 18.98 ± 0.23 |
+| 18 | 3 | 18.84 ± 0.81 | 18.77 ± 0.68 | 18.92 ± 0.24 |
+| 19 | 3 | 18.97 ± 0.88 | 18.90 ± 0.74 | 18.98 ± 0.20 |
+| 20 | 3 | 18.75 ± 0.80 | 18.67 ± 0.73 | 18.85 ± 0.17 |
+| 21 | 3 | 18.74 ± 0.83 | **18.65 ± 0.72** | 18.81 ± 0.18 |
+| 22 | 3 | 18.74 ± 0.83 | 18.65 ± 0.72 | 18.81 ± 0.18 |
+| 23 | 3 | 18.85 ± 0.80 | 18.78 ± 0.66 | 18.93 ± 0.24 |
+| 24 | 3 | 18.96 ± 0.80 | 18.89 ± 0.67 | 19.01 ± 0.25 |
+| 25 | 3 | 18.84 ± 0.81 | 18.77 ± 0.68 | 18.92 ± 0.24 |
+| 26 | 3 | 18.83 ± 0.82 | 18.75 ± 0.74 | 18.91 ± 0.17 |
+| 27 | 3 | 18.76 ± 0.80 | 18.70 ± 0.71 | 18.86 ± 0.17 |
+| 28 | 3 | 19.03 ± 0.81 | 18.95 ± 0.71 | 19.03 ± 0.25 |
+| 29 | 5 | 18.84 ± 0.82 | 18.68 ± 0.73 | 18.88 ± 0.18 |
+| 30 | 3 | 18.85 ± 0.80 | 18.78 ± 0.66 | 18.93 ± 0.24 |
+| 31 | 3 | 18.74 ± 0.83 | **18.65 ± 0.72** | 18.81 ± 0.18 |
+| 32 | 3 | 18.75 ± 0.80 | 18.67 ± 0.73 | 18.85 ± 0.17 |
+| 33 | 5 | 19.05 ± 0.81 | 19.00 ± 0.64 | 19.07 ± 0.21 |
+| 34 | 3 | 18.76 ± 0.80 | 18.70 ± 0.71 | 18.86 ± 0.17 |
+| 35 | 3 | 18.75 ± 0.80 | 18.71 ± 0.71 | 18.87 ± 0.17 |
+| 36 | 5 | 18.94 ± 0.80 | 18.85 ± 0.69 | 18.96 ± 0.18 |
+| 37 | 5 | 18.82 ± 0.82 | 18.68 ± 0.71 | 18.89 ± 0.18 |
+| 38 | 3 | 18.75 ± 0.86 | 18.67 ± 0.74 | 18.83 ± 0.17 |
+| 39 | 3 | 18.92 ± 0.83 | 18.86 ± 0.67 | 18.96 ± 0.24 |
+
+</details>
+
+<details>
+<summary>Milan · (c) GHSL label, GHSL points · S2 percentile (50 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 25 | 18.22 ± 0.55 | 18.20 ± 0.64 | 18.26 ± 0.21 |
+| 1 | 25 | 18.34 ± 0.62 | 18.35 ± 0.61 | 18.45 ± 0.13 |
+| 2 | 15 | 18.55 ± 0.66 | 18.46 ± 0.62 | 18.51 ± 0.22 |
+| 3 | 25 | 18.20 ± 0.56 | 18.16 ± 0.65 | 18.24 ± 0.19 |
+| 4 | 5 | 18.34 ± 0.64 | 18.30 ± 0.66 | 18.35 ± 0.20 |
+| 5 | 15 | 18.20 ± 0.61 | **18.15 ± 0.67** | 18.25 ± 0.17 |
+| 6 | 5 | 18.18 ± 0.57 | 18.18 ± 0.68 | 18.22 ± 0.17 |
+| 7 | 5 | 18.23 ± 0.56 | 18.18 ± 0.68 | 18.25 ± 0.17 |
+| 8 | 5 | 18.28 ± 0.60 | 18.24 ± 0.70 | 18.27 ± 0.16 |
+| 9 | 7 | 18.20 ± 0.59 | 18.18 ± 0.63 | 18.22 ± 0.15 |
+| 10 | 15 | 18.48 ± 0.64 | 18.43 ± 0.63 | 18.49 ± 0.21 |
+| 11 | 5 | 18.39 ± 0.69 | 18.36 ± 0.65 | 18.35 ± 0.19 |
+| 12 | 5 | 18.49 ± 0.63 | 18.43 ± 0.64 | 18.48 ± 0.19 |
+| 13 | 5 | 18.49 ± 0.64 | 18.44 ± 0.63 | 18.49 ± 0.19 |
+| 14 | 7 | 18.20 ± 0.59 | 18.18 ± 0.63 | 18.22 ± 0.15 |
+| 15 | 15 | 18.19 ± 0.58 | 18.17 ± 0.63 | 18.21 ± 0.16 |
+| 16 | 7 | 18.23 ± 0.55 | 18.19 ± 0.62 | 18.24 ± 0.11 |
+| 17 | 5 | 18.42 ± 0.67 | 18.36 ± 0.64 | 18.42 ± 0.19 |
+| 18 | 5 | 18.31 ± 0.65 | 18.28 ± 0.66 | 18.32 ± 0.19 |
+| 19 | 5 | 18.43 ± 0.70 | 18.38 ± 0.66 | 18.46 ± 0.19 |
+| 20 | 15 | 18.18 ± 0.55 | 18.17 ± 0.64 | 18.21 ± 0.18 |
+| 21 | 7 | 18.19 ± 0.58 | 18.16 ± 0.65 | 18.23 ± 0.16 |
+| 22 | 5 | 18.24 ± 0.61 | 18.16 ± 0.67 | 18.27 ± 0.17 |
+| 23 | 7 | 18.31 ± 0.63 | 18.25 ± 0.63 | 18.32 ± 0.16 |
+| 24 | 5 | 18.47 ± 0.64 | 18.42 ± 0.65 | 18.46 ± 0.19 |
+| 25 | 5 | 18.31 ± 0.65 | 18.28 ± 0.66 | 18.32 ± 0.19 |
+| 26 | 15 | 18.25 ± 0.61 | 18.23 ± 0.64 | 18.28 ± 0.18 |
+| 27 | 5 | 18.23 ± 0.56 | 18.18 ± 0.68 | 18.25 ± 0.17 |
+| 28 | 5 | 18.52 ± 0.68 | 18.49 ± 0.63 | 18.48 ± 0.19 |
+| 29 | 25 | 18.22 ± 0.55 | 18.20 ± 0.64 | 18.26 ± 0.21 |
+| 30 | 5 | 18.34 ± 0.64 | 18.29 ± 0.66 | 18.34 ± 0.20 |
+| 31 | 5 | 18.24 ± 0.61 | 18.16 ± 0.67 | 18.27 ± 0.17 |
+| 32 | 5 | 18.18 ± 0.57 | 18.18 ± 0.68 | 18.22 ± 0.17 |
+| 33 | 25 | 18.50 ± 0.60 | 18.49 ± 0.63 | 18.54 ± 0.19 |
+| 34 | 15 | 18.19 ± 0.58 | 18.17 ± 0.63 | 18.21 ± 0.16 |
+| 35 | 7 | 18.23 ± 0.55 | 18.19 ± 0.62 | 18.24 ± 0.11 |
+| 36 | 25 | 18.31 ± 0.60 | 18.30 ± 0.60 | 18.36 ± 0.16 |
+| 37 | 25 | 18.22 ± 0.56 | 18.17 ± 0.65 | 18.25 ± 0.20 |
+| 38 | 5 | 18.26 ± 0.60 | 18.18 ± 0.65 | 18.26 ± 0.16 |
+| 39 | 15 | 18.39 ± 0.65 | 18.36 ± 0.67 | 18.43 ± 0.21 |
+
+</details>
+
+<details>
+<summary>Milan · (c) GHSL label, GHSL points · S2 Stack (40 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 20 | 18.25 ± 0.70 | 18.26 ± 0.77 | 18.23 ± 0.35 |
+| 1 | 20 | 18.41 ± 0.80 | 18.43 ± 0.76 | 18.45 ± 0.32 |
+| 2 | 12 | 18.57 ± 0.79 | 18.59 ± 0.73 | 18.62 ± 0.35 |
+| 3 | 20 | 18.24 ± 0.73 | 18.23 ± 0.75 | 18.22 ± 0.34 |
+| 4 | 5 | 18.37 ± 0.77 | 18.42 ± 0.80 | 18.39 ± 0.38 |
+| 5 | 12 | 18.21 ± 0.69 | 18.25 ± 0.76 | 18.20 ± 0.40 |
+| 6 | 5 | 18.22 ± 0.72 | 18.26 ± 0.78 | **18.19 ± 0.38** |
+| 7 | 5 | 18.23 ± 0.69 | 18.27 ± 0.80 | 18.20 ± 0.37 |
+| 8 | 5 | 18.30 ± 0.71 | 18.28 ± 0.80 | 18.26 ± 0.38 |
+| 9 | 6 | 18.26 ± 0.72 | 18.24 ± 0.75 | 18.23 ± 0.41 |
+| 10 | 12 | 18.55 ± 0.78 | 18.55 ± 0.74 | 18.57 ± 0.35 |
+| 11 | 5 | 18.42 ± 0.80 | 18.42 ± 0.79 | 18.42 ± 0.38 |
+| 12 | 5 | 18.56 ± 0.78 | 18.61 ± 0.76 | 18.55 ± 0.37 |
+| 13 | 5 | 18.56 ± 0.79 | 18.62 ± 0.78 | 18.56 ± 0.39 |
+| 14 | 6 | 18.26 ± 0.72 | 18.24 ± 0.75 | 18.23 ± 0.41 |
+| 15 | 12 | 18.22 ± 0.72 | 18.26 ± 0.74 | 18.25 ± 0.38 |
+| 16 | 6 | 18.25 ± 0.71 | 18.31 ± 0.78 | 18.27 ± 0.36 |
+| 17 | 5 | 18.51 ± 0.77 | 18.51 ± 0.72 | 18.55 ± 0.39 |
+| 18 | 5 | 18.36 ± 0.77 | 18.40 ± 0.76 | 18.35 ± 0.37 |
+| 19 | 5 | 18.56 ± 0.78 | 18.57 ± 0.72 | 18.58 ± 0.35 |
+| 20 | 12 | 18.21 ± 0.71 | 18.26 ± 0.73 | 18.22 ± 0.35 |
+| 21 | 6 | 18.23 ± 0.74 | 18.24 ± 0.77 | 18.22 ± 0.40 |
+| 22 | 5 | 18.24 ± 0.71 | 18.23 ± 0.72 | 18.24 ± 0.40 |
+| 23 | 6 | 18.37 ± 0.78 | 18.40 ± 0.78 | 18.38 ± 0.37 |
+| 24 | 5 | 18.56 ± 0.78 | 18.59 ± 0.74 | 18.54 ± 0.38 |
+| 25 | 5 | 18.36 ± 0.77 | 18.40 ± 0.76 | 18.35 ± 0.37 |
+| 26 | 12 | 18.25 ± 0.73 | 18.35 ± 0.75 | 18.33 ± 0.37 |
+| 27 | 5 | 18.23 ± 0.69 | 18.27 ± 0.80 | 18.20 ± 0.37 |
+| 28 | 5 | 18.60 ± 0.80 | 18.61 ± 0.78 | 18.58 ± 0.40 |
+| 29 | 20 | 18.25 ± 0.70 | 18.26 ± 0.77 | 18.23 ± 0.35 |
+| 30 | 5 | 18.37 ± 0.76 | 18.41 ± 0.78 | 18.37 ± 0.35 |
+| 31 | 5 | 18.24 ± 0.71 | 18.23 ± 0.72 | 18.24 ± 0.40 |
+| 32 | 5 | 18.22 ± 0.72 | 18.26 ± 0.78 | **18.19 ± 0.38** |
+| 33 | 20 | 18.57 ± 0.78 | 18.58 ± 0.74 | 18.62 ± 0.34 |
+| 34 | 12 | 18.22 ± 0.72 | 18.26 ± 0.74 | 18.25 ± 0.38 |
+| 35 | 6 | 18.25 ± 0.71 | 18.31 ± 0.78 | 18.27 ± 0.36 |
+| 36 | 20 | 18.40 ± 0.76 | 18.41 ± 0.74 | 18.42 ± 0.32 |
+| 37 | 20 | 18.24 ± 0.70 | 18.25 ± 0.74 | 18.23 ± 0.33 |
+| 38 | 5 | 18.26 ± 0.71 | 18.24 ± 0.72 | 18.27 ± 0.41 |
+| 39 | 12 | 18.44 ± 0.79 | 18.46 ± 0.77 | 18.46 ± 0.37 |
+
+</details>
+
+<details>
+<summary>Hanoi · local training, GHSL · AlphaEarth (64 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 32 | 22.57 ± 1.29 | 23.01 ± 0.99 | 22.46 ± 1.57 |
+| 1 | 32 | 22.82 ± 1.59 | 23.30 ± 1.15 | 22.77 ± 1.67 |
+| 2 | 19 | 22.87 ± 1.63 | 23.34 ± 1.06 | 22.89 ± 1.70 |
+| 3 | 32 | 22.54 ± 1.26 | 22.98 ± 0.96 | **22.45 ± 1.55** |
+| 4 | 6 | 22.78 ± 1.59 | 23.16 ± 0.85 | 22.67 ± 1.66 |
+| 5 | 19 | 22.52 ± 1.29 | 22.93 ± 0.95 | 22.45 ± 1.52 |
+| 6 | 6 | 22.54 ± 1.39 | 22.91 ± 0.73 | 22.48 ± 1.55 |
+| 7 | 6 | 22.59 ± 1.39 | 22.95 ± 0.71 | 22.47 ± 1.53 |
+| 8 | 6 | 22.63 ± 1.31 | 23.01 ± 0.80 | 22.53 ± 1.58 |
+| 9 | 8 | 22.50 ± 1.32 | 22.94 ± 0.78 | 22.51 ± 1.54 |
+| 10 | 19 | 22.83 ± 1.59 | 23.33 ± 1.05 | 22.88 ± 1.71 |
+| 11 | 6 | 22.79 ± 1.55 | 23.19 ± 0.93 | 22.71 ± 1.70 |
+| 12 | 6 | 22.96 ± 1.69 | 23.35 ± 0.91 | 22.87 ± 1.71 |
+| 13 | 6 | 22.95 ± 1.65 | 23.35 ± 0.93 | 22.86 ± 1.71 |
+| 14 | 8 | 22.50 ± 1.32 | 22.94 ± 0.78 | 22.51 ± 1.54 |
+| 15 | 19 | 22.49 ± 1.30 | 22.92 ± 0.91 | 22.47 ± 1.42 |
+| 16 | 8 | 22.56 ± 1.40 | 22.90 ± 0.77 | 22.48 ± 1.48 |
+| 17 | 6 | 22.81 ± 1.59 | 23.14 ± 0.87 | 22.85 ± 1.63 |
+| 18 | 6 | 22.74 ± 1.62 | 23.11 ± 0.86 | 22.66 ± 1.70 |
+| 19 | 6 | 22.87 ± 1.62 | 23.19 ± 0.92 | 22.86 ± 1.67 |
+| 20 | 19 | 22.48 ± 1.29 | 22.92 ± 0.88 | 22.48 ± 1.43 |
+| 21 | 8 | 22.48 ± 1.35 | 22.92 ± 0.79 | 22.50 ± 1.53 |
+| 22 | 6 | 22.53 ± 1.41 | 22.89 ± 0.73 | 22.51 ± 1.51 |
+| 23 | 8 | 22.65 ± 1.59 | 23.09 ± 0.88 | 22.65 ± 1.65 |
+| 24 | 6 | 22.95 ± 1.71 | 23.33 ± 0.91 | 22.88 ± 1.72 |
+| 25 | 6 | 22.74 ± 1.62 | 23.11 ± 0.86 | 22.66 ± 1.70 |
+| 26 | 19 | 22.60 ± 1.35 | 22.99 ± 0.95 | 22.50 ± 1.48 |
+| 27 | 6 | 22.59 ± 1.39 | 22.95 ± 0.71 | 22.47 ± 1.53 |
+| 28 | 6 | 22.92 ± 1.61 | 23.35 ± 0.95 | 22.89 ± 1.74 |
+| 29 | 32 | 22.57 ± 1.29 | 23.01 ± 0.99 | 22.46 ± 1.57 |
+| 30 | 6 | 22.78 ± 1.62 | 23.15 ± 0.85 | 22.65 ± 1.67 |
+| 31 | 6 | 22.53 ± 1.41 | 22.89 ± 0.73 | 22.51 ± 1.51 |
+| 32 | 6 | 22.54 ± 1.39 | 22.91 ± 0.73 | 22.48 ± 1.55 |
+| 33 | 32 | 22.88 ± 1.59 | 23.46 ± 1.17 | 22.91 ± 1.79 |
+| 34 | 19 | 22.49 ± 1.30 | 22.92 ± 0.91 | 22.47 ± 1.42 |
+| 35 | 8 | 22.56 ± 1.40 | 22.90 ± 0.77 | 22.48 ± 1.48 |
+| 36 | 32 | 22.71 ± 1.48 | 23.15 ± 1.09 | 22.70 ± 1.72 |
+| 37 | 32 | 22.53 ± 1.27 | 23.02 ± 1.00 | 22.47 ± 1.55 |
+| 38 | 6 | 22.53 ± 1.36 | 22.89 ± 0.75 | 22.53 ± 1.52 |
+| 39 | 19 | 22.70 ± 1.47 | 23.22 ± 1.02 | 22.69 ± 1.70 |
+
+</details>
+
+<details>
+<summary>Hanoi · local training, GHSL · S2 median (10 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 5 | 23.96 ± 0.96 | 24.51 ± 1.24 | 23.99 ± 0.66 |
+| 1 | 5 | 24.36 ± 1.00 | 24.97 ± 1.53 | 24.33 ± 0.65 |
+| 2 | 3 | 24.41 ± 1.11 | 25.05 ± 1.63 | 24.44 ± 0.61 |
+| 3 | 5 | 23.97 ± 0.95 | 24.45 ± 1.21 | 23.98 ± 0.62 |
+| 4 | 3 | 24.16 ± 1.05 | 24.92 ± 1.68 | 24.25 ± 0.60 |
+| 5 | 3 | 23.97 ± 0.99 | 24.59 ± 1.36 | 24.04 ± 0.68 |
+| 6 | 3 | 23.96 ± 0.90 | 24.55 ± 1.35 | 24.02 ± 0.64 |
+| 7 | 3 | 23.97 ± 0.92 | 24.56 ± 1.41 | 24.02 ± 0.63 |
+| 8 | 3 | 24.02 ± 0.94 | 24.60 ± 1.46 | 24.09 ± 0.64 |
+| 9 | 3 | 23.97 ± 0.99 | 24.59 ± 1.36 | 24.04 ± 0.68 |
+| 10 | 3 | 24.34 ± 1.08 | 25.02 ± 1.60 | 24.45 ± 0.63 |
+| 11 | 3 | 24.20 ± 1.01 | 24.94 ± 1.64 | 24.28 ± 0.56 |
+| 12 | 3 | 24.34 ± 1.08 | 25.02 ± 1.60 | 24.45 ± 0.63 |
+| 13 | 3 | 24.33 ± 1.12 | 25.04 ± 1.63 | 24.46 ± 0.62 |
+| 14 | 3 | 23.97 ± 0.99 | 24.59 ± 1.36 | 24.04 ± 0.68 |
+| 15 | 3 | 23.97 ± 0.92 | 24.56 ± 1.41 | 24.02 ± 0.63 |
+| 16 | 3 | 23.98 ± 0.96 | 24.58 ± 1.47 | 24.03 ± 0.61 |
+| 17 | 3 | 24.27 ± 1.07 | 24.98 ± 1.52 | 24.41 ± 0.65 |
+| 18 | 3 | 24.16 ± 0.99 | 24.90 ± 1.59 | 24.24 ± 0.63 |
+| 19 | 3 | 24.27 ± 1.02 | 25.00 ± 1.54 | 24.42 ± 0.64 |
+| 20 | 3 | 23.96 ± 0.90 | 24.55 ± 1.35 | 24.02 ± 0.64 |
+| 21 | 3 | 23.97 ± 0.98 | 24.54 ± 1.35 | 24.03 ± 0.65 |
+| 22 | 3 | 23.97 ± 0.98 | 24.54 ± 1.34 | 24.03 ± 0.66 |
+| 23 | 3 | 24.16 ± 1.00 | 24.89 ± 1.62 | 24.25 ± 0.62 |
+| 24 | 3 | 24.34 ± 1.06 | 25.03 ± 1.57 | 24.44 ± 0.66 |
+| 25 | 3 | 24.16 ± 0.99 | 24.90 ± 1.59 | 24.24 ± 0.63 |
+| 26 | 3 | 24.02 ± 0.94 | 24.60 ± 1.46 | 24.09 ± 0.64 |
+| 27 | 3 | 23.97 ± 0.92 | 24.56 ± 1.41 | 24.02 ± 0.63 |
+| 28 | 3 | 24.41 ± 1.11 | 25.05 ± 1.63 | 24.44 ± 0.61 |
+| 29 | 5 | **23.96 ± 0.96** | 24.52 ± 1.24 | 23.99 ± 0.66 |
+| 30 | 3 | 24.16 ± 1.00 | 24.89 ± 1.62 | 24.25 ± 0.62 |
+| 31 | 3 | 23.97 ± 0.98 | 24.54 ± 1.35 | 24.03 ± 0.65 |
+| 32 | 3 | 23.96 ± 0.90 | 24.55 ± 1.35 | 24.02 ± 0.64 |
+| 33 | 5 | 24.41 ± 1.11 | 25.04 ± 1.55 | 24.40 ± 0.63 |
+| 34 | 3 | 23.97 ± 0.92 | 24.56 ± 1.41 | 24.02 ± 0.63 |
+| 35 | 3 | 23.98 ± 0.96 | 24.58 ± 1.47 | 24.03 ± 0.61 |
+| 36 | 5 | 24.25 ± 1.04 | 24.94 ± 1.57 | 24.24 ± 0.67 |
+| 37 | 5 | 23.98 ± 0.95 | 24.47 ± 1.22 | 23.98 ± 0.65 |
+| 38 | 3 | 23.97 ± 0.99 | 24.59 ± 1.36 | 24.04 ± 0.68 |
+| 39 | 3 | 24.27 ± 1.06 | 24.94 ± 1.49 | 24.38 ± 0.62 |
+
+</details>
+
+<details>
+<summary>Hanoi · local training, GHSL · S2 Stack (30 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 15 | 24.08 ± 0.93 | 24.51 ± 1.44 | 24.12 ± 1.10 |
+| 1 | 15 | 24.43 ± 0.96 | 24.94 ± 1.56 | 24.42 ± 1.04 |
+| 2 | 9 | 24.65 ± 1.01 | 25.06 ± 1.66 | 24.64 ± 1.13 |
+| 3 | 15 | 24.09 ± 0.93 | 24.51 ± 1.45 | 24.06 ± 1.05 |
+| 4 | 4 | 24.30 ± 0.89 | 24.75 ± 1.45 | 24.37 ± 1.07 |
+| 5 | 9 | 24.12 ± 0.86 | 24.50 ± 1.32 | 24.09 ± 1.00 |
+| 6 | 4 | 24.05 ± 0.81 | 24.50 ± 1.40 | 24.10 ± 1.00 |
+| 7 | 4 | 24.06 ± 0.82 | 24.44 ± 1.32 | 24.14 ± 1.01 |
+| 8 | 4 | 24.22 ± 0.91 | 24.51 ± 1.32 | 24.14 ± 1.05 |
+| 9 | 5 | 24.12 ± 0.91 | 24.48 ± 1.40 | 24.19 ± 1.01 |
+| 10 | 9 | 24.61 ± 1.02 | 24.98 ± 1.60 | 24.55 ± 1.09 |
+| 11 | 4 | 24.44 ± 1.00 | 24.80 ± 1.45 | 24.40 ± 1.09 |
+| 12 | 4 | 24.58 ± 0.88 | 24.92 ± 1.43 | 24.62 ± 1.10 |
+| 13 | 4 | 24.57 ± 0.88 | 24.92 ± 1.43 | 24.62 ± 1.11 |
+| 14 | 5 | 24.12 ± 0.91 | 24.48 ± 1.40 | 24.19 ± 1.01 |
+| 15 | 9 | 24.07 ± 0.87 | 24.46 ± 1.39 | 24.07 ± 0.96 |
+| 16 | 5 | 24.10 ± 0.86 | 24.56 ± 1.45 | 24.18 ± 1.06 |
+| 17 | 4 | 24.46 ± 0.85 | 24.87 ± 1.46 | 24.50 ± 1.04 |
+| 18 | 4 | 24.30 ± 0.86 | 24.79 ± 1.54 | 24.36 ± 1.04 |
+| 19 | 4 | 24.59 ± 0.93 | 24.94 ± 1.48 | 24.51 ± 0.98 |
+| 20 | 9 | **24.04 ± 0.87** | 24.43 ± 1.40 | 24.08 ± 1.00 |
+| 21 | 5 | 24.09 ± 0.89 | 24.46 ± 1.39 | 24.19 ± 1.00 |
+| 22 | 4 | 24.06 ± 0.80 | 24.45 ± 1.35 | 24.13 ± 0.99 |
+| 23 | 5 | 24.35 ± 0.91 | 24.81 ± 1.51 | 24.41 ± 1.08 |
+| 24 | 4 | 24.55 ± 0.87 | 24.95 ± 1.50 | 24.61 ± 1.10 |
+| 25 | 4 | 24.30 ± 0.86 | 24.79 ± 1.54 | 24.36 ± 1.04 |
+| 26 | 9 | 24.19 ± 0.90 | 24.56 ± 1.41 | 24.18 ± 0.97 |
+| 27 | 4 | 24.06 ± 0.82 | 24.44 ± 1.32 | 24.14 ± 1.01 |
+| 28 | 4 | 24.66 ± 0.96 | 24.96 ± 1.43 | 24.65 ± 1.13 |
+| 29 | 15 | 24.08 ± 0.93 | 24.51 ± 1.44 | 24.12 ± 1.10 |
+| 30 | 4 | 24.30 ± 0.89 | 24.75 ± 1.46 | 24.38 ± 1.05 |
+| 31 | 4 | 24.05 ± 0.79 | 24.45 ± 1.35 | 24.13 ± 0.99 |
+| 32 | 4 | 24.05 ± 0.81 | 24.50 ± 1.40 | 24.10 ± 1.00 |
+| 33 | 15 | 24.67 ± 1.03 | 25.06 ± 1.65 | 24.60 ± 1.20 |
+| 34 | 9 | 24.07 ± 0.87 | 24.46 ± 1.39 | 24.07 ± 0.96 |
+| 35 | 5 | 24.10 ± 0.86 | 24.56 ± 1.45 | 24.18 ± 1.06 |
+| 36 | 15 | 24.41 ± 1.00 | 24.86 ± 1.57 | 24.36 ± 1.11 |
+| 37 | 15 | 24.09 ± 0.93 | 24.51 ± 1.46 | 24.09 ± 1.08 |
+| 38 | 4 | 24.08 ± 0.77 | 24.50 ± 1.39 | 24.12 ± 1.02 |
+| 39 | 9 | 24.49 ± 1.00 | 24.90 ± 1.55 | 24.48 ± 1.09 |
+
+</details>
+
+<details>
+<summary>HCMC · local training, GHSL · AlphaEarth (64 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 32 | 21.59 ± 0.67 | 21.56 ± 1.38 | 21.72 ± 0.45 |
+| 1 | 32 | 21.81 ± 0.75 | 21.78 ± 1.32 | 21.91 ± 0.54 |
+| 2 | 19 | 21.84 ± 0.71 | 21.96 ± 1.30 | 21.92 ± 0.46 |
+| 3 | 32 | 21.58 ± 0.62 | 21.56 ± 1.40 | 21.65 ± 0.49 |
+| 4 | 6 | 21.78 ± 0.73 | 21.84 ± 1.21 | 21.93 ± 0.35 |
+| 5 | 19 | 21.54 ± 0.67 | 21.61 ± 1.35 | 21.65 ± 0.45 |
+| 6 | 6 | 21.57 ± 0.65 | 21.67 ± 1.18 | 21.74 ± 0.40 |
+| 7 | 6 | 21.58 ± 0.68 | 21.69 ± 1.16 | 21.75 ± 0.41 |
+| 8 | 6 | 21.66 ± 0.60 | 21.71 ± 1.16 | 21.82 ± 0.43 |
+| 9 | 8 | 21.61 ± 0.66 | 21.63 ± 1.24 | 21.77 ± 0.38 |
+| 10 | 19 | 21.82 ± 0.69 | 21.85 ± 1.31 | 21.94 ± 0.42 |
+| 11 | 6 | 21.79 ± 0.66 | 21.87 ± 1.18 | 21.98 ± 0.34 |
+| 12 | 6 | 21.95 ± 0.69 | 22.08 ± 1.17 | 22.12 ± 0.27 |
+| 13 | 6 | 21.96 ± 0.69 | 22.07 ± 1.19 | 22.13 ± 0.28 |
+| 14 | 8 | 21.61 ± 0.66 | 21.63 ± 1.24 | 21.77 ± 0.38 |
+| 15 | 19 | 21.54 ± 0.65 | 21.52 ± 1.30 | 21.66 ± 0.45 |
+| 16 | 8 | 21.63 ± 0.61 | 21.68 ± 1.24 | 21.78 ± 0.38 |
+| 17 | 6 | 21.89 ± 0.70 | 22.00 ± 1.23 | 22.02 ± 0.33 |
+| 18 | 6 | 21.74 ± 0.70 | 21.83 ± 1.20 | 21.90 ± 0.33 |
+| 19 | 6 | 21.87 ± 0.66 | 22.09 ± 1.28 | 22.03 ± 0.33 |
+| 20 | 19 | 21.55 ± 0.63 | **21.51 ± 1.32** | 21.66 ± 0.46 |
+| 21 | 8 | 21.59 ± 0.66 | 21.60 ± 1.25 | 21.73 ± 0.43 |
+| 22 | 6 | 21.58 ± 0.69 | 21.67 ± 1.19 | 21.77 ± 0.44 |
+| 23 | 8 | 21.74 ± 0.68 | 21.80 ± 1.27 | 21.90 ± 0.34 |
+| 24 | 6 | 21.95 ± 0.67 | 22.07 ± 1.20 | 22.11 ± 0.27 |
+| 25 | 6 | 21.74 ± 0.70 | 21.83 ± 1.20 | 21.90 ± 0.33 |
+| 26 | 19 | 21.61 ± 0.67 | 21.66 ± 1.28 | 21.67 ± 0.43 |
+| 27 | 6 | 21.58 ± 0.68 | 21.69 ± 1.16 | 21.75 ± 0.41 |
+| 28 | 6 | 21.97 ± 0.62 | 22.09 ± 1.16 | 22.20 ± 0.27 |
+| 29 | 32 | 21.59 ± 0.66 | 21.56 ± 1.38 | 21.72 ± 0.45 |
+| 30 | 6 | 21.75 ± 0.73 | 21.84 ± 1.17 | 21.91 ± 0.34 |
+| 31 | 6 | 21.58 ± 0.69 | 21.67 ± 1.19 | 21.77 ± 0.44 |
+| 32 | 6 | 21.57 ± 0.65 | 21.67 ± 1.18 | 21.74 ± 0.40 |
+| 33 | 32 | 21.90 ± 0.73 | 21.90 ± 1.36 | 21.97 ± 0.50 |
+| 34 | 19 | 21.54 ± 0.65 | 21.52 ± 1.30 | 21.65 ± 0.45 |
+| 35 | 8 | 21.63 ± 0.61 | 21.68 ± 1.24 | 21.78 ± 0.38 |
+| 36 | 32 | 21.75 ± 0.75 | 21.73 ± 1.38 | 21.87 ± 0.52 |
+| 37 | 32 | 21.57 ± 0.64 | 21.56 ± 1.40 | 21.65 ± 0.48 |
+| 38 | 6 | 21.62 ± 0.70 | 21.68 ± 1.20 | 21.77 ± 0.43 |
+| 39 | 19 | 21.75 ± 0.72 | 21.78 ± 1.31 | 21.86 ± 0.46 |
+
+</details>
+
+<details>
+<summary>HCMC · local training, GHSL · S2 median (10 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 5 | 23.49 ± 0.60 | 23.35 ± 0.85 | 23.30 ± 0.53 |
+| 1 | 5 | 23.66 ± 0.64 | 23.58 ± 0.89 | 23.51 ± 0.57 |
+| 2 | 3 | 23.72 ± 0.79 | 23.65 ± 0.97 | 23.63 ± 0.72 |
+| 3 | 5 | 23.43 ± 0.59 | 23.32 ± 0.82 | **23.28 ± 0.57** |
+| 4 | 3 | 23.61 ± 0.68 | 23.53 ± 0.96 | 23.48 ± 0.65 |
+| 5 | 3 | 23.44 ± 0.66 | 23.34 ± 0.90 | 23.30 ± 0.58 |
+| 6 | 3 | 23.43 ± 0.58 | 23.39 ± 0.86 | 23.29 ± 0.56 |
+| 7 | 3 | 23.48 ± 0.58 | 23.40 ± 0.87 | 23.33 ± 0.59 |
+| 8 | 3 | 23.51 ± 0.60 | 23.43 ± 0.86 | 23.37 ± 0.62 |
+| 9 | 3 | 23.44 ± 0.66 | 23.34 ± 0.90 | 23.30 ± 0.58 |
+| 10 | 3 | 23.68 ± 0.76 | 23.65 ± 0.96 | 23.59 ± 0.72 |
+| 11 | 3 | 23.61 ± 0.70 | 23.53 ± 0.95 | 23.49 ± 0.63 |
+| 12 | 3 | 23.68 ± 0.76 | 23.65 ± 0.96 | 23.59 ± 0.72 |
+| 13 | 3 | 23.71 ± 0.79 | 23.66 ± 0.98 | 23.62 ± 0.76 |
+| 14 | 3 | 23.44 ± 0.66 | 23.34 ± 0.90 | 23.30 ± 0.58 |
+| 15 | 3 | 23.48 ± 0.58 | 23.40 ± 0.87 | 23.33 ± 0.59 |
+| 16 | 3 | 23.51 ± 0.61 | 23.41 ± 0.90 | 23.35 ± 0.63 |
+| 17 | 3 | 23.63 ± 0.77 | 23.57 ± 0.98 | 23.53 ± 0.70 |
+| 18 | 3 | 23.54 ± 0.63 | 23.51 ± 0.93 | 23.43 ± 0.59 |
+| 19 | 3 | 23.67 ± 0.70 | 23.54 ± 1.00 | 23.53 ± 0.65 |
+| 20 | 3 | 23.43 ± 0.58 | 23.39 ± 0.86 | 23.29 ± 0.56 |
+| 21 | 3 | 23.39 ± 0.65 | 23.34 ± 0.87 | 23.29 ± 0.59 |
+| 22 | 3 | 23.39 ± 0.65 | 23.34 ± 0.87 | 23.29 ± 0.59 |
+| 23 | 3 | 23.59 ± 0.66 | 23.52 ± 0.94 | 23.46 ± 0.61 |
+| 24 | 3 | 23.65 ± 0.73 | 23.63 ± 0.96 | 23.58 ± 0.70 |
+| 25 | 3 | 23.54 ± 0.63 | 23.51 ± 0.93 | 23.43 ± 0.59 |
+| 26 | 3 | 23.51 ± 0.60 | 23.43 ± 0.86 | 23.37 ± 0.62 |
+| 27 | 3 | 23.48 ± 0.58 | 23.40 ± 0.87 | 23.32 ± 0.59 |
+| 28 | 3 | 23.72 ± 0.79 | 23.65 ± 0.97 | 23.63 ± 0.72 |
+| 29 | 5 | 23.49 ± 0.60 | 23.35 ± 0.85 | 23.30 ± 0.53 |
+| 30 | 3 | 23.59 ± 0.66 | 23.52 ± 0.94 | 23.46 ± 0.61 |
+| 31 | 3 | 23.39 ± 0.65 | 23.34 ± 0.87 | 23.29 ± 0.59 |
+| 32 | 3 | 23.43 ± 0.58 | 23.39 ± 0.86 | 23.29 ± 0.56 |
+| 33 | 5 | 23.72 ± 0.74 | 23.64 ± 0.93 | 23.64 ± 0.70 |
+| 34 | 3 | 23.48 ± 0.58 | 23.40 ± 0.87 | 23.32 ± 0.59 |
+| 35 | 3 | 23.51 ± 0.61 | 23.41 ± 0.90 | 23.35 ± 0.63 |
+| 36 | 5 | 23.61 ± 0.64 | 23.54 ± 0.90 | 23.51 ± 0.56 |
+| 37 | 5 | 23.47 ± 0.61 | 23.34 ± 0.85 | 23.29 ± 0.56 |
+| 38 | 3 | 23.44 ± 0.66 | 23.34 ± 0.90 | 23.30 ± 0.58 |
+| 39 | 3 | 23.61 ± 0.76 | 23.56 ± 0.97 | 23.52 ± 0.69 |
+
+</details>
+
+<details>
+<summary>HCMC · local training, GHSL · S2 Stack (10 bands)</summary>
+
+| Setting | variablesPerSplit | 500 m | 1000 m | 2000 m |
+|---:|---:|---:|---:|---:|
+| 0 | 5 | 23.21 ± 0.64 | 23.24 ± 0.83 | 23.12 ± 0.78 |
+| 1 | 5 | 23.46 ± 0.75 | 23.46 ± 0.92 | 23.37 ± 0.79 |
+| 2 | 3 | 23.60 ± 0.76 | 23.55 ± 1.07 | 23.51 ± 0.89 |
+| 3 | 5 | 23.22 ± 0.63 | 23.20 ± 0.80 | 23.12 ± 0.82 |
+| 4 | 3 | 23.48 ± 0.70 | 23.42 ± 0.89 | 23.33 ± 0.83 |
+| 5 | 3 | 23.24 ± 0.70 | 23.25 ± 0.82 | 23.19 ± 0.77 |
+| 6 | 3 | 23.28 ± 0.67 | 23.24 ± 0.81 | 23.16 ± 0.78 |
+| 7 | 3 | 23.33 ± 0.67 | 23.28 ± 0.84 | 23.17 ± 0.79 |
+| 8 | 3 | 23.46 ± 0.71 | 23.31 ± 0.86 | 23.22 ± 0.75 |
+| 9 | 3 | 23.24 ± 0.70 | 23.25 ± 0.82 | 23.19 ± 0.77 |
+| 10 | 3 | 23.55 ± 0.71 | 23.54 ± 1.01 | 23.48 ± 0.92 |
+| 11 | 3 | 23.55 ± 0.72 | 23.42 ± 0.93 | 23.34 ± 0.81 |
+| 12 | 3 | 23.55 ± 0.71 | 23.54 ± 1.01 | 23.48 ± 0.92 |
+| 13 | 3 | 23.57 ± 0.74 | 23.54 ± 1.01 | 23.50 ± 0.92 |
+| 14 | 3 | 23.24 ± 0.70 | 23.25 ± 0.82 | 23.19 ± 0.77 |
+| 15 | 3 | 23.33 ± 0.67 | 23.28 ± 0.84 | 23.17 ± 0.79 |
+| 16 | 3 | 23.36 ± 0.69 | 23.31 ± 0.83 | 23.18 ± 0.79 |
+| 17 | 3 | 23.44 ± 0.71 | 23.46 ± 0.94 | 23.44 ± 0.89 |
+| 18 | 3 | 23.42 ± 0.68 | 23.41 ± 0.89 | 23.32 ± 0.83 |
+| 19 | 3 | 23.48 ± 0.73 | 23.48 ± 1.01 | 23.44 ± 0.90 |
+| 20 | 3 | 23.28 ± 0.67 | 23.24 ± 0.81 | 23.16 ± 0.78 |
+| 21 | 3 | 23.23 ± 0.70 | 23.22 ± 0.80 | 23.16 ± 0.77 |
+| 22 | 3 | 23.23 ± 0.70 | 23.22 ± 0.80 | 23.16 ± 0.78 |
+| 23 | 3 | 23.45 ± 0.69 | 23.42 ± 0.91 | 23.31 ± 0.83 |
+| 24 | 3 | 23.53 ± 0.70 | 23.54 ± 0.99 | 23.48 ± 0.89 |
+| 25 | 3 | 23.42 ± 0.68 | 23.41 ± 0.89 | 23.32 ± 0.83 |
+| 26 | 3 | 23.46 ± 0.71 | 23.31 ± 0.86 | 23.22 ± 0.75 |
+| 27 | 3 | 23.33 ± 0.67 | 23.28 ± 0.84 | 23.17 ± 0.79 |
+| 28 | 3 | 23.60 ± 0.76 | 23.55 ± 1.07 | 23.51 ± 0.89 |
+| 29 | 5 | 23.21 ± 0.64 | 23.24 ± 0.83 | 23.13 ± 0.78 |
+| 30 | 3 | 23.45 ± 0.69 | 23.42 ± 0.91 | 23.31 ± 0.83 |
+| 31 | 3 | 23.23 ± 0.70 | 23.22 ± 0.80 | 23.16 ± 0.77 |
+| 32 | 3 | 23.28 ± 0.67 | 23.24 ± 0.81 | 23.16 ± 0.78 |
+| 33 | 5 | 23.53 ± 0.68 | 23.46 ± 0.96 | 23.47 ± 0.93 |
+| 34 | 3 | 23.33 ± 0.67 | 23.28 ± 0.84 | 23.17 ± 0.79 |
+| 35 | 3 | 23.36 ± 0.69 | 23.31 ± 0.83 | 23.18 ± 0.79 |
+| 36 | 5 | 23.42 ± 0.72 | 23.37 ± 0.89 | 23.36 ± 0.80 |
+| 37 | 5 | 23.24 ± 0.62 | 23.20 ± 0.82 | **23.12 ± 0.79** |
+| 38 | 3 | 23.24 ± 0.70 | 23.25 ± 0.82 | 23.19 ± 0.77 |
+| 39 | 3 | 23.44 ± 0.71 | 23.45 ± 0.92 | 23.40 ± 0.90 |
+
+</details>
+
+## Interpreter agreement
+
+Every EarthLabel plot was interpreted independently by two authors (K.K. and
+X.T.). A plot is a disagreement when the two plot values differ; a third author
+(M.Ž.) re-interpreted each disagreement on the same imagery, using the two
+interpretations as a reference, and that value became the final plot value. The
+table compares the two interpretations before this review
+(`interpreter_agreement.py`; MAE in percentage points, one level = 11.1 pp).
+
+| City | Plots | Disagreements | Exact agreement | Within one level | MAE (pp) | QWK |
+|---|---:|---:|---:|---:|---:|---:|
+| Milan | 450 | 102 | 77.3% | 88.4% | 6.3 | 0.91 |
+| Hanoi | 450 | 116 | 74.2% | 82.4% | 8.4 | 0.89 |
+| HCMC | 450 | 102 | 77.3% | 87.1% | 5.8 | 0.95 |
+
+Disagreements occur mostly in plots of intermediate imperviousness, where
+impervious and pervious cover are mixed within a sub-cell.
 
 ## Reproducing
 
@@ -281,14 +1438,14 @@ login. If the download fails with a permissions error, run
 
 | Dataset | Use | Reference |
 |---|---|---|
-| CLMS Imperviousness Density 2018, 10 m | training target (Milan) | Copernicus / EEA, [doi:10.2909/3bf542bd](https://doi.org/10.2909/3bf542bd) |
-| GHS-BUILT-S R2023A | training target (Milan, Vietnam) | Pesaresi & Politis (2023), EC JRC, [doi:10.2905/9F06F36F](https://doi.org/10.2905/9F06F36F) |
+| CLMS Imperviousness Density 2018, 10 m | training label (Milan) | Copernicus / EEA, [doi:10.2909/3bf542bd](https://doi.org/10.2909/3bf542bd) |
+| GHS-BUILT-S R2023A | training label (Milan, Hanoi, HCMC) | Pesaresi & Politis (2023), EC JRC, [doi:10.2905/9F06F36F](https://doi.org/10.2905/9F06F36F) |
 | Google Satellite Embedding V1 (Annual) | predictor, 64 bands | Brown et al. (2025) |
 | Sentinel-2 MSI L2A (`S2_SR_HARMONIZED`) | predictor, 10 bands | ESA (2018); Drusch et al. (2012), [doi:10.1016/j.rse.2011.11.026](https://doi.org/10.1016/j.rse.2011.11.026) |
-| ESA WorldCover v200 | water masking | |
+| ESA WorldCover 10 m 2021 v200 | water mask | Zanaga et al. (2022) |
 
-EarthLabel validation plots were photo-interpreted independently for all three
-cities and are not derived from any of the above. The annotation tool is at
+The EarthLabel plots were photo-interpreted independently for all three cities
+and are not derived from any of the above. The annotation tool is at
 [github.com/tanxiaoo/earth-label](https://github.com/tanxiaoo/earth-label).
 
 ## Archive
@@ -301,13 +1458,19 @@ The predicted maps for all three cities, together with the inputs under
 > Embeddings* (v1) [Data set]. Zenodo.
 > [doi:10.5281/zenodo.22874238](https://doi.org/10.5281/zenodo.22874238)
 
-1.8 GB in total: the Milan embedding and Sentinel-2 models, the IMD maps for
-Milan, Hanoi and HCMC, and the directly transferred and locally retrained
+1.8 GB in total: the Milan AlphaEarth and Sentinel-2 models, the IMD maps for
+Milan, Hanoi and HCMC, and the locally trained and directly transferred
 Vietnam outputs.
 
 The project code is published at
 [github.com/gisgeolab/IMD](https://github.com/gisgeolab/IMD); the predicted
 rasters are in the Zenodo deposit above, not in either repository.
+
+## License
+
+The code in this repository is released under the [MIT License](LICENSE). The
+data and maps in the Zenodo deposit are under CC BY 4.0, and the third-party
+products listed under [Data sources](#data-sources) keep their own licences.
 
 ## Acknowledgements
 
